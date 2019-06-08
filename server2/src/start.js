@@ -31,6 +31,7 @@ export const start = async () => {
       type Query {
         wheel(_id: String): Wheel
         wheels: [Wheel]
+        areas: [Area]
         ranktimes(areaId: String): [RankTime]
         goaltimes(areaId: String): [GoalTime]
         area(_id: String): Area
@@ -59,8 +60,8 @@ export const start = async () => {
         wheelId: String
         wheel: Wheel
         name: String
-        rank: Int
-        goal: Int
+        rank: RankTime
+        goal: GoalTime
         definition: String
         wheellink: Wheel
       }
@@ -86,12 +87,13 @@ export const start = async () => {
       type Mutation {
         createWheel(title: String!, notes: String): Wheel
         createArea(wheelId: String, wheel: String, name: String, definition: String, wheellink: String): Area
+        addExistingArea(wheelId: String, areaId: String): Area
         updateArea(areaId: String, wheel: String, name: String, definition: String, wheellink: String): Area
         createWheelLink(areaId: String!,title: String!, notes: String): Wheel
         deleteWheelLink(areaId: String!): Area
         createRankTime(areaId: String, rank: Int, datetime: String, note: String): RankTime
         createGoalTime(areaId: String, goal: Int, datetime: String, note: String): GoalTime
-        deleteArea(areaId: String): Area
+        deleteArea(areaId: String, wheelId: String): Area
         shiftLinks(areaId: String): String
       }
 
@@ -109,6 +111,9 @@ export const start = async () => {
         },
         wheels: async () => {
           return (await Wheels.find({}).toArray()).map(prepare);
+        },
+        areas: async () => {
+          return (await Areas.find({}).toArray()).map(prepare);
         },
         area: async (root, { _id }) => {
           return prepare(await Areas.findOne(ObjectId(_id)));
@@ -170,14 +175,14 @@ export const start = async () => {
             { areaId: _id },
             { sort: { date: -1 } }
           );
-          return rank ? prepare(rank).rank : 0;
+          return rank ? prepare(rank) : null;
         },
         goal: async ({ _id }) => {
           const goal = await GoalTimes.findOne(
             { areaId: _id },
             { sort: { date: -1 } }
           );
-          return goal ? prepare(goal).goal : 0;
+          return goal ? prepare(goal) : null;
         }
       },
       Mutation: {
@@ -209,28 +214,41 @@ export const start = async () => {
             { $set: { wheellink: newwheelid } }
           );
 
-          await WheelAreaLinks.insertOne({
+          /* await WheelAreaLinks.insertOne({
             wheel: newwheelid,
             area: args.areaId
-          });
+          }); */
 
           return prepare(res.ops[0]); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
         },
 
         shiftLinks: async (root, args, context, info) => {
-          const wheel_areas = await Areas.find().toArray();
+          /* const wheel_areas = await Areas.find().toArray();
 
           await WheelAreaLinks.insert(
             wheel_areas.map(function(area) {
               return { wheel: area.wheelId, area: area._id.toString() };
             })
-          );
+          ); */
           return "run shiftLinks";
         },
 
         createArea: async (root, args) => {
           const res = await Areas.insert(args);
+
+          await WheelAreaLinks.insertOne({
+            wheel: args.wheelId,
+            area: res.insertedIds[1].toString()
+          });
           return prepare(await Areas.findOne({ _id: res.insertedIds[1] }));
+        },
+        addExistingArea: async (root, args) => {
+          await WheelAreaLinks.insertOne({
+            wheel: args.wheelId,
+            area: args.areaId
+          });
+          console.log(args);
+          return prepare(await Areas.findOne({ _id: ObjectId(args.areaId) }));
         },
         createRankTime: async (root, args) => {
           args.date = new Date(args.datetime);
@@ -244,9 +262,18 @@ export const start = async () => {
           const res = await GoalTimes.insert(args); // args,
           return prepare(await GoalTimes.findOne({ _id: res.insertedIds[1] }));
         },
-        deleteArea: async (root, { areaId, title }) => {
+        deleteArea: async (root, { areaId, wheelId }) => {
           var message = "";
-          Areas.deleteOne({ _id: ObjectId(areaId) }, function(err, obj) {
+          /* Areas.deleteOne({ _id: ObjectId(areaId) }, function(err, obj) {
+            if (err) throw err;
+            message = obj.deletedCount + " area(s) deleted";
+            console.log(message);
+          }); */
+
+          WheelAreaLinks.deleteOne({ area: areaId, wheel: wheelId }, function(
+            err,
+            obj
+          ) {
             if (err) throw err;
             message = obj.deletedCount + " area(s) deleted";
             console.log(message);
