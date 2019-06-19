@@ -14,7 +14,7 @@ app.use(cors());
 const homePath = "/graphiql";
 const URL = "http://localhost";
 const PORT = 3001;
-const MONGO_URL = "mongodb://localhost:27017/strategy";
+const MONGO_URL = "mongodb://localhost:27017/strategy"; //27017
 
 export const start = async () => {
   try {
@@ -195,15 +195,15 @@ export const start = async () => {
             { _id: ObjectId(areaId) },
             { $set: { wheellink: null } }
           );
-          return prepare({ _id: areaId });
+          return res;
         },
         updateArea: async (root, args, context, info) => {
-          const definition = args.definition;
+          //const definition = args.definition;
           const res = await Areas.updateOne(
             { _id: ObjectId(args.areaId) },
-            { $set: { definition: definition } }
+            { $set: args }
           );
-          return prepare({ _id: args.areaId }); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
+          return res; // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
         },
         createWheelLink: async (root, args, context, info) => {
           const res = await Wheels.insertOne(args);
@@ -230,7 +230,7 @@ export const start = async () => {
               return { wheel: area.wheelId, area: area._id.toString() };
             })
           ); */
-          return "run shiftLinks";
+          return "shiftLinks was run once, commented out.";
         },
 
         createArea: async (root, args) => {
