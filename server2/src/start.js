@@ -247,18 +247,15 @@ export const start = async () => {
             wheel: args.wheelId,
             area: args.areaId
           });
-          console.log(args);
           return prepare(await Areas.findOne({ _id: ObjectId(args.areaId) }));
         },
         createRankTime: async (root, args) => {
           args.date = new Date(args.datetime);
-          console.log(args.date);
           const res = await RankTimes.insert(args); // args,
           return prepare(await RankTimes.findOne({ _id: res.insertedIds[1] }));
         },
         createGoalTime: async (root, args) => {
           args.date = new Date(args.datetime);
-          console.log(args.date);
           const res = await GoalTimes.insert(args); // args,
           return prepare(await GoalTimes.findOne({ _id: res.insertedIds[1] }));
         },
@@ -268,7 +265,7 @@ export const start = async () => {
             if (err) throw err;
             message = obj.deletedCount + " area(s) deleted";
             console.log(message);
-          }); */
+          }); //introduced WheelAreaLinks, so can just delete the link now*/
 
           WheelAreaLinks.deleteOne({ area: areaId, wheel: wheelId }, function(
             err,
@@ -276,7 +273,6 @@ export const start = async () => {
           ) {
             if (err) throw err;
             message = obj.deletedCount + " area(s) deleted";
-            console.log(message);
           });
           return { _id: areaId, title: message };
         }
