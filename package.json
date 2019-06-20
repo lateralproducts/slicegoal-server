@@ -5,8 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "babel-version": "babel --version",
-    "startdev": "nodemon --exec babel-node src/index.js",
-    "start": "node dist/index.js",
+    "startdev": "MONGODB_URL=mongodb://localhost:27017/strategy nodemon --exec babel-node src/index.js",
+    "start": "MONGODB_URL=mongodb://13.238.155.211:27017/strategy node dist/index.js",
     "build": "babel -d dist/ src/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

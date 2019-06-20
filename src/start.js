@@ -14,12 +14,14 @@ app.use(cors());
 const homePath = "/graphiql";
 const URL = "http://localhost";
 const PORT = 3001;
-const MONGO_URL = "mongodb://localhost:27017/strategy"; //27017
+const MONGO_URL = `${process.env.MONGODB_URL}`; //27017
+console.log("attempting to open: " + MONGO_URL);
 
 export const start = async () => {
   try {
     const db = await MongoClient.connect(MONGO_URL);
 
+    console.log("connected now for the dbs");
     const Wheels = db.collection("wheels");
     const Areas = db.collection("areas");
     const RankTimes = db.collection("ranktimes");
