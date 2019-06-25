@@ -14,7 +14,11 @@ app.use(cors());
 const homePath = "/graphiql";
 const URL = "http://localhost";
 const PORT = 3001;
-const MONGO_URL = `${process.env.MONGODB_URL}`; //27017
+var MONGO_URL = `${process.env.MONGODB_URL}`; //27017
+if (MONGO_URL == "undefined") {
+  MONGO_URL = "mongodb://13.238.155.211:27017/strategy";
+  //override address if necessary
+}
 console.log("attempting to open: " + MONGO_URL);
 
 export const start = async () => {
