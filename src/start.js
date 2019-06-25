@@ -19,7 +19,7 @@ if (MONGO_URL == "undefined") {
   MONGO_URL = "mongodb://13.238.155.211:27017/strategy";
   //override address if necessary
 }
-console.log("attempting to open: " + MONGO_URL);
+console.log("attempting to open server: " + MONGO_URL);
 
 export const start = async () => {
   try {
