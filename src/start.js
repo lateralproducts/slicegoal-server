@@ -1,25 +1,76 @@
 import { MongoClient, ObjectId } from "mongodb";
 import express from "express";
-import bodyParser from "body-parser";
-import { graphqlExpress, graphiqlExpress } from "graphql-server-express";
+//import bodyParser from "body-parser";
+//import { graphqlExpress, graphiqlExpress } from "graphql-server-express";
 import { makeExecutableSchema } from "graphql-tools";
 import cors from "cors";
 import { prepare } from "../util/index";
 import { AsyncResource } from "async_hooks";
 
+import { GraphQLServer } from "graphql-yoga";
+import session from "express-session";
+import bcrypt from "bcryptjs";
+import ms from "ms";
+
 const app = express();
 
 app.use(cors());
 
-const homePath = "/graphiql";
+/* const homePath = "/graphiql";
 const URL = "http://localhost";
-const PORT = 3001;
+const PORT = 3001; */
 var MONGO_URL = `${process.env.MONGODB_URL}`; //27017
 if (MONGO_URL == "undefined") {
   MONGO_URL = "mongodb://13.238.155.211:27017/strategy";
   //override address if necessary
 }
 console.log("attempting to open server: " + MONGO_URL);
+
+const typeDefs2 = `
+      type Query {
+        isLogin: Boolean!
+      }
+      type Mutation {
+        login(username: String!, pwd: String!): Boolean!
+        signup(username: String!, pwd: String!): Boolean!
+      }
+    `;
+
+const data = {};
+
+const resolvers2 = {
+  Query: {
+    isLogin: (parent, args, { req }) => typeof req.session.user !== "undefined"
+  },
+  Mutation: {
+    signup: async (parent, { username, pwd }, ctx) => {
+      if (data[username]) {
+        throw new Error("Another User with same username exists.");
+      }
+
+      data[username] = {
+        pwd: await bcrypt.hashSync(pwd, 10)
+      };
+
+      return true;
+    },
+    login: async (parent, { username, pwd }, { req }) => {
+      const user = data[username];
+      if (user) {
+        if (await bcrypt.compareSync(pwd, user.pwd)) {
+          req.session.user = {
+            user
+          };
+          return true;
+        }
+
+        throw new Error("Incorrect password.");
+      }
+
+      throw new Error("No Such User exists.");
+    }
+  }
+};
 
 export const start = async () => {
   try {
@@ -249,21 +300,23 @@ export const start = async () => {
           return prepare(await Areas.findOne({ _id: res.insertedIds[1] }));
         },
         addExistingArea: async (root, args) => {
-          await WheelAreaLinks.insertOne({
+          const res = await WheelAreaLinks.insertOne({
             wheel: args.wheelId,
             area: args.areaId
           });
+          console.log(res);
           return prepare(await Areas.findOne({ _id: ObjectId(args.areaId) }));
         },
         createRankTime: async (root, args) => {
           args.date = new Date(args.datetime);
           const res = await RankTimes.insert(args); // args,
-          return prepare(await RankTimes.findOne({ _id: res.insertedIds[1] }));
+          console.log(res);
+          return { _id: res.insertedIds[1], message: "new rank entry created" };
         },
         createGoalTime: async (root, args) => {
           args.date = new Date(args.datetime);
           const res = await GoalTimes.insert(args); // args,
-          return prepare(await GoalTimes.findOne({ _id: res.insertedIds[1] }));
+          return { _id: res.insertedIds[1], message: "new goal entry created" };
         },
         deleteArea: async (root, { areaId, wheelId }) => {
           var message = "";
@@ -285,23 +338,56 @@ export const start = async () => {
       }
     };
 
-    const schema = makeExecutableSchema({
-      typeDefs,
-      resolvers
+    const opts = {
+      port: 3001,
+      cors: {
+        credentials: true,
+        origin: [
+          "http://localhost:8000",
+          "http://qa.lateralproducts.com.au",
+          "http://staging.lateralproducts.com.au",
+          "http://www.lateralproducts.com.au"
+        ] //your frontend url.
+      }
+    };
+
+    // context
+    const context = req => ({
+      req: req.request
     });
 
-    app.use("/graphql", bodyParser.json(), graphqlExpress({ schema }));
+    // server
+    const server = new GraphQLServer({
+      typeDefs,
+      resolvers,
+      context
+    });
 
-    app.use(
-      homePath,
-      graphiqlExpress({
-        endpointURL: "/graphql"
+    /* function loggingMiddleware(req, res, next) {
+      console.log("ip:", req.ip);
+      next();
+    }
+    server.express.use(loggingMiddleware); */
+    //the function above tracks the ip address
+
+    // session middleware
+    server.express.use(
+      session({
+        name: "qid",
+        secret: `some-random-secret-here`,
+        resave: true,
+        saveUninitialized: true,
+        cookie: {
+          secure: process.env.NODE_ENV === "production",
+          maxAge: ms("1d")
+        }
       })
     );
 
-    app.listen(PORT, () => {
-      console.log(`Visit ${URL}:${PORT}${homePath}`);
-    });
+    // start server
+    server.start(opts, () =>
+      console.log(`Server is running on http://localhost:${opts.port}`)
+    );
   } catch (e) {
     console.log(e);
   }
