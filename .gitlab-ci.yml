@@ -14,8 +14,9 @@ autotest:
   stage: qa
   # Official docker image.
   script:
-  #  - yarn add mocha
-  #  - yarn test
+    #  - yarn add mocha
+    #  - yarn test
+    - echo "qa..."
   only:
     - master
     - development
@@ -40,6 +41,7 @@ build:
     #  - docker kill $(docker ps -q) || true
     #  - docker login -u "daniel175" -p "YUHWhx2TsezUBCtsDd" registry.gitlab.com
     #  - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" .
+    - echo "localqa..."
   only:
     - master
     - development
@@ -58,7 +60,7 @@ staging:
     #- yarn buildstaging
     #- sudo rsync -t -r --delete ./public/ ~/Desktop/Build/staging
   script:
-    #- echo "Deploying to Staging..."
+    - echo "Staging..."
     #- rsync -ru --delete ./public/ ec2-user@13.239.168.89:/home/ec2-user/staging/
     #- echo "placing files into staging folder"
     #- ssh -T ec2-user@13.239.168.89 -v "sudo rsync -ru --delete /home/ec2-user/staging/ /var/www/staging"
