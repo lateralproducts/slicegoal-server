@@ -7,7 +7,7 @@
     "babel-version": "babel --version",
     "develop": "MONGODB_URL=mongodb://localhost:27017/strategy nodemon --inspect --exec babel-node src/index.js",
     "developtest": "MONGODB_URL=mongodb://localhost:27017/strategy nodemon --inspect --exec babel-node src/index.js",
-    "start": "MONGODB_URL=mongodb://13.239.168.89:27017/strategy node dist/index.js",
+    "start": "MONGODB_URL=mongodb://172.31.1.156:27017/strategy node dist/index.js",
     "start2": "node dist/index.js",
     "build": "babel -d dist/ src/",
     "test": "echo \"Error: no test specified\" && exit 1"

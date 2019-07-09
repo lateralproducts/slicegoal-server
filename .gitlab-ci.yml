@@ -80,7 +80,7 @@ deploy:
   script:
     - echo "Deploying to Production..."
     - rsync -ru --delete ./ ec2-user@13.239.168.89:/home/ec2-user/strategyserver/
-    - ssh -T ec2-user@13.239.168.89 -v "sudo yarn build && sudo pm2 restart index"
+    - ssh -T ec2-user@13.239.168.89 -v "cd /home/ec2-user/strategyserver/ && sudo yarn build && pm2 restart index"
     - echo "new version placed on server and started"
   only:
     - master
