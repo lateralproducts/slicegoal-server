@@ -346,6 +346,7 @@ export const start = async () => {
 
     const opts = {
       port: 3001,
+      endpoint: "/server",
       cors: {
         credentials: true,
         origin: [
@@ -394,7 +395,9 @@ export const start = async () => {
 
     // start server
     server.start(opts, () =>
-      console.log(`Server is running on http://localhost:${opts.port}`)
+      console.log(
+        `Server is running on http://localhost:${opts.port}${opts.endpoint}`
+      )
     );
   } catch (e) {
     console.log(e);
