@@ -1,11 +1,12 @@
 {
   "name": "graphql-mongodb-example",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
     "babel-version": "babel --version",
     "develop": "MONGODB_URL=mongodb://localhost:27017/strategy nodemon --inspect --exec babel-node src/index.js",
+    "developtest": "MONGODB_URL=mongodb://localhost:27017/strategy nodemon --inspect --exec babel-node src/index.js",
     "start": "MONGODB_URL=mongodb://localhost:27017/strategy node dist/index.js",
     "start2": "node dist/index.js",
     "build": "babel -d dist/ src/",

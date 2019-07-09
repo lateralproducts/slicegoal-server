@@ -2,10 +2,10 @@ import { MongoClient, ObjectId } from "mongodb";
 import express from "express";
 //import bodyParser from "body-parser";
 //import { graphqlExpress, graphiqlExpress } from "graphql-server-express";
-import { makeExecutableSchema } from "graphql-tools";
+//import { makeExecutableSchema } from "graphql-tools";
 import cors from "cors";
 import { prepare } from "../util/index";
-import { AsyncResource } from "async_hooks";
+//import { AsyncResource } from "async_hooks";
 
 import { GraphQLServer } from "graphql-yoga";
 import session from "express-session";
@@ -21,7 +21,7 @@ const URL = "http://localhost";
 const PORT = 3001; */
 var MONGO_URL = `${process.env.MONGODB_URL}`; //27017
 if (MONGO_URL == "undefined") {
-  MONGO_URL = "mongodb://13.238.155.211:27017/strategy";
+  MONGO_URL = "mongodb://172.31.1.156:27017/strategy";
   //override address if necessary
 }
 console.log("attempting to open server: " + MONGO_URL);
@@ -295,9 +295,9 @@ export const start = async () => {
 
           await WheelAreaLinks.insertOne({
             wheel: args.wheelId,
-            area: res.insertedIds[1].toString()
+            area: res.insertedIds[0].toString()
           });
-          return prepare(await Areas.findOne({ _id: res.insertedIds[1] }));
+          return prepare(await Areas.findOne({ _id: res.insertedIds[0] }));
         },
         addExistingArea: async (root, args) => {
           const res = await WheelAreaLinks.insertOne({
@@ -346,6 +346,7 @@ export const start = async () => {
           "http://localhost:8000",
           "http://qa.lateralproducts.com.au",
           "http://staging.lateralproducts.com.au",
+          "http://strategy.lateralproducts.com.au",
           "http://www.lateralproducts.com.au"
         ] //your frontend url.
       }
