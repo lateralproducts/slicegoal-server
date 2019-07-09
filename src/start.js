@@ -311,12 +311,18 @@ export const start = async () => {
           args.date = new Date(args.datetime);
           const res = await RankTimes.insert(args); // args,
           console.log(res);
-          return { _id: res.insertedIds[1], message: "new rank entry created" };
+          return {
+            _id: res.insertedIds[1],
+            message: "new rank entry created prod"
+          };
         },
         createGoalTime: async (root, args) => {
           args.date = new Date(args.datetime);
           const res = await GoalTimes.insert(args); // args,
-          return { _id: res.insertedIds[1], message: "new goal entry created" };
+          return {
+            _id: res.insertedIds[1],
+            message: "new goal entry created prod"
+          };
         },
         deleteArea: async (root, { areaId, wheelId }) => {
           var message = "";
