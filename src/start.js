@@ -353,7 +353,8 @@ export const start = async () => {
           "http://qa.lateralproducts.com.au",
           "http://staging.lateralproducts.com.au",
           "http://strategy.lateralproducts.com.au",
-          "http://www.lateralproducts.com.au"
+          "https://www.lateralproducts.com.au",
+          "https://www.lateralproducts.com"
         ] //your frontend url.
       }
     };
