@@ -27,6 +27,7 @@
     "cors": "^2.8.1",
     "express": "^4.14.0",
     "express-session": "^1.16.2",
+    "google-auth-library": "^4.2.5",
     "graphql": "^14.4.2",
     "graphql-server-express": "^0.4.3",
     "graphql-tools": "^0.8.3",

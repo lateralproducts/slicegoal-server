@@ -5,14 +5,26 @@ import express from "express";
 //import { makeExecutableSchema } from "graphql-tools";
 import cors from "cors";
 import { prepare } from "../util/index";
-//import { AsyncResource } from "async_hooks";
+import { AsyncResource } from "async_hooks";
 
 import { GraphQLServer } from "graphql-yoga";
 import session from "express-session";
 import bcrypt from "bcryptjs";
 import ms from "ms";
 
+//import { verifier } from "google-id-token-verifier";
+const { OAuth2Client } = require("google-auth-library");
+
+var clientId =
+  "66261576180-30if4t1svq870fh2jpnabrklagd43l0i.apps.googleusercontent.com";
+
+const oAuth2Client = new OAuth2Client({
+  clientId: clientId
+});
+
 const app = express();
+
+const data = {};
 
 app.use(cors());
 
@@ -25,52 +37,6 @@ if (MONGO_URL == "undefined") {
   //override address if necessary
 }
 console.log("attempting to open server: " + MONGO_URL);
-
-const typeDefs2 = `
-      type Query {
-        isLogin: Boolean!
-      }
-      type Mutation {
-        login(username: String!, pwd: String!): Boolean!
-        signup(username: String!, pwd: String!): Boolean!
-      }
-    `;
-
-const data = {};
-
-const resolvers2 = {
-  Query: {
-    isLogin: (parent, args, { req }) => typeof req.session.user !== "undefined"
-  },
-  Mutation: {
-    signup: async (parent, { username, pwd }, ctx) => {
-      if (data[username]) {
-        throw new Error("Another User with same username exists.");
-      }
-
-      data[username] = {
-        pwd: await bcrypt.hashSync(pwd, 10)
-      };
-
-      return true;
-    },
-    login: async (parent, { username, pwd }, { req }) => {
-      const user = data[username];
-      if (user) {
-        if (await bcrypt.compareSync(pwd, user.pwd)) {
-          req.session.user = {
-            user
-          };
-          return true;
-        }
-
-        throw new Error("Incorrect password.");
-      }
-
-      throw new Error("No Such User exists.");
-    }
-  }
-};
 
 export const start = async () => {
   try {
@@ -86,6 +52,7 @@ export const start = async () => {
     const typeDefs = [
       `
       type Query {
+        isLogin: Boolean!
         wheel(_id: String): Wheel
         wheels: [Wheel]
         areas: [Area]
@@ -152,6 +119,9 @@ export const start = async () => {
         createGoalTime(areaId: String, goal: Int, datetime: String, note: String): GoalTime
         deleteArea(areaId: String, wheelId: String): Area
         shiftLinks(areaId: String): String
+        login(username: String!, pwd: String!): Boolean!
+        googlelogin(firstname: String!, lastname: String!, email: String!, token: String!): Boolean!
+        signup(username: String!, pwd: String!): Boolean!
       }
 
       schema {
@@ -163,6 +133,8 @@ export const start = async () => {
 
     const resolvers = {
       Query: {
+        isLogin: (parent, args, { req }) =>
+          typeof req.session.user !== "undefined",
         wheel: async (root, { _id }) => {
           return prepare(await Wheels.findOne(ObjectId(_id)));
         },
@@ -243,6 +215,51 @@ export const start = async () => {
         }
       },
       Mutation: {
+        signup: async (parent, { username, pwd }, ctx) => {
+          if (data[username]) {
+            throw new Error("Another User with same username exists.");
+          }
+
+          data[username] = {
+            pwd: await bcrypt.hashSync(pwd, 10)
+          };
+
+          return true;
+        },
+        login: async (parent, { username, pwd }, { req }) => {
+          const user = data[username];
+          if (user) {
+            if (await bcrypt.compareSync(pwd, user.pwd)) {
+              req.session.user = {
+                user
+              };
+              return true;
+            }
+
+            throw new Error("Incorrect password.");
+          }
+
+          throw new Error("No Such User exists.");
+        },
+        googlelogin: async (
+          parent,
+          { firstname, lastname, email, token },
+          { req }
+        ) => {
+          const tokenInfo = await oAuth2Client.getTokenInfo(token);
+          //const user = data[email];
+          console.log(tokenInfo);
+          return true;
+          /* verifier.verify(token, clientId, function(err, tokenInfo) {
+            if (!err) {
+              // use tokenInfo in here.
+              console.log(tokenInfo);
+            } else {
+              console.log(err);
+            }
+          }); */
+          throw new Error("Google Authentication Issue.");
+        },
         createWheel: async (root, args, context, info) => {
           const res = await Wheels.insertOne(args);
           return prepare(res.ops[0]); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
