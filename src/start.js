@@ -5,7 +5,7 @@ import express from "express";
 //import { makeExecutableSchema } from "graphql-tools";
 import cors from "cors";
 import { prepare } from "../util/index";
-import { AsyncResource } from "async_hooks";
+//import { AsyncResource } from "async_hooks";
 
 import { GraphQLServer } from "graphql-yoga";
 import session from "express-session";
@@ -14,6 +14,9 @@ import ms from "ms";
 
 //import { verifier } from "google-id-token-verifier";
 const { OAuth2Client } = require("google-auth-library");
+
+var pjson = require("../package.json");
+console.log("server version: " + pjson.version);
 
 var clientId =
   "66261576180-30if4t1svq870fh2jpnabrklagd43l0i.apps.googleusercontent.com";
@@ -48,6 +51,7 @@ export const start = async () => {
     const RankTimes = db.collection("ranktimes");
     const GoalTimes = db.collection("goaltimes");
     const WheelAreaLinks = db.collection("wheelarealink");
+    const Users = db.collection("users");
 
     const typeDefs = [
       `
@@ -56,6 +60,7 @@ export const start = async () => {
         wheel(_id: String): Wheel
         wheels: [Wheel]
         areas: [Area]
+        users: [User]
         ranktimes(areaId: String): [RankTime]
         goaltimes(areaId: String): [GoalTime]
         area(_id: String): Area
@@ -76,7 +81,6 @@ export const start = async () => {
         vision: String
         notes: String
         areas: [Area]
-        areasold: [Area]
       }
 
       type Area {
@@ -88,6 +92,15 @@ export const start = async () => {
         goal: GoalTime
         definition: String
         wheellink: Wheel
+      }
+
+      type User {
+        _id: String
+        firstname: String
+        lastname: String
+        email: String
+        googleid: String
+        password: String
       }
 
       type RankTime {
@@ -119,8 +132,8 @@ export const start = async () => {
         createGoalTime(areaId: String, goal: Int, datetime: String, note: String): GoalTime
         deleteArea(areaId: String, wheelId: String): Area
         shiftLinks(areaId: String): String
-        login(username: String!, pwd: String!): Boolean!
-        googlelogin(firstname: String!, lastname: String!, email: String!, token: String!): Boolean!
+        login(username: String!, pwd: String!): String!
+        googlelogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!): String!
         signup(username: String!, pwd: String!): Boolean!
       }
 
@@ -143,6 +156,9 @@ export const start = async () => {
         },
         areas: async () => {
           return (await Areas.find({}).toArray()).map(prepare);
+        },
+        users: async () => {
+          return (await Users.find({}).toArray()).map(prepare);
         },
         area: async (root, { _id }) => {
           return prepare(await Areas.findOne(ObjectId(_id)));
@@ -172,11 +188,15 @@ export const start = async () => {
         }
       },
       Wheel: {
-        areasold: async ({ _id }) => {
-          return (await Areas.find({ wheelId: _id }).toArray()).map(prepare);
+        /*         areasold: async ({ _id }, { req }) => {
+          return (await Areas.find({
+            wheelId: _id,
+            userid: req.session.user._id
+          }).toArray()).map(prepare);
           // product_parts = db.parts.find({_id: { $in : product.parts } } ).toArray()
-        },
-        areas: async ({ _id }) => {
+        }, */
+        areas: async ({ _id }, parent, { req }) => {
+          console.log(req);
           const arealinks = await WheelAreaLinks.distinct("area", {
             wheel: _id
           });
@@ -215,25 +235,34 @@ export const start = async () => {
         }
       },
       Mutation: {
-        signup: async (parent, { username, pwd }, ctx) => {
-          if (data[username]) {
+        signup: async (parent, { username, pwd }, { req }) => {
+          const user = await Users.findOne({ email: username });
+          if (user) {
             throw new Error("Another User with same username exists.");
           }
 
-          data[username] = {
-            pwd: await bcrypt.hashSync(pwd, 10)
+          const res = await Users.insertOne({
+            email: username,
+            password: bcrypt.hashSync(pwd, 10)
+          });
+
+          req.session.user = {
+            user
           };
 
           return true;
         },
         login: async (parent, { username, pwd }, { req }) => {
-          const user = data[username];
+          const user = await Users.findOne({ email: username });
+          //const user = data[username];
           if (user) {
-            if (await bcrypt.compareSync(pwd, user.pwd)) {
+            if (await bcrypt.compareSync(pwd, user.password)) {
+              console.log(req.session.id);
+              req.session.count += 1;
               req.session.user = {
                 user
               };
-              return true;
+              return "login successful";
             }
 
             throw new Error("Incorrect password.");
@@ -243,13 +272,29 @@ export const start = async () => {
         },
         googlelogin: async (
           parent,
-          { firstname, lastname, email, token },
+          { firstname, lastname, email, token, googleid },
           { req }
         ) => {
           const tokenInfo = await oAuth2Client.getTokenInfo(token);
           //const user = data[email];
           console.log(tokenInfo);
-          return true;
+          //check token authentication...
+
+          const user = await Users.findOne({ email: email });
+          if (!user) {
+            const user = await Users.insertOne({
+              email: email,
+              firstname: firstname,
+              lastname: lastname,
+              googleid: googleid
+            });
+          }
+
+          req.session.user = {
+            user
+          };
+          return "new user registered and logged in";
+
           /* verifier.verify(token, clientId, function(err, tokenInfo) {
             if (!err) {
               // use tokenInfo in here.
@@ -258,9 +303,10 @@ export const start = async () => {
               console.log(err);
             }
           }); */
-          throw new Error("Google Authentication Issue.");
+          // https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
+          // https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
         },
-        createWheel: async (root, args, context, info) => {
+        createWheel: async (root, args, ctx, info) => {
           const res = await Wheels.insertOne(args);
           return prepare(res.ops[0]); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
         },
@@ -271,7 +317,7 @@ export const start = async () => {
           );
           return res;
         },
-        updateArea: async (root, args, context, info) => {
+        updateArea: async (root, args, ctx, info) => {
           //const definition = args.definition;
           const res = await Areas.updateOne(
             { _id: ObjectId(args.areaId) },
@@ -279,7 +325,7 @@ export const start = async () => {
           );
           return res; // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
         },
-        createWheelLink: async (root, args, context, info) => {
+        createWheelLink: async (root, args, ctx, info) => {
           const res = await Wheels.insertOne(args);
           const newwheelid = res.ops[0]._id.toString();
 
@@ -296,7 +342,7 @@ export const start = async () => {
           return prepare(res.ops[0]); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
         },
 
-        shiftLinks: async (root, args, context, info) => {
+        shiftLinks: async (root, args, ctx, info) => {
           /* const wheel_areas = await Areas.find().toArray();
 
           await WheelAreaLinks.insert(
@@ -379,7 +425,8 @@ export const start = async () => {
 
     // context
     const context = req => ({
-      req: req.request
+      req: req.request,
+      version: pjson.version
     });
 
     // server
