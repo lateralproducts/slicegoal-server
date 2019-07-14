@@ -18,11 +18,11 @@ const { OAuth2Client } = require("google-auth-library");
 var pjson = require("../package.json");
 console.log("server version: " + pjson.version);
 
-var clientId =
+var googleclientId =
   "66261576180-30if4t1svq870fh2jpnabrklagd43l0i.apps.googleusercontent.com";
 
 const oAuth2Client = new OAuth2Client({
-  clientId: clientId
+  clientId: googleclientId
 });
 
 const app = express();
@@ -148,8 +148,13 @@ export const start = async () => {
       Query: {
         isLogin: (parent, args, { req }) =>
           typeof req.session.user !== "undefined",
-        wheel: async (root, { _id }) => {
-          return prepare(await Wheels.findOne(ObjectId(_id)));
+        wheel: async (root, { _id }, { req }) => {
+          return prepare(
+            await Wheels.findOne({
+              _id: ObjectId(_id),
+              userid: req.session.user._id
+            })
+          );
         },
         wheels: async () => {
           return (await Wheels.find({}).toArray()).map(prepare);
@@ -197,9 +202,10 @@ export const start = async () => {
         }, */
         areas: async ({ _id }, parent, { req }) => {
           console.log(req);
-          const arealinks = await WheelAreaLinks.distinct("area", {
-            wheel: _id
-          });
+          const args = req.session.user
+            ? { wheel: _id, userid: req.session.user._id }
+            : { wheel: _id };
+          const arealinks = await WheelAreaLinks.distinct("area", args);
 
           return (await Areas.find({
             _id: {
@@ -258,7 +264,6 @@ export const start = async () => {
           if (user) {
             if (await bcrypt.compareSync(pwd, user.password)) {
               console.log(req.session.id);
-              req.session.count += 1;
               req.session.user = {
                 user
               };
@@ -295,7 +300,7 @@ export const start = async () => {
           };
           return "new user registered and logged in";
 
-          /* verifier.verify(token, clientId, function(err, tokenInfo) {
+          /* verifier.verify(token, googleclientId, function(err, tokenInfo) {
             if (!err) {
               // use tokenInfo in here.
               console.log(tokenInfo);
