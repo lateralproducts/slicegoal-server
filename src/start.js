@@ -301,9 +301,7 @@ export const start = async () => {
             });
           }
 
-          req.session.user = {
-            user
-          };
+          req.session.user = user;
           return "new user registered and logged in";
 
           /* verifier.verify(token, googleclientId, function(err, tokenInfo) {
