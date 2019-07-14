@@ -149,12 +149,18 @@ export const start = async () => {
         isLogin: (parent, args, { req }) =>
           typeof req.session.user !== "undefined",
         wheel: async (root, { _id }, { req }) => {
-          return prepare(
-            await Wheels.findOne({
-              _id: ObjectId(_id),
-              userid: req.session.user._id
-            })
-          );
+          if (req.session.user) {
+            console.log(req.session);
+            return prepare(
+              await Wheels.findOne({
+                _id: ObjectId(_id),
+                userid: req.session.user._id
+              })
+            );
+          } else {
+            console.log("no session user defined");
+            return "";
+          }
         },
         wheels: async () => {
           return (await Wheels.find({}).toArray()).map(prepare);
