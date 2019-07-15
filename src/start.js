@@ -97,10 +97,8 @@ export const start = async () => {
       type User {
         _id: String
         firstname: String
-        lastname: String
         email: String
-        googleid: String
-        password: String
+        startwheel: String
       }
 
       type RankTime {
@@ -132,8 +130,8 @@ export const start = async () => {
         createGoalTime(areaId: String, goal: Int, datetime: String, note: String): GoalTime
         deleteArea(areaId: String, wheelId: String): Area
         shiftLinks(areaId: String): String
-        login(username: String!, pwd: String!): String!
-        googlelogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!): String!
+        login(username: String!, pwd: String!): User
+        googlelogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!): User
         signup(username: String!, pwd: String!): Boolean!
       }
 
@@ -150,7 +148,6 @@ export const start = async () => {
           typeof req.session.user !== "undefined",
         wheel: async (root, { _id }, { req }) => {
           if (req.session.user) {
-            console.log(req.session);
             return prepare(
               await Wheels.findOne({
                 _id: ObjectId(_id),
@@ -158,7 +155,6 @@ export const start = async () => {
               })
             );
           } else {
-            console.log("no session user defined");
             return "";
           }
         },
@@ -177,10 +173,10 @@ export const start = async () => {
         ranktimes: async (root, { areaId }) => {
           return (await RankTimes.find({ areaId: areaId })
             .sort({ date: -1 })
-            .toArray()).map(prepare); // (await RankTimes.find({}).toArray()).map(prepare);
+            .toArray()).map(prepare);
         },
         wheelarealinks: async (root, args) => {
-          return (await WheelAreaLinks.find(args).toArray()).map(prepare); // (await RankTimes.find({}).toArray()).map(prepare);
+          return (await WheelAreaLinks.find(args).toArray()).map(prepare);
         },
         goaltimes: async (root, { _id }) => {
           return (await GoalTimes.find({})
@@ -199,18 +195,8 @@ export const start = async () => {
         }
       },
       Wheel: {
-        /*         areasold: async ({ _id }, { req }) => {
-          return (await Areas.find({
-            wheelId: _id,
-            userid: req.session.user._id
-          }).toArray()).map(prepare);
-          // product_parts = db.parts.find({_id: { $in : product.parts } } ).toArray()
-        }, */
         areas: async ({ _id }, parent, { req }) => {
-          console.log(req);
-          const args = req.session.user
-            ? { wheel: _id, userid: req.session.user._id }
-            : { wheel: _id };
+          const args = { wheel: _id, userid: req.session.user._id };
           const arealinks = await WheelAreaLinks.distinct("area", args);
 
           return (await Areas.find({
@@ -270,10 +256,8 @@ export const start = async () => {
           if (user) {
             if (await bcrypt.compareSync(pwd, user.password)) {
               console.log(req.session.id);
-              req.session.user = {
-                user
-              };
-              return "login successful";
+              req.session.user = user;
+              return prepare(user);
             }
 
             throw new Error("Incorrect password.");
@@ -287,31 +271,30 @@ export const start = async () => {
           { req }
         ) => {
           const tokenInfo = await oAuth2Client.getTokenInfo(token);
-          //const user = data[email];
-          console.log(tokenInfo);
-          //check token authentication...
+          if ((tokenInfo.email = email)) {
+            //check token authentication...
 
-          const user = await Users.findOne({ email: email });
-          if (!user) {
-            const user = await Users.insertOne({
-              email: email,
-              firstname: firstname,
-              lastname: lastname,
-              googleid: googleid
-            });
-          }
-
-          req.session.user = user;
-          return "new user registered and logged in";
-
-          /* verifier.verify(token, googleclientId, function(err, tokenInfo) {
-            if (!err) {
-              // use tokenInfo in here.
-              console.log(tokenInfo);
-            } else {
-              console.log(err);
+            const user = await Users.findOne({ email: email });
+            if (!user || !user.googleid) {
+              const newuser = {
+                email: email,
+                firstname: firstname,
+                lastname: lastname,
+                googleid: googleid
+              };
+              await Users.insertOne(newuser);
+              req.session.user = newuser;
+              return {
+                firstname: newuser.firstname,
+                startwheel: null
+              };
             }
-          }); */
+
+            req.session.user = user;
+            return { firstname: user.firstname, startwheel: user.startwheel };
+          }
+          throw new Error("Error authenticating with google");
+
           // https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
           // https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
         },
@@ -327,7 +310,6 @@ export const start = async () => {
           return res;
         },
         updateArea: async (root, args, ctx, info) => {
-          //const definition = args.definition;
           const res = await Areas.updateOne(
             { _id: ObjectId(args.areaId) },
             { $set: args }
@@ -342,11 +324,6 @@ export const start = async () => {
             { _id: ObjectId(args.areaId) },
             { $set: { wheellink: newwheelid } }
           );
-
-          /* await WheelAreaLinks.insertOne({
-            wheel: newwheelid,
-            area: args.areaId
-          }); */
 
           return prepare(res.ops[0]); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
         },
@@ -460,7 +437,7 @@ export const start = async () => {
         resave: true,
         saveUninitialized: true,
         cookie: {
-          secure: process.env.NODE_ENV === "production",
+          secure: true,
           maxAge: ms("1d")
         }
       })
