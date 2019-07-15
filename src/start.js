@@ -196,6 +196,7 @@ export const start = async () => {
       },
       Wheel: {
         areas: async ({ _id }, parent, { req }) => {
+          console.log(req.session);
           const args = { wheel: _id, userid: req.session.user._id };
           const arealinks = await WheelAreaLinks.distinct("area", args);
 
