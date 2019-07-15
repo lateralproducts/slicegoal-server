@@ -438,7 +438,7 @@ export const start = async () => {
         resave: true,
         saveUninitialized: true,
         cookie: {
-          secure: true,
+          secure: false,
           maxAge: ms("1d")
         }
       })
