@@ -158,39 +158,60 @@ export const start = async () => {
             return "";
           }
         },
-        wheels: async () => {
-          return (await Wheels.find({}).toArray()).map(prepare);
+        wheels: async (parent, args, { req }) => {
+          return (await Wheels.find({
+            userid: req.session.user._id
+          }).toArray()).map(prepare);
         },
-        areas: async () => {
-          return (await Areas.find({}).toArray()).map(prepare);
+        areas: async (parent, args, { req }) => {
+          return (await Areas.find({
+            userid: req.session.user._id
+          }).toArray()).map(prepare);
         },
-        users: async () => {
-          return (await Users.find({}).toArray()).map(prepare);
+        users: async (parent, args, { req }) => {
+          return (await Users.find({
+            userid: req.session.user._id
+          }).toArray()).map(prepare);
         },
-        area: async (root, { _id }) => {
-          return prepare(await Areas.findOne(ObjectId(_id)));
-        },
-        ranktimes: async (root, { areaId }) => {
-          return (await RankTimes.find({ areaId: areaId })
-            .sort({ date: -1 })
-            .toArray()).map(prepare);
-        },
-        wheelarealinks: async (root, args) => {
-          return (await WheelAreaLinks.find(args).toArray()).map(prepare);
-        },
-        goaltimes: async (root, { _id }) => {
-          return (await GoalTimes.find({})
-            .sort({ date: -1 })
-            .toArray()).map(prepare);
-        },
-        lastranktime: async (root, { areaId }) => {
+        area: async (root, { _id }, { req }) => {
           return prepare(
-            await RankTimes.findOne({ areaId: areaId }, { sort: { date: -1 } })
+            await Areas.findOne({
+              _id: ObjectId(_id),
+              userid: req.session.user._id
+            })
           );
         },
-        lastgoaltime: async (root, { areaId }) => {
+        ranktimes: async (root, { areaId }, { req }) => {
+          return (await RankTimes.find({
+            areaId: areaId,
+            userid: req.session.user._id
+          })
+            .sort({ date: -1 })
+            .toArray()).map(prepare);
+        },
+        wheelarealinks: async (root, args, { req }) => {
+          args.userid = req.session.user._id;
+          return (await WheelAreaLinks.find(args).toArray()).map(prepare);
+        },
+        goaltimes: async (root, { _id }, { req }) => {
+          return (await GoalTimes.find({ userid: req.session.user._id })
+            .sort({ date: -1 })
+            .toArray()).map(prepare);
+        },
+        lastranktime: async (root, { areaId }, { req }) => {
           return prepare(
-            await GoalTimes.findOne({ areaId: areaId }, { sort: { date: -1 } })
+            await RankTimes.findOne(
+              { areaId: areaId, userid: req.session.user._id },
+              { sort: { date: -1 } }
+            )
+          );
+        },
+        lastgoaltime: async (root, { areaId }, { req }) => {
+          return prepare(
+            await GoalTimes.findOne(
+              { areaId: areaId, userid: req.session.user._id },
+              { sort: { date: -1 } }
+            )
           );
         }
       },
@@ -299,37 +320,39 @@ export const start = async () => {
           // https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
           // https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
         },
-        createWheel: async (root, args, ctx, info) => {
+        createWheel: async (root, args, { req }) => {
+          args.userid = req.session.user._id;
           const res = await Wheels.insertOne(args);
           return prepare(res.ops[0]); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
         },
-        deleteWheelLink: async (root, { areaId }) => {
+        deleteWheelLink: async (root, { areaId }, { req }) => {
           const res = await Areas.updateOne(
-            { _id: ObjectId(areaId) },
+            { _id: ObjectId(areaId), userid: req.session.user._id },
             { $set: { wheellink: null } }
           );
           return res;
         },
-        updateArea: async (root, args, ctx, info) => {
+        updateArea: async (root, args, { req }) => {
           const res = await Areas.updateOne(
-            { _id: ObjectId(args.areaId) },
+            { _id: ObjectId(args.areaId), userid: req.session.user._id },
             { $set: args }
           );
           return res; // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
         },
-        createWheelLink: async (root, args, ctx, info) => {
+        createWheelLink: async (root, args, { req }) => {
+          args.userid = req.session.user._id;
           const res = await Wheels.insertOne(args);
           const newwheelid = res.ops[0]._id.toString();
 
           await Areas.updateOne(
-            { _id: ObjectId(args.areaId) },
+            { _id: ObjectId(args.areaId), userid: req.session.user._id },
             { $set: { wheellink: newwheelid } }
           );
 
           return prepare(res.ops[0]); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
         },
 
-        shiftLinks: async (root, args, ctx, info) => {
+        shiftLinks: async (root, args, { req }) => {
           /* const wheel_areas = await Areas.find().toArray();
 
           await WheelAreaLinks.insert(
@@ -337,27 +360,61 @@ export const start = async () => {
               return { wheel: area.wheelId, area: area._id.toString() };
             })
           ); */
+          Areas.update(
+            { userid: null },
+            { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
+            { multi: true }
+          );
+          Wheels.update(
+            { userid: null },
+            { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
+            { multi: true }
+          );
+          WheelAreaLinks.update(
+            { userid: null },
+            { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
+            { multi: true }
+          );
+          RankTimes.update(
+            { userid: null },
+            { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
+            { multi: true }
+          );
+          GoalTimes.update(
+            { userid: null },
+            { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
+            { multi: true }
+          );
           return "shiftLinks was run once, commented out.";
         },
 
-        createArea: async (root, args) => {
+        createArea: async (root, args, { req }) => {
+          args.userid = req.session.user._id;
           const res = await Areas.insert(args);
 
           await WheelAreaLinks.insertOne({
             wheel: args.wheelId,
-            area: res.insertedIds[0].toString()
+            area: res.insertedIds[0].toString(),
+            userid: req.session.user._id
           });
-          return prepare(await Areas.findOne({ _id: res.insertedIds[0] }));
+          return prepare(
+            await Areas.findOne({
+              _id: res.insertedIds[0],
+              userid: req.session.user._id
+            })
+          );
         },
-        addExistingArea: async (root, args) => {
+        addExistingArea: async (root, args, { req }) => {
           const res = await WheelAreaLinks.insertOne({
             wheel: args.wheelId,
-            area: args.areaId
+            area: args.areaId,
+            userid: req.session.user._id
           });
           console.log(res);
           return prepare(await Areas.findOne({ _id: ObjectId(args.areaId) }));
         },
-        createRankTime: async (root, args) => {
+        createRankTime: async (root, args, { req }) => {
+          args.userid = req.session.user._id;
           args.date = new Date(args.datetime);
           const res = await RankTimes.insert(args); // args,
           console.log(res);
@@ -366,7 +423,8 @@ export const start = async () => {
             message: "new rank entry created prod"
           };
         },
-        createGoalTime: async (root, args) => {
+        createGoalTime: async (root, args, { req }) => {
+          args.userid = req.session.user._id;
           args.date = new Date(args.datetime);
           const res = await GoalTimes.insert(args); // args,
           return {
@@ -374,7 +432,7 @@ export const start = async () => {
             message: "new goal entry created prod"
           };
         },
-        deleteArea: async (root, { areaId, wheelId }) => {
+        deleteArea: async (root, { areaId, wheelId }, { req }) => {
           var message = "";
           /* Areas.deleteOne({ _id: ObjectId(areaId) }, function(err, obj) {
             if (err) throw err;
@@ -382,13 +440,13 @@ export const start = async () => {
             console.log(message);
           }); //introduced WheelAreaLinks, so can just delete the link now*/
 
-          WheelAreaLinks.deleteOne({ area: areaId, wheel: wheelId }, function(
-            err,
-            obj
-          ) {
-            if (err) throw err;
-            message = obj.deletedCount + " area(s) deleted";
-          });
+          WheelAreaLinks.deleteOne(
+            { area: areaId, wheel: wheelId, userid: req.session.user._id },
+            function(err, obj) {
+              if (err) throw err;
+              message = obj.deletedCount + " area(s) deleted";
+            }
+          );
           return { _id: areaId, title: message };
         }
       }
@@ -438,7 +496,7 @@ export const start = async () => {
         resave: true,
         saveUninitialized: true,
         cookie: {
-          secure: false,
+          secure: false, //if this is true it is not working in production. cookies don't work at all in dev with apache on http.
           maxAge: ms("1d")
         }
       })
