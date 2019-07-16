@@ -360,7 +360,7 @@ export const start = async () => {
               return { wheel: area.wheelId, area: area._id.toString() };
             })
           ); */
-          Areas.update(
+          /* Areas.update(
             { userid: null },
             { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
             { multi: true }
@@ -384,7 +384,7 @@ export const start = async () => {
             { userid: null },
             { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
             { multi: true }
-          );
+          ); */
           return "shiftLinks was run once, commented out.";
         },
 
