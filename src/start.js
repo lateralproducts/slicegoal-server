@@ -120,7 +120,8 @@ export const start = async () => {
       }
 
       type Mutation {
-        createWheel(title: String!, notes: String): Wheel
+        createWheel(title: String, vision: String, notes: String): Wheel
+        updateWheel(wheelId: String!, title: String, vision: String, notes: String): Wheel
         createArea(wheelId: String, wheel: String, name: String, definition: String, wheellink: String): Area
         addExistingArea(wheelId: String, areaId: String): Area
         updateArea(areaId: String, wheel: String, name: String, definition: String, wheellink: String): Area
@@ -131,8 +132,9 @@ export const start = async () => {
         deleteArea(areaId: String, wheelId: String): Area
         shiftLinks(areaId: String): String
         login(username: String!, pwd: String!): User
-        googlelogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!): User
+        googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!): User
         signup(username: String!, pwd: String!): Boolean!
+        updateProfile(firstname: String, lastname: String, email: String, startwheel: String): User
       }
 
       schema {
@@ -255,6 +257,13 @@ export const start = async () => {
         }
       },
       Mutation: {
+        updateProfile: async (parent, args, { req }) => {
+          const res = await Users.updateOne(
+            { _id: ObjectId(req.session.user._id) },
+            { $set: args }
+          );
+          return prepare(res);
+        },
         signup: async (parent, { username, pwd }, { req }) => {
           const user = await Users.findOne({ email: username });
           if (user) {
@@ -287,7 +296,7 @@ export const start = async () => {
 
           throw new Error("No Such User exists.");
         },
-        googlelogin: async (
+        googleLogin: async (
           parent,
           { firstname, lastname, email, token, googleid },
           { req }
@@ -324,6 +333,13 @@ export const start = async () => {
           args.userid = req.session.user._id;
           const res = await Wheels.insertOne(args);
           return prepare(res.ops[0]); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
+        },
+        updateWheel: async (root, args, { req }) => {
+          const res = await Wheels.updateOne(
+            { _id: ObjectId(args.wheelId), userid: req.session.user._id },
+            { $set: args }
+          );
+          return prepare(res); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
         },
         deleteWheelLink: async (root, { areaId }, { req }) => {
           const res = await Areas.updateOne(
