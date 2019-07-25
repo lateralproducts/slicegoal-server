@@ -99,6 +99,7 @@ export const start = async () => {
         firstname: String
         email: String
         startwheel: String
+        serverversion: String
       }
 
       type RankTime {
@@ -131,9 +132,9 @@ export const start = async () => {
         createGoalTime(areaId: String, goal: Int, datetime: String, note: String): GoalTime
         deleteArea(areaId: String, wheelId: String): Area
         shiftLinks(areaId: String): String
-        login(username: String!, pwd: String!): User
-        googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!): User
-        signup(username: String!, pwd: String!): Boolean!
+        login(username: String!, pwd: String!, uiversion: String): User
+        googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
+        signup(username: String!, pwd: String!, uiversion: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startwheel: String): User
       }
 
@@ -219,7 +220,6 @@ export const start = async () => {
       },
       Wheel: {
         areas: async ({ _id }, parent, { req }) => {
-          console.log(req.session);
           const args = { wheel: _id, userid: req.session.user._id };
           const arealinks = await WheelAreaLinks.distinct("area", args);
 
@@ -264,7 +264,7 @@ export const start = async () => {
           );
           return prepare(res);
         },
-        signup: async (parent, { username, pwd }, { req }) => {
+        signup: async (parent, { username, pwd, uiversion }, { req }) => {
           const user = await Users.findOne({ email: username });
           if (user) {
             throw new Error("Another User with same username exists.");
@@ -272,7 +272,9 @@ export const start = async () => {
 
           const res = await Users.insertOne({
             email: username,
-            password: bcrypt.hashSync(pwd, 10)
+            password: bcrypt.hashSync(pwd, 10),
+            uiversion: uiversion,
+            serverversion: pjson.version
           });
 
           req.session.user = {
@@ -286,8 +288,8 @@ export const start = async () => {
           //const user = data[username];
           if (user) {
             if (await bcrypt.compareSync(pwd, user.password)) {
-              console.log(req.session.id);
               req.session.user = user;
+              user.serverversion = pjson.version;
               return prepare(user);
             }
 
@@ -296,33 +298,33 @@ export const start = async () => {
 
           throw new Error("No Such User exists.");
         },
-        googleLogin: async (
-          parent,
-          { firstname, lastname, email, token, googleid },
-          { req }
-        ) => {
-          const tokenInfo = await oAuth2Client.getTokenInfo(token);
-          if ((tokenInfo.email = email)) {
+        googleLogin: async (parent, args, { req }) => {
+          const tokenInfo = await oAuth2Client.getTokenInfo(args.token);
+
+          if ((tokenInfo.email = args.email)) {
             //check token authentication...
 
-            const user = await Users.findOne({ email: email });
-            if (!user || !user.googleid) {
-              const newuser = {
-                email: email,
-                firstname: firstname,
-                lastname: lastname,
-                googleid: googleid
-              };
-              await Users.insertOne(newuser);
-              req.session.user = newuser;
-              return {
-                firstname: newuser.firstname,
-                startwheel: null
-              };
+            const user = await Users.findOne({ email: args.email });
+            if (!user) {
+              args.serverversion = pjson.version;
+              args.lastip = req.ip;
+              await Users.insertOne(args);
+              const user = args;
+              req.session.user = user;
+              return prepare(user);
             }
 
+            await Users.updateOne(
+              { _id: ObjectId(user._id) },
+              { $set: { googleid: args.googleid, lastip: req.ip } }
+            );
             req.session.user = user;
-            return { firstname: user.firstname, startwheel: user.startwheel };
+
+            return {
+              firstname: user.firstname,
+              startwheel: user.startwheel,
+              serverversion: pjson.version
+            };
           }
           throw new Error("Error authenticating with google");
 
@@ -331,15 +333,17 @@ export const start = async () => {
         },
         createWheel: async (root, args, { req }) => {
           args.userid = req.session.user._id;
+          args.serverversion = pjson.version;
+          args.uiversion = req.session.user.uiversion;
           const res = await Wheels.insertOne(args);
-          return prepare(res.ops[0]); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
+          return prepare(res.ops[0]);
         },
         updateWheel: async (root, args, { req }) => {
-          const res = await Wheels.updateOne(
+          await Wheels.updateOne(
             { _id: ObjectId(args.wheelId), userid: req.session.user._id },
             { $set: args }
           );
-          return prepare(res); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
+          return prepare(args);
         },
         deleteWheelLink: async (root, { areaId }, { req }) => {
           const res = await Areas.updateOne(
@@ -353,10 +357,12 @@ export const start = async () => {
             { _id: ObjectId(args.areaId), userid: req.session.user._id },
             { $set: args }
           );
-          return res; // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
+          return res;
         },
         createWheelLink: async (root, args, { req }) => {
           args.userid = req.session.user._id;
+          args.serverversion = pjson.version;
+          args.uiversion = req.session.user.uiversion;
           const res = await Wheels.insertOne(args);
           const newwheelid = res.ops[0]._id.toString();
 
@@ -365,53 +371,33 @@ export const start = async () => {
             { $set: { wheellink: newwheelid } }
           );
 
-          return prepare(res.ops[0]); // https://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~insertOneWriteOpResult
+          return prepare(res.ops[0]);
         },
 
         shiftLinks: async (root, args, { req }) => {
-          /* const wheel_areas = await Areas.find().toArray();
-
-          await WheelAreaLinks.insert(
-            wheel_areas.map(function(area) {
-              return { wheel: area.wheelId, area: area._id.toString() };
-            })
-          ); */
           /* Areas.update(
             { userid: null },
             { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
             { multi: true }
           );
-          Wheels.update(
-            { userid: null },
-            { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
-            { multi: true }
-          );
-          WheelAreaLinks.update(
-            { userid: null },
-            { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
-            { multi: true }
-          );
-          RankTimes.update(
-            { userid: null },
-            { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
-            { multi: true }
-          );
-          GoalTimes.update(
-            { userid: null },
-            { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
-            { multi: true }
-          ); */
+          */
           return "shiftLinks was run once, commented out.";
         },
 
         createArea: async (root, args, { req }) => {
           args.userid = req.session.user._id;
+          args.serverversion = pjson.version;
+          args.uiversion = req.session.user.uiversion;
+
           const res = await Areas.insert(args);
 
           await WheelAreaLinks.insertOne({
             wheel: args.wheelId,
             area: res.insertedIds[0].toString(),
-            userid: req.session.user._id
+            areaname: args.name,
+            userid: req.session.user._id,
+            serverversion: pjson.version,
+            uiversion: req.session.user.uiversion
           });
           return prepare(
             await Areas.findOne({
@@ -426,14 +412,12 @@ export const start = async () => {
             area: args.areaId,
             userid: req.session.user._id
           });
-          console.log(res);
           return prepare(await Areas.findOne({ _id: ObjectId(args.areaId) }));
         },
         createRankTime: async (root, args, { req }) => {
           args.userid = req.session.user._id;
           args.date = new Date(args.datetime);
-          const res = await RankTimes.insert(args); // args,
-          console.log(res);
+          const res = await RankTimes.insert(args);
           return {
             _id: res.insertedIds[1],
             message: "new rank entry created prod"
@@ -441,8 +425,10 @@ export const start = async () => {
         },
         createGoalTime: async (root, args, { req }) => {
           args.userid = req.session.user._id;
+          args.serverversion = pjson.version;
+          args.uiversion = req.session.user.uiversion;
           args.date = new Date(args.datetime);
-          const res = await GoalTimes.insert(args); // args,
+          const res = await GoalTimes.insert(args);
           return {
             _id: res.insertedIds[1],
             message: "new goal entry created prod"
@@ -450,12 +436,6 @@ export const start = async () => {
         },
         deleteArea: async (root, { areaId, wheelId }, { req }) => {
           var message = "";
-          /* Areas.deleteOne({ _id: ObjectId(areaId) }, function(err, obj) {
-            if (err) throw err;
-            message = obj.deletedCount + " area(s) deleted";
-            console.log(message);
-          }); //introduced WheelAreaLinks, so can just delete the link now*/
-
           WheelAreaLinks.deleteOne(
             { area: areaId, wheel: wheelId, userid: req.session.user._id },
             function(err, obj) {
@@ -502,7 +482,7 @@ export const start = async () => {
       next();
     }
     server.express.use(loggingMiddleware); */
-    //the function above tracks the ip address
+    //the function above tracks the ip address of requests
 
     // session middleware
     server.express.use(
