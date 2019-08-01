@@ -52,6 +52,7 @@ export const start = async () => {
     const GoalTimes = db.collection("goaltimes");
     const WheelAreaLinks = db.collection("wheelarealink");
     const Users = db.collection("users");
+    const Pomodoros = db.collection("pomodoros");
 
     const typeDefs = [
       `
@@ -100,6 +101,7 @@ export const start = async () => {
         email: String
         startwheel: String
         serverversion: String
+        state: String
       }
 
       type RankTime {
@@ -136,6 +138,7 @@ export const start = async () => {
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
         signup(username: String!, pwd: String!, uiversion: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startwheel: String): User
+        savePomodoro(wheelId: String, areaId: String, objectiveId: String, notes: String, datetime: String, minutes: String): Boolean!
       }
 
       schema {
@@ -283,20 +286,45 @@ export const start = async () => {
 
           return true;
         },
-        login: async (parent, { username, pwd }, { req }) => {
-          const user = await Users.findOne({ email: username });
+        login: async (parent, args, { req }) => {
+          const user = await Users.findOne({ email: args.username });
           //const user = data[username];
           if (user) {
-            if (await bcrypt.compareSync(pwd, user.password)) {
+            if (await bcrypt.compareSync(args.pwd, user.password)) {
               req.session.user = user;
               user.serverversion = pjson.version;
+
+              await Users.updateOne(
+                { _id: ObjectId(user._id) },
+                {
+                  $set: {
+                    uiversion: args.uiversion,
+                    lastip: req.ip
+                  }
+                }
+              );
+
               return prepare(user);
             }
 
             throw new Error("Incorrect password.");
           }
 
-          throw new Error("No Such User exists.");
+          await Users.insertOne({
+            email: args.username,
+            password: bcrypt.hashSync(args.pwd, 10),
+            uiversion: args.uiversion,
+            serverversion: pjson.version,
+            state: "new"
+          });
+
+          const newuser = await Users.findOne({ email: args.username });
+
+          req.session.user = {
+            newuser
+          };
+
+          return prepare(user);
         },
         googleLogin: async (parent, args, { req }) => {
           const tokenInfo = await oAuth2Client.getTokenInfo(args.token);
@@ -306,6 +334,7 @@ export const start = async () => {
 
             const user = await Users.findOne({ email: args.email });
             if (!user) {
+              args.state = "new";
               args.serverversion = pjson.version;
               args.lastip = req.ip;
               await Users.insertOne(args);
@@ -316,7 +345,13 @@ export const start = async () => {
 
             await Users.updateOne(
               { _id: ObjectId(user._id) },
-              { $set: { googleid: args.googleid, lastip: req.ip } }
+              {
+                $set: {
+                  uiversion: args.uiversion,
+                  googleid: args.googleid,
+                  lastip: req.ip
+                }
+              }
             );
             req.session.user = user;
 
@@ -337,6 +372,14 @@ export const start = async () => {
           args.uiversion = req.session.user.uiversion;
           const res = await Wheels.insertOne(args);
           return prepare(res.ops[0]);
+        },
+        savePomodoro: async (root, args, { req }) => {
+          args.userid = req.session.user._id;
+          args.serverversion = pjson.version;
+          args.uiversion = req.session.user.uiversion;
+          args.date = new Date(args.datetime);
+          await Pomodoros.insertOne(args);
+          return true;
         },
         updateWheel: async (root, args, { req }) => {
           await Wheels.updateOne(
