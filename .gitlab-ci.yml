@@ -79,8 +79,8 @@ deploy:
     #- sudo rsync -r --delete ./public/ ~/Desktop/Build/production
   script:
     - echo "Deploying to Production..."
-    - rsync -ru --delete ./ ec2-user@13.239.168.89:/home/ec2-user/strategyserver/
-    - ssh -T ec2-user@13.239.168.89 -v "cd /home/ec2-user/strategyserver/ && sudo yarn build && pm2 restart index"
+    - sudo rsync -ru --delete ./ ec2-user@13.239.168.89:/home/ec2-user/strategyserver/
+    - sudo ssh -T ec2-user@13.239.168.89 -v "cd /home/ec2-user/strategyserver/ && sudo yarn build && pm2 restart index"
     - echo "new version placed on server and started"
   only:
     - master
