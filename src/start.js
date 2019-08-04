@@ -57,7 +57,7 @@ export const start = async () => {
     const typeDefs = [
       `
       type Query {
-        isLogin: Boolean!
+        isLoggedin: User
         wheel(_id: String): Wheel
         wheels: [Wheel]
         areas: [Area]
@@ -135,6 +135,7 @@ export const start = async () => {
         deleteArea(areaId: String, wheelId: String): Area
         shiftLinks(areaId: String): String
         login(username: String!, pwd: String!, uiversion: String): User
+        logout: Boolean!
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
         signup(username: String!, pwd: String!, uiversion: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startwheel: String): User
@@ -150,8 +151,16 @@ export const start = async () => {
 
     const resolvers = {
       Query: {
-        isLogin: (parent, args, { req }) =>
-          typeof req.session.user !== "undefined",
+        isLoggedin: async (root, args, { req }) => {
+          if (req.session.user) {
+            const user = await Users.findOne({
+              _id: ObjectId(req.session.user._id)
+            });
+            return prepare(user);
+          } else {
+            throw new Error("User not logged in");
+          }
+        },
         wheel: async (root, { _id }, { req }) => {
           if (req.session.user) {
             return prepare(
@@ -337,9 +346,10 @@ export const start = async () => {
               args.state = "new";
               args.serverversion = pjson.version;
               args.lastip = req.ip;
-              await Users.insertOne(args);
               const user = args;
               req.session.user = user;
+              args.token = null; //removing the token from saving in database for security
+              await Users.insertOne(args);
               return prepare(user);
             }
 
@@ -353,6 +363,7 @@ export const start = async () => {
                 }
               }
             );
+            user.token = args.token;
             req.session.user = user;
 
             return {
@@ -365,6 +376,13 @@ export const start = async () => {
 
           // https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
           // https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
+        },
+
+        logout: async (parent, args, { req }) => {
+          if (req.session.user.token)
+            await oAuth2Client.revokeToken(req.session.user.token);
+          req.session.user = null;
+          return true;
         },
         createWheel: async (root, args, { req }) => {
           args.userid = req.session.user._id;
