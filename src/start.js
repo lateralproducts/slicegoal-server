@@ -139,7 +139,7 @@ export const start = async () => {
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
         signup(username: String!, pwd: String!, uiversion: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startwheel: String): User
-        savePomodoro(wheelId: String, areaId: String, objectiveId: String, notes: String, datetime: String, minutes: String): Boolean!
+        savePomodoro(wheelId: String, areaId: String, objectiveId: String, notes: String, objective: String, datetime: String, minutes: Int): Boolean!
       }
 
       schema {
