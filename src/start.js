@@ -93,6 +93,7 @@ export const start = async () => {
         goal: GoalTime
         definition: String
         wheellink: Wheel
+        focus: Boolean
       }
 
       type User {
@@ -140,6 +141,7 @@ export const start = async () => {
         signup(username: String!, pwd: String!, uiversion: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startwheel: String): User
         savePomodoro(wheelId: String, areaId: String, objectiveId: String, notes: String, objective: String, datetime: String, minutes: Int): Boolean!
+        toggleFocusFlag(areaId: String!): Boolean
       }
 
       schema {
@@ -269,6 +271,21 @@ export const start = async () => {
         }
       },
       Mutation: {
+        toggleFocusFlag: async (parent, args, { req }) => {
+          const area = await Areas.findOne({
+            _id: ObjectId(args.areaId)
+          });
+          var focusflag;
+
+          if (area.focus) focusflag = false;
+          else focusflag = true;
+
+          const res = await Areas.updateOne(
+            { _id: ObjectId(args.areaId) },
+            { $set: { focus: focusflag } }
+          );
+          return focusflag;
+        },
         updateProfile: async (parent, args, { req }) => {
           const res = await Users.updateOne(
             { _id: ObjectId(req.session.user._id) },
