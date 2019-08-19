@@ -233,9 +233,16 @@ export const start = async () => {
       },
       Mutation: {
         runUpdate: async (parent, args, { req }) => {
+          const areas = await Areas.find({
+            wheellink: { $ne: null }
+          }).toArray();
+          areas.map(function(area) {
+            updatewheels(area);
+          });
+
           const wheelarealinks = await WheelAreaLinks.find().toArray();
-          wheelarealinks.map(function(area) {
-            queryarea(area);
+          wheelarealinks.map(function(wheelarealink) {
+            queryarea(wheelarealink);
           });
 
           const ranktimes = await RankTimes.find().toArray();
@@ -488,6 +495,22 @@ export const start = async () => {
         }
       }
     };
+
+    async function updatewheels(area) {
+      try {
+        const wheel = await Wheels.update(
+          { _id: ObjectId(area.wheellink) },
+          {
+            $set: {
+              rootarea: area._id.toString()
+            }
+          }
+        );
+        return wheel;
+      } catch (error) {
+        console.log(error);
+      }
+    }
 
     async function queryarea(area) {
       try {
