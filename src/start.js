@@ -27,8 +27,6 @@ const oAuth2Client = new OAuth2Client({
 
 const app = express();
 
-const data = {};
-
 app.use(cors());
 
 /* const homePath = "/graphiql";
@@ -46,20 +44,20 @@ export const start = async () => {
     const db = await MongoClient.connect(MONGO_URL);
 
     console.log("connected now for the dbs");
-    const Wheels = db.collection("wheels");
+    const Users = db.collection("users");
     const Areas = db.collection("areas");
+    const AreaLinks = db.collection("arealinks");
     const RankTimes = db.collection("ranktimes");
     const GoalTimes = db.collection("goaltimes");
-    const WheelAreaLinks = db.collection("wheelarealink");
-    const Users = db.collection("users");
     const Pomodoros = db.collection("pomodoros");
+
+    const Wheels = db.collection("wheels");
+    const WheelAreaLinks = db.collection("wheelarealink");
 
     const typeDefs = [
       `
       type Query {
         isLoggedin: User
-        wheel(_id: String): Wheel
-        wheels: [Wheel]
         areas: [Area]
         users: [User]
         ranktimes(areaId: String): [RankTime]
@@ -67,40 +65,33 @@ export const start = async () => {
         area(_id: String): Area
         lastranktime(areaId: String): RankTime
         lastgoaltime(areaId: String): GoalTime
-        wheelarealinks(areaId: String, wheelId: String): [WheelAreaLink]
+        arealinks(areaId: String, areaId: String): [AreaLink]
       }
 
-      type WheelAreaLink {
+      type AreaLink {
         _id: String
+        rootarea: String
         area: String
-        wheel: String
-      }
-
-      type Wheel {
-        _id: String
-        title: String
-        vision: String
-        notes: String
-        areas: [Area]
+        focus: Boolean
       }
 
       type Area {
         _id: String
-        wheelId: String
-        wheel: Wheel
         name: String
         rank: RankTime
         goal: GoalTime
         definition: String
-        wheellink: Wheel
         focus: Boolean
+        vision: String
+        notes: String
+        areas: [Area]
       }
 
       type User {
         _id: String
         firstname: String
         email: String
-        startwheel: String
+        startarea: String
         serverversion: String
         state: String
       }
@@ -124,24 +115,21 @@ export const start = async () => {
       }
 
       type Mutation {
-        createWheel(title: String, vision: String, notes: String): Wheel
-        updateWheel(wheelId: String!, title: String, vision: String, notes: String): Wheel
-        createArea(wheelId: String, wheel: String, name: String, definition: String, wheellink: String): Area
-        addExistingArea(wheelId: String, areaId: String): Area
-        updateArea(areaId: String, wheel: String, name: String, definition: String, wheellink: String): Area
-        createWheelLink(areaId: String!,title: String!, notes: String): Wheel
-        deleteWheelLink(areaId: String!): Area
-        createRankTime(areaId: String, rank: Int, datetime: String, note: String): RankTime
-        createGoalTime(areaId: String, goal: Int, datetime: String, note: String): GoalTime
-        deleteArea(areaId: String, wheelId: String): Area
-        shiftLinks(areaId: String): String
+        createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
+        updateArea(rootarea: String, name: String, definition: String, vision: String, notes: String, area: String): Area
+        deleteArea(area: String): Area
+        createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
+        deleteAreaLink(rootarea: String, area: String): Area
+        createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
+        createGoalTime(area: String, goal: Int, datetime: String, note: String): GoalTime
+        savePomodoro(rootarea: String, area: String, objectiveId: String, notes: String, objective: String, datetime: String, minutes: Int): Boolean!
+        toggleFocusFlag(rootarea: String!, area: String!): Boolean
         login(username: String!, pwd: String!, uiversion: String): User
         logout: Boolean!
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
         signup(username: String!, pwd: String!, uiversion: String): Boolean!
-        updateProfile(firstname: String, lastname: String, email: String, startwheel: String): User
-        savePomodoro(wheelId: String, areaId: String, objectiveId: String, notes: String, objective: String, datetime: String, minutes: Int): Boolean!
-        toggleFocusFlag(areaId: String!): Boolean
+        updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
+        runUpdate: Boolean
       }
 
       schema {
@@ -162,23 +150,6 @@ export const start = async () => {
           } else {
             throw new Error("User not logged in");
           }
-        },
-        wheel: async (root, { _id }, { req }) => {
-          if (req.session.user) {
-            return prepare(
-              await Wheels.findOne({
-                _id: ObjectId(_id),
-                userid: req.session.user._id
-              })
-            );
-          } else {
-            return "";
-          }
-        },
-        wheels: async (parent, args, { req }) => {
-          return (await Wheels.find({
-            userid: req.session.user._id
-          }).toArray()).map(prepare);
         },
         areas: async (parent, args, { req }) => {
           return (await Areas.find({
@@ -206,9 +177,9 @@ export const start = async () => {
             .sort({ date: -1 })
             .toArray()).map(prepare);
         },
-        wheelarealinks: async (root, args, { req }) => {
+        arealinks: async (root, args, { req }) => {
           args.userid = req.session.user._id;
-          return (await WheelAreaLinks.find(args).toArray()).map(prepare);
+          return (await AreaLinks.find(args).toArray()).map(prepare);
         },
         goaltimes: async (root, { _id }, { req }) => {
           return (await GoalTimes.find({ userid: req.session.user._id })
@@ -232,10 +203,10 @@ export const start = async () => {
           );
         }
       },
-      Wheel: {
+      Area: {
         areas: async ({ _id }, parent, { req }) => {
-          const args = { wheel: _id, userid: req.session.user._id };
-          const arealinks = await WheelAreaLinks.distinct("area", args);
+          const args = { rootarea: _id, userid: req.session.user._id };
+          const arealinks = await AreaLinks.distinct("area", args);
 
           return (await Areas.find({
             _id: {
@@ -244,44 +215,57 @@ export const start = async () => {
               })
             }
           }).toArray()).map(prepare);
-        }
-      },
-      Area: {
-        wheel: async ({ wheelId }) => {
-          return prepare(await Wheels.findOne(ObjectId(wheelId)));
-        },
-        wheellink: async ({ wheellink }) => {
-          return wheellink
-            ? prepare(await Wheels.findOne(ObjectId(wheellink)))
-            : null;
         },
         rank: async ({ _id }) => {
           const rank = await RankTimes.findOne(
-            { areaId: _id },
+            { area: _id },
             { sort: { date: -1 } }
           );
           return rank ? prepare(rank) : null;
         },
         goal: async ({ _id }) => {
           const goal = await GoalTimes.findOne(
-            { areaId: _id },
+            { area: _id },
             { sort: { date: -1 } }
           );
           return goal ? prepare(goal) : null;
         }
       },
       Mutation: {
+        runUpdate: async (parent, args, { req }) => {
+          const wheelarealinks = await WheelAreaLinks.find().toArray();
+          wheelarealinks.map(function(area) {
+            queryarea(area);
+          });
+
+          const ranktimes = await RankTimes.find().toArray();
+          ranktimes.map(function(ranktime) {
+            updaterank(ranktime);
+          });
+
+          const goaltimes = await GoalTimes.find().toArray();
+          goaltimes.map(function(goaltime) {
+            updategoal(goaltime);
+          });
+
+          return true;
+        },
         toggleFocusFlag: async (parent, args, { req }) => {
-          const area = await Areas.findOne({
-            _id: ObjectId(args.areaId)
+          const area = await AreaLinks.findOne({
+            rootarea: args.rootarea,
+            area: args.area
           });
           var focusflag;
 
           if (area.focus) focusflag = false;
           else focusflag = true;
 
-          const res = await Areas.updateOne(
-            { _id: ObjectId(args.areaId) },
+          await AreaLinks.updateOne(
+            { rootarea: args.rootarea, area: args.area },
+            { $set: { focus: focusflag } }
+          );
+          await Areas.updateOne(
+            { _id: ObjectId(args.area) },
             { $set: { focus: focusflag } }
           );
           return focusflag;
@@ -385,7 +369,7 @@ export const start = async () => {
 
             return {
               firstname: user.firstname,
-              startwheel: user.startwheel,
+              startarea: user.startarea,
               serverversion: pjson.version
             };
           }
@@ -401,11 +385,11 @@ export const start = async () => {
           req.session.user = null;
           return true;
         },
-        createWheel: async (root, args, { req }) => {
+        createArea: async (root, args, { req }) => {
           args.userid = req.session.user._id;
           args.serverversion = pjson.version;
           args.uiversion = req.session.user.uiversion;
-          const res = await Wheels.insertOne(args);
+          const res = await Areas.insertOne(args);
           return prepare(res.ops[0]);
         },
         savePomodoro: async (root, args, { req }) => {
@@ -416,52 +400,39 @@ export const start = async () => {
           await Pomodoros.insertOne(args);
           return true;
         },
-        updateWheel: async (root, args, { req }) => {
-          await Wheels.updateOne(
-            { _id: ObjectId(args.wheelId), userid: req.session.user._id },
+        updateArea: async (root, args, { req }) => {
+          await Areas.updateOne(
+            { _id: ObjectId(args.areaId), userid: req.session.user._id },
             { $set: args }
           );
           return prepare(args);
         },
-        deleteWheelLink: async (root, { areaId }, { req }) => {
-          const res = await Areas.updateOne(
-            { _id: ObjectId(areaId), userid: req.session.user._id },
-            { $set: { wheellink: null } }
+        deleteAreaLink: async (root, { rootarea, area }, { req }) => {
+          const res = await AreaLinks.deleteOne(
+            { rootarea: rootarea, area: area, userid: req.session.user._id },
+            { $set: { arealink: null } }
           );
           return res;
         },
-        updateArea: async (root, args, { req }) => {
+        updateArea: async (root, args, req) => {
           const res = await Areas.updateOne(
-            { _id: ObjectId(args.areaId), userid: req.session.user._id },
+            { _id: ObjectId(args.area), userid: req.req.session.user._id },
             { $set: args }
           );
           return res;
         },
-        createWheelLink: async (root, args, { req }) => {
+        createAreaLink: async (root, args, { req }) => {
           args.userid = req.session.user._id;
           args.serverversion = pjson.version;
           args.uiversion = req.session.user.uiversion;
-          const res = await Wheels.insertOne(args);
-          const newwheelid = res.ops[0]._id.toString();
+          await AreaLinks.insertOne({
+            rootarea: args.rootarea,
+            area: args.area,
+            userid: req.session.user._id
+          });
 
-          await Areas.updateOne(
-            { _id: ObjectId(args.areaId), userid: req.session.user._id },
-            { $set: { wheellink: newwheelid } }
-          );
-
-          return prepare(res.ops[0]);
+          return true;
         },
-
-        shiftLinks: async (root, args, { req }) => {
-          /* Areas.update(
-            { userid: null },
-            { $set: { userid: "5d2adcf120f52b0d7d7faba0" } },
-            { multi: true }
-          );
-          */
-          return "shiftLinks was run once, commented out.";
-        },
-
         createArea: async (root, args, { req }) => {
           args.userid = req.session.user._id;
           args.serverversion = pjson.version;
@@ -469,8 +440,8 @@ export const start = async () => {
 
           const res = await Areas.insert(args);
 
-          await WheelAreaLinks.insertOne({
-            wheel: args.wheelId,
+          await AreaLinks.insertOne({
+            rootarea: args.rootarea,
             area: res.insertedIds[0].toString(),
             areaname: args.name,
             userid: req.session.user._id,
@@ -483,14 +454,6 @@ export const start = async () => {
               userid: req.session.user._id
             })
           );
-        },
-        addExistingArea: async (root, args, { req }) => {
-          const res = await WheelAreaLinks.insertOne({
-            wheel: args.wheelId,
-            area: args.areaId,
-            userid: req.session.user._id
-          });
-          return prepare(await Areas.findOne({ _id: ObjectId(args.areaId) }));
         },
         createRankTime: async (root, args, { req }) => {
           args.userid = req.session.user._id;
@@ -512,10 +475,10 @@ export const start = async () => {
             message: "new goal entry created prod"
           };
         },
-        deleteArea: async (root, { areaId, wheelId }, { req }) => {
+        deleteArea: async (root, { rootarea, area }, { req }) => {
           var message = "";
-          WheelAreaLinks.deleteOne(
-            { area: areaId, wheel: wheelId, userid: req.session.user._id },
+          AreaLinks.deleteOne(
+            { rootarea: rootarea, area: area, userid: req.session.user._id },
             function(err, obj) {
               if (err) throw err;
               message = obj.deletedCount + " area(s) deleted";
@@ -525,6 +488,56 @@ export const start = async () => {
         }
       }
     };
+
+    async function queryarea(area) {
+      try {
+        const wheel = await Wheels.findOne({ _id: ObjectId(area.wheel) });
+        console.log(wheel);
+        AreaLinks.insert({
+          area: area.area,
+          userid: area.userid,
+          rootarea: wheel.rootarea
+        });
+        return wheel;
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    async function updaterank(ranktime) {
+      try {
+        await RankTimes.update(
+          { _id: ObjectId(ranktime._id) },
+          {
+            $set: {
+              area: ranktime.areaId
+            },
+            $unset: { areaId: "" }
+          }
+        );
+        console.log(ranktime);
+        return true;
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    async function updategoal(goaltime) {
+      try {
+        await GoalTimes.update(
+          { _id: ObjectId(goaltime._id) },
+          {
+            $set: {
+              area: goaltime.areaId
+            },
+            $unset: { areaId: "" }
+          }
+        );
+        return true;
+      } catch (error) {
+        console.log(error);
+      }
+    }
 
     const opts = {
       port: 3001,
