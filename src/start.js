@@ -206,7 +206,9 @@ export const start = async () => {
       },
       User: {
         area: async ({ startarea }, parent, { req }) => {
-          return prepare(await Areas.findOne({ _id: ObjectId(startarea) }));
+          return startarea
+            ? prepare(await Areas.findOne({ _id: ObjectId(startarea) }))
+            : null;
         }
       },
       Area: {
