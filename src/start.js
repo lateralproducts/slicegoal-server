@@ -92,6 +92,7 @@ export const start = async () => {
         firstname: String
         email: String
         startarea: String
+        area: Area
         serverversion: String
         state: String
       }
@@ -201,6 +202,11 @@ export const start = async () => {
               { sort: { date: -1 } }
             )
           );
+        }
+      },
+      User: {
+        area: async ({ startarea }, parent, { req }) => {
+          return prepare(await Areas.findOne({ _id: ObjectId(startarea) }));
         }
       },
       Area: {
@@ -415,7 +421,7 @@ export const start = async () => {
           return prepare(args);
         },
         deleteAreaLink: async (root, { rootarea, area }, { req }) => {
-          const res = await AreaLinks.deleteOne(
+          const res = await AreaLinks.deleteMany(
             { rootarea: rootarea, area: area, userid: req.session.user._id },
             { $set: { arealink: null } }
           );
