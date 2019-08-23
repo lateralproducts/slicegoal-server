@@ -50,6 +50,7 @@ export const start = async () => {
     const RankTimes = db.collection("ranktimes");
     const GoalTimes = db.collection("goaltimes");
     const Pomodoros = db.collection("pomodoros");
+    const Signup = db.collection("signup");
 
     const Wheels = db.collection("wheels");
     const WheelAreaLinks = db.collection("wheelarealink");
@@ -128,7 +129,7 @@ export const start = async () => {
         login(username: String!, pwd: String!, uiversion: String): User
         logout: Boolean!
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
-        signup(username: String!, pwd: String!, uiversion: String): Boolean!
+        signup(email: String, name: String, username: String, pwd: String, uiversion: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
         runUpdate: Boolean
       }
@@ -206,6 +207,7 @@ export const start = async () => {
       },
       User: {
         area: async ({ startarea }, parent, { req }) => {
+          console.log("startarea" + startarea);
           return startarea
             ? prepare(await Areas.findOne({ _id: ObjectId(startarea) }))
             : null;
@@ -292,7 +294,15 @@ export const start = async () => {
           );
           return prepare(res);
         },
-        signup: async (parent, { username, pwd, uiversion }, { req }) => {
+        signup: async (parent, { email, name }, { req }) => {
+          await Signup.insertOne({
+            email: email,
+            name: name
+          });
+
+          return true;
+        },
+        /* signupold: async (parent, { username, pwd, uiversion }, { req }) => {
           const user = await Users.findOne({ email: username });
           if (user) {
             throw new Error("Another User with same username exists.");
@@ -310,7 +320,7 @@ export const start = async () => {
           };
 
           return true;
-        },
+        }, */
         login: async (parent, args, { req }) => {
           const user = await Users.findOne({ email: args.username });
           //const user = data[username];
@@ -405,6 +415,7 @@ export const start = async () => {
           args.serverversion = pjson.version;
           args.uiversion = req.session.user.uiversion;
           const res = await Areas.insertOne(args);
+
           return prepare(res.ops[0]);
         },
         savePomodoro: async (root, args, { req }) => {
