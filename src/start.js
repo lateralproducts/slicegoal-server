@@ -114,6 +114,7 @@ export const start = async () => {
         datetime: String
         note: String
         date: Float
+        goaldate: String
       }
 
       type Mutation {
@@ -123,7 +124,7 @@ export const start = async () => {
         createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
         deleteAreaLink(rootarea: String, area: String): Area
         createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
-        createGoalTime(area: String, goal: Int, datetime: String, note: String): GoalTime
+        createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
         savePomodoro(rootarea: String, area: String, objectiveId: String, notes: String, objective: String, datetime: String, minutes: Int): Boolean!
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
         login(username: String!, pwd: String!, uiversion: String): User
@@ -207,7 +208,6 @@ export const start = async () => {
       },
       User: {
         area: async ({ startarea }, parent, { req }) => {
-          console.log("startarea" + startarea);
           return startarea
             ? prepare(await Areas.findOne({ _id: ObjectId(startarea) }))
             : null;
@@ -495,6 +495,7 @@ export const start = async () => {
           args.serverversion = pjson.version;
           args.uiversion = req.session.user.uiversion;
           args.date = new Date(args.datetime);
+          args.goaldate = new Date(args.goaldate);
           const res = await GoalTimes.insert(args);
           return {
             _id: res.insertedIds[1],
@@ -534,7 +535,7 @@ export const start = async () => {
     async function queryarea(area) {
       try {
         const wheel = await Wheels.findOne({ _id: ObjectId(area.wheel) });
-        console.log(wheel);
+        // console.log(wheel);
         AreaLinks.insert({
           area: area.area,
           userid: area.userid,
@@ -557,7 +558,7 @@ export const start = async () => {
             $unset: { areaId: "" }
           }
         );
-        console.log(ranktime);
+        // console.log(ranktime);
         return true;
       } catch (error) {
         console.log(error);
