@@ -132,7 +132,6 @@ export const start = async () => {
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
         signup(email: String, name: String, username: String, pwd: String, uiversion: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
-        runUpdate: Boolean
       }
 
       schema {
@@ -147,7 +146,7 @@ export const start = async () => {
         isLoggedin: async (root, args, { req }) => {
           if (req.session.user) {
             const user = await Users.findOne({
-              _id: ObjectId(req.session.user._id)
+              _id: ObjectId(getuserid(req.session))
             });
             return prepare(user);
           } else {
@@ -156,43 +155,43 @@ export const start = async () => {
         },
         areas: async (parent, args, { req }) => {
           return (await Areas.find({
-            userid: req.session.user._id
+            userid: getuserid(req.session)
           }).toArray()).map(prepare);
         },
         users: async (parent, args, { req }) => {
           return (await Users.find({
-            userid: req.session.user._id
+            userid: getuserid(req.session)
           }).toArray()).map(prepare);
         },
         area: async (root, { _id }, { req }) => {
           return prepare(
             await Areas.findOne({
               _id: ObjectId(_id),
-              userid: req.session.user._id
+              userid: getuserid(req.session)
             })
           );
         },
         ranktimes: async (root, { areaId }, { req }) => {
           return (await RankTimes.find({
             areaId: areaId,
-            userid: req.session.user._id
+            userid: getuserid(req.session)
           })
             .sort({ date: -1 })
             .toArray()).map(prepare);
         },
         arealinks: async (root, args, { req }) => {
-          args.userid = req.session.user._id;
+          args.userid = getuserid(req.session);
           return (await AreaLinks.find(args).toArray()).map(prepare);
         },
         goaltimes: async (root, { _id }, { req }) => {
-          return (await GoalTimes.find({ userid: req.session.user._id })
+          return (await GoalTimes.find({ userid: getuserid(req.session) })
             .sort({ date: -1 })
             .toArray()).map(prepare);
         },
         lastranktime: async (root, { areaId }, { req }) => {
           return prepare(
             await RankTimes.findOne(
-              { areaId: areaId, userid: req.session.user._id },
+              { areaId: areaId, userid: getuserid(req.session) },
               { sort: { date: -1 } }
             )
           );
@@ -200,7 +199,7 @@ export const start = async () => {
         lastgoaltime: async (root, { areaId }, { req }) => {
           return prepare(
             await GoalTimes.findOne(
-              { areaId: areaId, userid: req.session.user._id },
+              { areaId: areaId, userid: getuserid(req.session) },
               { sort: { date: -1 } }
             )
           );
@@ -215,7 +214,7 @@ export const start = async () => {
       },
       Area: {
         areas: async ({ _id }, parent, { req }) => {
-          const args = { rootarea: _id, userid: req.session.user._id };
+          const args = { rootarea: _id, userid: getuserid(req.session) };
           const arealinks = await AreaLinks.distinct("area", args);
 
           return (await Areas.find({
@@ -242,7 +241,7 @@ export const start = async () => {
         }
       },
       Mutation: {
-        runUpdate: async (parent, args, { req }) => {
+        /* runUpdate: async (parent, args, { req }) => { // runUpdate: Boolean
           const areas = await Areas.find({
             wheellink: { $ne: null }
           }).toArray();
@@ -266,7 +265,7 @@ export const start = async () => {
           });
 
           return true;
-        },
+        }, */
         toggleFocusFlag: async (parent, args, { req }) => {
           const area = await AreaLinks.findOne({
             rootarea: args.rootarea,
@@ -288,11 +287,11 @@ export const start = async () => {
           return focusflag;
         },
         updateProfile: async (parent, args, { req }) => {
-          const res = await Users.updateOne(
-            { _id: ObjectId(req.session.user._id) },
+          await Users.updateOne(
+            { _id: ObjectId(getuserid(req.session)) },
             { $set: args }
           );
-          return prepare(res);
+          return args;
         },
         signup: async (parent, { email, name }, { req }) => {
           await Signup.insertOne({
@@ -410,59 +409,44 @@ export const start = async () => {
           req.session.user = null;
           return true;
         },
-        createArea: async (root, args, { req }) => {
-          args.userid = req.session.user._id;
-          args.serverversion = pjson.version;
-          args.uiversion = req.session.user.uiversion;
-          const res = await Areas.insertOne(args);
-
-          return prepare(res.ops[0]);
-        },
         savePomodoro: async (root, args, { req }) => {
-          args.userid = req.session.user._id;
+          args.userid = getuserid(req.session);
           args.serverversion = pjson.version;
-          args.uiversion = req.session.user.uiversion;
+          args.uiversion = getuiversion(req.session);
           args.date = new Date(args.datetime);
           await Pomodoros.insertOne(args);
           return true;
         },
         updateArea: async (root, args, { req }) => {
           await Areas.updateOne(
-            { _id: ObjectId(args.areaId), userid: req.session.user._id },
+            { _id: ObjectId(args.areaId), userid: getuserid(req.session) },
             { $set: args }
           );
-          return prepare(args);
+          return args;
         },
         deleteAreaLink: async (root, { rootarea, area }, { req }) => {
           const res = await AreaLinks.deleteMany(
-            { rootarea: rootarea, area: area, userid: req.session.user._id },
+            { rootarea: rootarea, area: area, userid: getuserid(req.session) },
             { $set: { arealink: null } }
           );
           return res;
         },
-        updateArea: async (root, args, req) => {
-          const res = await Areas.updateOne(
-            { _id: ObjectId(args.area), userid: req.req.session.user._id },
-            { $set: args }
-          );
-          return res;
-        },
         createAreaLink: async (root, args, { req }) => {
-          args.userid = req.session.user._id;
-          args.serverversion = pjson.version;
-          args.uiversion = req.session.user.uiversion;
+          // args.userid = getuserid(req.session);
+          // args.serverversion = pjson.version;
+          // args.uiversion = getuiversion(req.session);
           await AreaLinks.insertOne({
             rootarea: args.rootarea,
             area: args.area,
-            userid: req.session.user._id
+            userid: getuserid(req.session)
           });
 
           return true;
         },
         createArea: async (root, args, { req }) => {
-          args.userid = req.session.user._id;
+          args.userid = getuserid(req.session);
           args.serverversion = pjson.version;
-          args.uiversion = req.session.user.uiversion;
+          args.uiversion = getuiversion(req.session);
 
           const res = await Areas.insert(args);
 
@@ -470,19 +454,19 @@ export const start = async () => {
             rootarea: args.rootarea,
             area: res.insertedIds[0].toString(),
             areaname: args.name,
-            userid: req.session.user._id,
+            userid: getuserid(req.session),
             serverversion: pjson.version,
-            uiversion: req.session.user.uiversion
+            uiversion: getuiversion(req.session)
           });
           return prepare(
             await Areas.findOne({
               _id: res.insertedIds[0],
-              userid: req.session.user._id
+              userid: getuserid(req.session)
             })
           );
         },
         createRankTime: async (root, args, { req }) => {
-          args.userid = req.session.user._id;
+          args.userid = getuserid(req.session);
           args.date = new Date(args.datetime);
           const res = await RankTimes.insert(args);
           return {
@@ -491,9 +475,9 @@ export const start = async () => {
           };
         },
         createGoalTime: async (root, args, { req }) => {
-          args.userid = req.session.user._id;
+          args.userid = getuserid(req.session);
           args.serverversion = pjson.version;
-          args.uiversion = req.session.user.uiversion;
+          args.uiversion = getuiversion(req.session);
           args.date = new Date(args.datetime);
           args.goaldate = new Date(args.goaldate);
           const res = await GoalTimes.insert(args);
@@ -505,7 +489,7 @@ export const start = async () => {
         deleteArea: async (root, { rootarea, area }, { req }) => {
           var message = "";
           AreaLinks.deleteOne(
-            { rootarea: rootarea, area: area, userid: req.session.user._id },
+            { rootarea: rootarea, area: area, userid: getuserid(req.session) },
             function(err, obj) {
               if (err) throw err;
               message = obj.deletedCount + " area(s) deleted";
@@ -515,6 +499,16 @@ export const start = async () => {
         }
       }
     };
+
+    function getuserid(session) {
+      if (session.user) return session.user._id;
+      else return "5d70b68aa1e6bf52b9906b8e";
+    }
+
+    function getuiversion(session) {
+      if (session.user) return session.user.uiversion;
+      else return "test";
+    }
 
     async function updatewheels(area) {
       try {
