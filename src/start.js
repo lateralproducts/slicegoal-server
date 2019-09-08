@@ -419,9 +419,10 @@ export const start = async () => {
         },
         updateArea: async (root, args, { req }) => {
           await Areas.updateOne(
-            { _id: ObjectId(args.areaId), userid: getuserid(req.session) },
+            { _id: ObjectId(args.area), userid: getuserid(req.session) },
             { $set: args }
           );
+          args._id = args.area;
           return args;
         },
         deleteAreaLink: async (root, { rootarea, area }, { req }) => {
