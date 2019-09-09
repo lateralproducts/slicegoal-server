@@ -67,6 +67,24 @@ export const start = async () => {
         lastranktime(areaId: String): RankTime
         lastgoaltime(areaId: String): GoalTime
         arealinks(areaId: String, areaId: String): [AreaLink]
+        readPomoData(area: String): Int
+      }
+
+      type Mutation {
+        createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
+        updateArea(rootarea: String, name: String, definition: String, vision: String, notes: String, area: String): Area
+        deleteArea(area: String): Area
+        createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
+        deleteAreaLink(rootarea: String, area: String): Area
+        createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
+        createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
+        savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
+        toggleFocusFlag(rootarea: String!, area: String!): Boolean
+        login(username: String!, pwd: String!, uiversion: String): User
+        logout: Boolean!
+        googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
+        signup(email: String, name: String, username: String, pwd: String, uiversion: String): Boolean!
+        updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
       }
 
       type AreaLink {
@@ -74,6 +92,16 @@ export const start = async () => {
         rootarea: String
         area: String
         focus: Boolean
+      }
+
+      type Pomodoro {
+        _id: String
+        area: String
+        links: String
+        objective: String
+        notes: String
+        datetime: String
+        minutes: Int
       }
 
       type Area {
@@ -117,22 +145,7 @@ export const start = async () => {
         goaldate: String
       }
 
-      type Mutation {
-        createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
-        updateArea(rootarea: String, name: String, definition: String, vision: String, notes: String, area: String): Area
-        deleteArea(area: String): Area
-        createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
-        deleteAreaLink(rootarea: String, area: String): Area
-        createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
-        createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
-        savePomodoro(rootarea: String, area: String, objectiveId: String, notes: String, objective: String, datetime: String, minutes: Int): Boolean!
-        toggleFocusFlag(rootarea: String!, area: String!): Boolean
-        login(username: String!, pwd: String!, uiversion: String): User
-        logout: Boolean!
-        googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
-        signup(email: String, name: String, username: String, pwd: String, uiversion: String): Boolean!
-        updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
-      }
+      
 
       schema {
         query: Query
@@ -203,6 +216,29 @@ export const start = async () => {
               { sort: { date: -1 } }
             )
           );
+        },
+        readPomoData: async (root, { area }, { req }) => {
+          return new Promise(function(resolve, reject) {
+            Pomodoros.aggregate(
+              {
+                $match: {
+                  area: area
+                }
+              },
+              {
+                $group: {
+                  _id: { area: "$area" },
+                  count: { $sum: "$minutes" },
+                  records: { $sum: 1 }
+                }
+              },
+              function(err, data) {
+                console.log(err, data);
+                if (err) throw err;
+                resolve(data[0] ? data[0].count : 0);
+              }
+            );
+          });
         }
       },
       User: {
@@ -509,6 +545,30 @@ export const start = async () => {
     function getuiversion(session) {
       if (session.user) return session.user.uiversion;
       else return "test";
+    }
+
+    function aggregatePomo(area) {
+      Pomodoros.aggregate(
+        {
+          $match: {
+            area: area
+          }
+        },
+        {
+          $group: {
+            _id: { area: "$area" },
+            count: { $sum: "$minutes" },
+            records: { $sum: 1 }
+          }
+        },
+        function(err, data) {
+          if (err) throw err;
+
+          console.log(JSON.stringify(data, undefined, 2));
+          console.log(data[0].count);
+          return data[0].count;
+        }
+      );
     }
 
     async function updatewheels(area) {
