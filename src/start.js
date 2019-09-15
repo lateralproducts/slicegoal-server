@@ -85,6 +85,7 @@ export const start = async () => {
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
         signup(email: String, name: String, username: String, pwd: String, uiversion: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
+        runUpdate: Boolean!
       }
 
       type AreaLink {
@@ -353,15 +354,17 @@ export const start = async () => {
         }
       },
       Mutation: {
-        /* runUpdate: async (parent, args, { req }) => { // runUpdate: Boolean
-          const areas = await Areas.find({
-            wheellink: { $ne: null }
+        runUpdate: async (parent, args, { req }) => {
+          // runUpdate: Boolean
+          const pomos = await Pomodoros.find({
+            links: { $eq: null }
           }).toArray();
-          areas.map(function(area) {
-            updatewheels(area);
+
+          pomos.map(function(pomo) {
+            updatepomos(pomo);
           });
 
-          const wheelarealinks = await WheelAreaLinks.find().toArray();
+          /* const wheelarealinks = await WheelAreaLinks.find().toArray();
           wheelarealinks.map(function(wheelarealink) {
             queryarea(wheelarealink);
           });
@@ -374,10 +377,10 @@ export const start = async () => {
           const goaltimes = await GoalTimes.find().toArray();
           goaltimes.map(function(goaltime) {
             updategoal(goaltime);
-          });
+          }); */
 
           return true;
-        }, */
+        },
         toggleFocusFlag: async (parent, args, { req }) => {
           const area = await AreaLinks.findOne({
             rootarea: args.rootarea,
@@ -647,17 +650,29 @@ export const start = async () => {
       );
     }
 
-    async function updatewheels(area) {
+    async function updatepomos(area) {
       try {
-        const wheel = await Wheels.update(
-          { _id: ObjectId(area.wheellink) },
-          {
-            $set: {
-              rootarea: area._id.toString()
-            }
+        if (area.area) {
+          console.log(area);
+          const link = await Pomodoros.findOne({
+            area: area.area,
+            links: { $not: { $eq: null } }
+          });
+
+          if (link) {
+            console.log(link);
+            await Pomodoros.update(
+              { _id: ObjectId(area._id) },
+              {
+                $set: {
+                  links: link.links
+                },
+                $unset: { areaId: "" }
+              }
+            );
           }
-        );
-        return wheel;
+          return false;
+        }
       } catch (error) {
         console.log(error);
       }
