@@ -67,7 +67,7 @@ export const start = async () => {
         lastranktime(areaId: String): RankTime
         lastgoaltime(areaId: String): GoalTime
         arealinks(areaId: String, areaId: String): [AreaLink]
-        readPomoData(area: String): Int
+        readPomoData(area: String): PomodoroData
       }
 
       type Mutation {
@@ -104,6 +104,14 @@ export const start = async () => {
         minutes: Int
       }
 
+      type PomodoroData {
+        _id: String
+        count: Int
+        records: Int
+        direct: Int
+        countdirect: Int
+      }
+
       type Area {
         _id: String
         name: String
@@ -114,6 +122,7 @@ export const start = async () => {
         vision: String
         notes: String
         areas: [Area]
+        time: PomodoroData
       }
 
       type User {
@@ -222,20 +231,42 @@ export const start = async () => {
             Pomodoros.aggregate(
               {
                 $match: {
-                  area: area
+                  $or: [
+                    {
+                      area: area
+                    },
+                    {
+                      links: area
+                    }
+                  ]
                 }
               },
               {
                 $group: {
-                  _id: { area: "$area" },
+                  _id: { links: null }, //"$area"
                   count: { $sum: "$minutes" },
-                  records: { $sum: 1 }
+                  records: { $sum: 1 },
+                  direct: {
+                    $sum: {
+                      $cond: { if: { $eq: ["$area", area] }, then: 1, else: 0 }
+                    }
+                  },
+                  countdirect: {
+                    $sum: {
+                      $cond: {
+                        if: { $eq: ["$area", area] },
+                        then: "$minutes",
+                        else: 0
+                      }
+                    }
+                  }
                 }
               },
+
               function(err, data) {
                 console.log(err, data);
                 if (err) throw err;
-                resolve(data[0] ? data[0].count : 0);
+                resolve(data[0] ? data[0] : 0);
               }
             );
           });
@@ -274,6 +305,51 @@ export const start = async () => {
             { sort: { date: -1 } }
           );
           return goal ? prepare(goal) : null;
+        },
+        time: async ({ _id }) => {
+          return new Promise(function(resolve, reject) {
+            Pomodoros.aggregate(
+              {
+                $match: {
+                  $or: [
+                    {
+                      area: _id
+                    },
+                    {
+                      links: _id
+                    }
+                  ]
+                }
+              },
+              {
+                $group: {
+                  _id: { links: null }, //"$area"
+                  count: { $sum: "$minutes" },
+                  records: { $sum: 1 },
+                  direct: {
+                    $sum: {
+                      $cond: { if: { $eq: ["$area", _id] }, then: 1, else: 0 }
+                    }
+                  },
+                  countdirect: {
+                    $sum: {
+                      $cond: {
+                        if: { $eq: ["$area", _id] },
+                        then: "$minutes",
+                        else: 0
+                      }
+                    }
+                  }
+                }
+              },
+
+              function(err, data) {
+                console.log(err, data);
+                if (err) throw err;
+                resolve(data[0] ? data[0] : 0);
+              }
+            );
+          });
         }
       },
       Mutation: {
