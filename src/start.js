@@ -50,6 +50,7 @@ export const start = async () => {
     const RankTimes = db.collection("ranktimes");
     const GoalTimes = db.collection("goaltimes");
     const Pomodoros = db.collection("pomodoros");
+    const Objectives = db.collection("objectives");
     const Signup = db.collection("signup");
 
     const Wheels = db.collection("wheels");
@@ -68,6 +69,7 @@ export const start = async () => {
         lastgoaltime(areaId: String): GoalTime
         arealinks(areaId: String, areaId: String): [AreaLink]
         readPomoData(area: String): PomodoroData
+        objectives(area: String): [Objective]
       }
 
       type Mutation {
@@ -78,6 +80,8 @@ export const start = async () => {
         deleteAreaLink(rootarea: String, area: String): Area
         createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
+        createObjective(area: String, datetime: String, objective: String, notes: String): Objective
+        updateObjective(objectiveId: String, objective: String, notes: String, complete: String): Boolean
         savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
         login(username: String!, pwd: String!, uiversion: String): User
@@ -93,6 +97,15 @@ export const start = async () => {
         rootarea: String
         area: String
         focus: Boolean
+      }
+
+      type Objective {
+        _id: String
+        objective: String
+        notes: String
+        area: String
+        datetimecreated: Float
+        datetimecompleted: Float
       }
 
       type Pomodoro {
@@ -175,6 +188,15 @@ export const start = async () => {
           } else {
             throw new Error("User not logged in");
           }
+        },
+        objectives: async (parent, args, { req }) => {
+          return (await Objectives.find(
+            {
+              area: args.area,
+              userid: getuserid(req.session),
+              complete: { $eq: null }
+            } //update sort at some stage.
+          ).toArray()).map(prepare);
         },
         areas: async (parent, args, { req }) => {
           return (await Areas.find({
@@ -595,13 +617,37 @@ export const start = async () => {
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.date = new Date(args.datetime);
-          args.goaldate = new Date(args.goaldate);
+          if (args.goaldate) args.goaldate = new Date(args.goaldate);
           const res = await GoalTimes.insert(args);
           return {
             _id: res.insertedIds[1],
-            message: "new goal entry created prod"
+            message: "new goal entry created"
           };
         },
+        createObjective: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          args.serverversion = pjson.version;
+          args.uiversion = getuiversion(req.session);
+          args.date = new Date(args.datetime);
+          const res = await Objectives.insert(args);
+          return {
+            _id: res.insertedIds[1],
+            message: "new objective created"
+          };
+        },
+        updateObjective: async (root, args, { req }) => {
+          if (args.complete) args.complete = new Date(args.complete);
+          const objective = args.objectiveId;
+          delete args.objectiveId;
+          await Objectives.update(
+            { _id: ObjectId(objective), userid: getuserid(req.session) },
+            {
+              $set: args
+            }
+          );
+          return true;
+        },
+
         deleteArea: async (root, { rootarea, area }, { req }) => {
           var message = "";
           AreaLinks.deleteOne(
