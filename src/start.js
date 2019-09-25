@@ -51,6 +51,7 @@ export const start = async () => {
     const GoalTimes = db.collection("goaltimes");
     const Pomodoros = db.collection("pomodoros");
     const Objectives = db.collection("objectives");
+    const Spaced = db.collection("spaced");
     const Signup = db.collection("signup");
 
     const Wheels = db.collection("wheels");
@@ -70,6 +71,7 @@ export const start = async () => {
         arealinks(areaId: String, areaId: String): [AreaLink]
         readPomoData(area: String): PomodoroData
         objectives(area: String): [Objective]
+        spaced(area: String): [Spaced]
       }
 
       type Mutation {
@@ -82,6 +84,9 @@ export const start = async () => {
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
         createObjective(area: String, datetime: String, objective: String, notes: String): Objective
         updateObjective(objectiveId: String, objective: String, notes: String, complete: String): Boolean
+        createSpaced(area: String, datetime: String, prompt: String, answer: String): Spaced
+        markSpacedYes(spacedId: String, datetime: String): Boolean
+        markSpacedNo(spacedId: String, datetime: String): Boolean
         savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
         login(username: String!, pwd: String!, uiversion: String): User
@@ -106,6 +111,17 @@ export const start = async () => {
         area: String
         datetimecreated: Float
         datetimecompleted: Float
+      }
+
+      type Spaced {
+        _id: String
+        area: String
+        prompt: String
+        answer: String
+        datetimecreated: Float
+        datetimelast: Float
+        fib0: String
+        fib1: String
       }
 
       type Pomodoro {
@@ -195,6 +211,17 @@ export const start = async () => {
               area: args.area,
               userid: getuserid(req.session),
               complete: { $eq: null }
+            } //update sort at some stage.
+          ).toArray()).map(prepare);
+        },
+        spaced: async (parent, args, { req }) => {
+          const datecompare = new Date();
+          console.log(new Date(datecompare.getTime() + 1000 * 3600 * 24 * 1));
+          return (await Spaced.find(
+            {
+              area: args.area,
+              userid: getuserid(req.session),
+              datenext: { $lte: new Date() }
             } //update sort at some stage.
           ).toArray()).map(prepare);
         },
@@ -634,6 +661,61 @@ export const start = async () => {
             _id: res.insertedIds[1],
             message: "new objective created"
           };
+        },
+        createSpaced: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          args.serverversion = pjson.version;
+          args.uiversion = getuiversion(req.session);
+          args.datecreated = new Date(args.datetime);
+          args.date = new Date(args.datetime);
+          args.fib0 = 0;
+          args.fib1 = 1;
+          var nextdate = new Date(); //set nextdate for tomorrow.
+          nextdate.setDate(nextdate.getDate() + 1);
+          args.datenext = nextdate;
+          const res = await Spaced.insert(args);
+          return {
+            _id: res.insertedIds[1],
+            message: "new objective created"
+          };
+        },
+        markSpacedYes: async (root, args, { req }) => {
+          args.date = new Date(args.datetime);
+          const Id = args.spacedId;
+          delete args.spacedId;
+          const spacedobject = await Spaced.findOne({
+            _id: ObjectId(Id),
+            userid: getuserid(req.session)
+          });
+          args.fib1 = spacedobject.fib0 + spacedobject.fib1;
+          args.fib0 = spacedobject.fib1;
+          var nextdate = new Date(args.datetime); //set nextdate for today + fibonacci sequence
+          nextdate.setDate(nextdate.getDate() + args.fib1);
+          args.datenext = nextdate;
+          await Spaced.update(
+            { _id: ObjectId(Id), userid: getuserid(req.session) },
+            {
+              $set: args
+            }
+          );
+          return true;
+        },
+        markSpacedNo: async (root, args, { req }) => {
+          args.date = new Date(args.datetime);
+          args.fib0 = 0;
+          args.fib1 = 1;
+          const Id = args.spacedId;
+          delete args.spacedId;
+          var nextdate = new Date();
+          nextdate.setDate(nextdate.getDate() + 1);
+          args.datenext = nextdate;
+          await Spaced.update(
+            { _id: ObjectId(Id), userid: getuserid(req.session) },
+            {
+              $set: args
+            }
+          );
+          return true;
         },
         updateObjective: async (root, args, { req }) => {
           if (args.complete) args.complete = new Date(args.complete);
