@@ -1,6 +1,6 @@
 {
   "name": "graphql-mongodb-example",
-  "version": "3.0.1",
+  "version": "3.2.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
@@ -10,7 +10,10 @@
     "start": "MONGODB_URL=mongodb://172.31.1.156:27017/strategy node dist/index.js",
     "start2": "node dist/index.js",
     "build": "babel -d dist/ src/",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "release-patch": "yarn version --patch --message",
+    "release-minor": "yarn version --minor --message",
+    "release-major": "yarn version --major --message"
   },
   "author": "Nicola Marcacci Rossi <nicolamr@gmail.com> (http://nmr.io)",
   "license": "ISC",
