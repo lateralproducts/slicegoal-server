@@ -55,7 +55,9 @@ export const start = async () => {
     const Signup = db.collection("signup");
 
     const Wheels = db.collection("wheels");
-    const WheelAreaLinks = db.collection("wheelarealink");
+    //const WheelAreaLinks = db.collection("wheelarealink");
+
+    const Feedback = db.collection("feedback");
 
     const typeDefs = [
       `
@@ -88,6 +90,7 @@ export const start = async () => {
         markSpacedYes(spacedId: String, datetime: String): Boolean
         markSpacedNo(spacedId: String, datetime: String): Boolean
         savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
+        submitFeedback(title: String, description: String): Boolean
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
         login(username: String!, pwd: String!, uiversion: String): User
         logout: Boolean!
@@ -579,6 +582,14 @@ export const start = async () => {
           args.uiversion = getuiversion(req.session);
           args.date = new Date(args.datetime);
           await Pomodoros.insertOne(args);
+          return true;
+        },
+        submitFeedback: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          args.serverversion = pjson.version;
+          args.uiversion = getuiversion(req.session);
+          args.date = new Date(args.datetime);
+          await Feedback.insertOne(args);
           return true;
         },
         updateArea: async (root, args, { req }) => {
