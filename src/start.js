@@ -224,7 +224,7 @@ export const start = async () => {
             {
               area: args.area,
               userid: getuserid(req.session),
-              datenext: { $lte: new Date() }
+              $or: [{ datenext: null }, { datenext: { $lte: new Date() } }]
             } //update sort at some stage.
           ).toArray()).map(prepare);
         },
