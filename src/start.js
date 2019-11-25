@@ -698,8 +698,13 @@ export const start = async () => {
             _id: ObjectId(Id),
             userid: getuserid(req.session)
           });
-          args.fib1 = spacedobject.fib0 + spacedobject.fib1;
-          args.fib0 = spacedobject.fib1;
+          if (spacedobject.fib1) {
+            args.fib1 = spacedobject.fib0 + spacedobject.fib1;
+            args.fib0 = spacedobject.fib1;
+          } else {
+            args.fib1 = 1;
+            args.fib0 = 1;
+          }
           var nextdate = new Date(args.datetime); //set nextdate for today + fibonacci sequence
           nextdate.setDate(nextdate.getDate() + args.fib1);
           args.datenext = nextdate;
