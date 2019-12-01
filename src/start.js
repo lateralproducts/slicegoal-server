@@ -725,6 +725,14 @@ export const start = async () => {
           var nextdate = new Date();
           nextdate.setDate(nextdate.getDate() + 1);
           args.datenext = nextdate;
+
+          const spacedobject = await Spaced.findOne({
+            _id: ObjectId(Id),
+            userid: getuserid(req.session)
+          });
+
+          args.markedno = spacedobject.markedno ? spacedobject.markedno + 1 : 1;
+
           await Spaced.update(
             { _id: ObjectId(Id), userid: getuserid(req.session) },
             {
