@@ -98,6 +98,7 @@ export const start = async () => {
         signup(email: String, name: String, username: String, pwd: String, uiversion: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
         runUpdate: Boolean!
+        removeStartArea: Boolean!
       }
 
       type AreaLink {
@@ -430,6 +431,14 @@ export const start = async () => {
           goaltimes.map(function(goaltime) {
             updategoal(goaltime);
           }); */
+
+          return true;
+        },
+        removeStartArea: async (parent, args, { req }) => {
+          await Users.updateOne(
+            { _id: ObjectId(getuserid(req.session)) },
+            { $set: { startarea: null } }
+          );
 
           return true;
         },
