@@ -99,6 +99,7 @@ export const start = async () => {
         updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
         runUpdate: Boolean!
         removeStartArea: Boolean!
+        updateObjectiveOrder(objectives: [String]): Boolean
       }
 
       type AreaLink {
@@ -216,7 +217,9 @@ export const start = async () => {
               userid: getuserid(req.session),
               complete: { $eq: null }
             } //update sort at some stage.
-          ).toArray()).map(prepare);
+          )
+            .sort({ orderrank: 1 })
+            .toArray()).map(prepare);
         },
         spaced: async (parent, args, { req }) => {
           const datecompare = new Date();
@@ -468,6 +471,16 @@ export const start = async () => {
             { $set: args }
           );
           return args;
+        },
+        updateObjectiveOrder: async (parent, args, { req }) => {
+          console.log(args);
+          args.objectives.map(function(_id, count) {
+            Objectives.updateOne(
+              { _id: ObjectId(_id) },
+              { $set: { orderrank: count } }
+            );
+          });
+          return true;
         },
         signup: async (parent, { email, name }, { req }) => {
           await Signup.insertOne({
