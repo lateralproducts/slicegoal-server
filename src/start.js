@@ -55,6 +55,7 @@ export const start = async () => {
     const Signup = db.collection("signup");
 
     const Wheels = db.collection("wheels");
+    const Clicks = db.collection("clicks");
     //const WheelAreaLinks = db.collection("wheelarealink");
 
     const Feedback = db.collection("feedback");
@@ -67,12 +68,13 @@ export const start = async () => {
         users: [User]
         ranktimes(areaId: String): [RankTime]
         goaltimes(areaId: String): [GoalTime]
-        area(_id: String): Area
+        area(_id: String!, navdirection: String): Area
         lastranktime(areaId: String): RankTime
         lastgoaltime(areaId: String): GoalTime
         arealinks(areaId: String, areaId: String): [AreaLink]
         readPomoData(area: String): PomodoroData
         objectives(area: String): [Objective]
+        pomodoros(areaId: String): [Pomodoro]
         spaced(area: String): [Spaced]
       }
 
@@ -147,6 +149,10 @@ export const start = async () => {
         countdirect: Int
       }
 
+      type ClickData {
+        clicks: Int
+      }
+
       type Area {
         _id: String
         name: String
@@ -158,6 +164,7 @@ export const start = async () => {
         notes: String
         areas: [Area]
         time: PomodoroData
+        clicks: ClickData
       }
 
       type User {
@@ -242,7 +249,15 @@ export const start = async () => {
             userid: getuserid(req.session)
           }).toArray()).map(prepare);
         },
-        area: async (root, { _id }, { req }) => {
+        area: async (root, { _id, navdirection }, { req }) => {
+          if (navdirection == "forward") {
+            Clicks.insertOne({
+              userid: getuserid(req.session),
+              date: new Date(),
+              area: _id
+            });
+          }
+
           return prepare(
             await Areas.findOne({
               _id: ObjectId(_id),
@@ -282,6 +297,12 @@ export const start = async () => {
               { sort: { date: -1 } }
             )
           );
+        },
+        pomodoros: async (root, { areaId }, { req }) => {
+          return (await Pomodoros.find({
+            area: areaId
+            //userid: getuserid(req.session)
+          }).toArray()).map(prepare);
         },
         readPomoData: async (root, { area }, { req }) => {
           return new Promise(function(resolve, reject) {
@@ -337,6 +358,29 @@ export const start = async () => {
         }
       },
       Area: {
+        clicks: async ({ _id }, parent, { req }) => {
+          return new Promise(function(resolve, reject) {
+            Clicks.aggregate(
+              {
+                $match: {
+                  area: _id
+                }
+              },
+              {
+                $group: {
+                  _id: null,
+                  clicks: { $sum: 1 }
+                }
+              },
+
+              function(err, data) {
+                console.log(err, data);
+                if (err) throw err;
+                resolve(data[0] ? data[0] : 0);
+              }
+            );
+          });
+        },
         areas: async ({ _id }, parent, { req }) => {
           const args = { rootarea: _id, userid: getuserid(req.session) };
           const arealinks = await AreaLinks.distinct("area", args);
