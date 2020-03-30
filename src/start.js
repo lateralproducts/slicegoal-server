@@ -74,7 +74,7 @@ export const start = async () => {
         arealinks(areaId: String, areaId: String): [AreaLink]
         readPomoData(area: String): PomodoroData
         objectives(area: String): [Objective]
-        pomodoros(areaId: String): [Pomodoro]
+        pomodoros(objectiveId: String): [Pomodoro]
         spaced(area: String): [Spaced]
       }
 
@@ -139,6 +139,7 @@ export const start = async () => {
         notes: String
         datetime: String
         minutes: Int
+        date: String
       }
 
       type PomodoroData {
@@ -298,11 +299,14 @@ export const start = async () => {
             )
           );
         },
-        pomodoros: async (root, { areaId }, { req }) => {
-          return (await Pomodoros.find({
-            area: areaId
-            //userid: getuserid(req.session)
-          }).toArray()).map(prepare);
+        pomodoros: async (root, { objectiveId }, { req }) => {
+          return (await Pomodoros.find(
+            {
+              objective: objectiveId
+              //userid: getuserid(req.session)
+            },
+            { sort: { date: -1 } }
+          ).toArray()).map(prepare);
         },
         readPomoData: async (root, { area }, { req }) => {
           return new Promise(function(resolve, reject) {
