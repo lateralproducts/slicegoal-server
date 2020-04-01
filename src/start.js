@@ -73,6 +73,7 @@ export const start = async () => {
         lastgoaltime(areaId: String): GoalTime
         arealinks(areaId: String, areaId: String): [AreaLink]
         readPomoData(area: String): PomodoroData
+        readObjectivePomoData(objective: String): PomodoroData
         objectives(area: String): [Objective]
         pomodoros(objectiveId: String): [Pomodoro]
         spaced(area: String): [Spaced]
@@ -342,6 +343,34 @@ export const start = async () => {
                       }
                     }
                   }
+                }
+              },
+
+              function(err, data) {
+                console.log(err, data);
+                if (err) throw err;
+                resolve(data[0] ? data[0] : 0);
+              }
+            );
+          });
+        },
+        readObjectivePomoData: async (root, { objective }, { req }) => {
+          return new Promise(function(resolve, reject) {
+            Pomodoros.aggregate(
+              {
+                $match: {
+                  $or: [
+                    {
+                      objective: objective
+                    }
+                  ]
+                }
+              },
+              {
+                $group: {
+                  _id: { links: null },
+                  count: { $sum: "$minutes" },
+                  records: { $sum: 1 }
                 }
               },
 
