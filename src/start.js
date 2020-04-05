@@ -96,6 +96,7 @@ export const start = async () => {
         submitFeedback(title: String, description: String): Boolean
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
         login(username: String!, pwd: String!, uiversion: String): User
+        setUser(email: String!): User
         logout: Boolean!
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
         signup(email: String, name: String, username: String, pwd: String, uiversion: String): Boolean!
@@ -177,6 +178,7 @@ export const start = async () => {
         area: Area
         serverversion: String
         state: String
+        coach: Boolean
       }
 
       type RankTime {
@@ -247,6 +249,10 @@ export const start = async () => {
           }).toArray()).map(prepare);
         },
         users: async (parent, args, { req }) => {
+          if (req.session.user.coach) {
+            return (await Users.find({}).toArray()).map(prepare);
+          }
+
           return (await Users.find({
             userid: getuserid(req.session)
           }).toArray()).map(prepare);
@@ -559,6 +565,17 @@ export const start = async () => {
           });
           return true;
         },
+        setUser: async (parent, { email }, { req }) => {
+          const newuser = await Users.findOne({ email: email });
+
+          //make it possible only for users who have impersonate function to impersonate another user for coaches
+          if (req.session.user.coach) {
+            req.session.user = newuser;
+            //setTimeout(() => console.log("waited 5 seconds"), 10000);
+            return newuser;
+          }
+          return null;
+        },
         signup: async (parent, { email, name }, { req }) => {
           await Signup.insertOne({
             email: email,
@@ -590,23 +607,46 @@ export const start = async () => {
           const user = await Users.findOne({ email: args.username });
           //const user = data[username];
           if (user) {
-            if (await bcrypt.compareSync(args.pwd, user.password)) {
-              req.session.user = user;
-              user.serverversion = pjson.version;
+            if (user.incorrecttries < 6) {
+              if (await bcrypt.compareSync(args.pwd, user.password)) {
+                req.session.user = user;
+                user.serverversion = pjson.version;
+
+                await Users.updateOne(
+                  { _id: ObjectId(user._id) },
+                  {
+                    $set: {
+                      uiversion: args.uiversion,
+                      lastip: req.ip
+                    }
+                  }
+                );
+
+                return prepare(user);
+              }
 
               await Users.updateOne(
                 { _id: ObjectId(user._id) },
                 {
                   $set: {
-                    uiversion: args.uiversion,
-                    lastip: req.ip
+                    incorrecttries:
+                      (user.incorrecttries ? user.incorrecttries : 0) + 1
                   }
                 }
               );
 
-              return prepare(user);
+              throw new Error("Incorrect password.");
             }
 
+            await Users.updateOne(
+              { _id: ObjectId(user._id) },
+              {
+                $set: {
+                  incorrecttries:
+                    (user.incorrecttries ? user.incorrecttries : 0) + 1
+                }
+              }
+            );
             throw new Error("Incorrect password.");
           }
 
@@ -660,6 +700,8 @@ export const start = async () => {
             return {
               firstname: user.firstname,
               startarea: user.startarea,
+              state: user.state,
+              coach: user.coach,
               serverversion: pjson.version
             };
           }
