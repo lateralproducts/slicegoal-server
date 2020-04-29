@@ -246,7 +246,7 @@ export const start = async () => {
         },
         areas: async (parent, args, { req }) => {
           return (await Areas.find({
-            userid: getuserid(req.session)
+            $or: [{ userid: getuserid(req.session) }, { userid: "coach" }]
           }).toArray()).map(prepare);
         },
         users: async (parent, args, { req }) => {
@@ -270,7 +270,7 @@ export const start = async () => {
           return prepare(
             await Areas.findOne({
               _id: ObjectId(_id),
-              userid: getuserid(req.session)
+              $or: [{ userid: getuserid(req.session) }, { userid: "coach" }]
             })
           );
         },
@@ -433,25 +433,26 @@ export const start = async () => {
             }
           }).toArray()).map(prepare);
         },
-        rank: async ({ _id }) => {
+        rank: async ({ _id }, parent, { req }) => {
           const rank = await RankTimes.findOne(
-            { area: _id },
+            { area: _id, userid: getuserid(req.session) },
             { sort: { date: -1 } }
           );
           return rank ? prepare(rank) : null;
         },
-        goal: async ({ _id }) => {
+        goal: async ({ _id }, parent, { req }) => {
           const goal = await GoalTimes.findOne(
-            { area: _id },
+            { area: _id, userid: getuserid(req.session) },
             { sort: { date: -1 } }
           );
           return goal ? prepare(goal) : null;
         },
-        time: async ({ _id }) => {
+        time: async ({ _id }, parent, { req }) => {
           return new Promise(function(resolve, reject) {
             Pomodoros.aggregate(
               {
                 $match: {
+                  userid: getuserid(req.session),
                   $or: [
                     {
                       area: _id
@@ -770,7 +771,8 @@ export const start = async () => {
           await AreaLinks.insertOne({
             rootarea: args.rootarea,
             area: args.area,
-            userid: getuserid(req.session)
+            userid: getuserid(req.session),
+            created: new Date()
           });
 
           return true;
@@ -779,6 +781,7 @@ export const start = async () => {
           args.userid = getuserid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
+          args.created = new Date();
 
           const res = await Areas.insert(args);
 
