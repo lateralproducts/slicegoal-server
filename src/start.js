@@ -52,6 +52,7 @@ export const start = async () => {
     const Pomodoros = db.collection("pomodoros");
     const Objectives = db.collection("objectives");
     const Spaced = db.collection("spaced");
+    const Logins = db.collection("logins");
     const Signup = db.collection("signup");
 
     const Wheels = db.collection("wheels");
@@ -576,11 +577,25 @@ export const start = async () => {
           }
           return null;
         },
-        signup: async (parent, { email, name }, { req }) => {
-          await Signup.insertOne({
+        signup: async (parent, args, { req }) => {
+          /* await Signup.insertOne({
             email: email,
             name: name
+          }); */
+
+          await Users.insertOne({
+            email: args.username,
+            password: bcrypt.hashSync(args.pwd, 10),
+            uiversion: args.uiversion,
+            serverversion: pjson.version,
+            state: "new"
           });
+
+          const newuser = await Users.findOne({ email: args.username });
+
+          req.session.user = {
+            newuser
+          };
 
           return true;
         },
@@ -606,6 +621,13 @@ export const start = async () => {
         login: async (parent, args, { req }) => {
           const user = await Users.findOne({ email: args.username });
           //const user = data[username];
+
+          await Logins.insertOne({
+            email: args.username,
+            lastip: req.ip,
+            lastlogin: new Date()
+          });
+
           if (user) {
             if (user.incorrecttries < 6) {
               if (await bcrypt.compareSync(args.pwd, user.password)) {
@@ -617,7 +639,8 @@ export const start = async () => {
                   {
                     $set: {
                       uiversion: args.uiversion,
-                      lastip: req.ip
+                      lastip: req.ip,
+                      lastlogin: new Date()
                     }
                   }
                 );
@@ -650,24 +673,16 @@ export const start = async () => {
             throw new Error("Incorrect password.");
           }
 
-          await Users.insertOne({
-            email: args.username,
-            password: bcrypt.hashSync(args.pwd, 10),
-            uiversion: args.uiversion,
-            serverversion: pjson.version,
-            state: "new"
-          });
-
-          const newuser = await Users.findOne({ email: args.username });
-
-          req.session.user = {
-            newuser
-          };
-
           return prepare(user);
         },
         googleLogin: async (parent, args, { req }) => {
           const tokenInfo = await oAuth2Client.getTokenInfo(args.token);
+
+          await Logins.insertOne({
+            email: args.email,
+            lastip: req.ip,
+            lastlogin: new Date()
+          });
 
           if ((tokenInfo.email = args.email)) {
             //check token authentication...
