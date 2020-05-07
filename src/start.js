@@ -200,9 +200,7 @@ export const start = async () => {
         date: Float
         goaldate: String
       }
-
       
-
       schema {
         query: Query
         mutation: Mutation
@@ -217,8 +215,23 @@ export const start = async () => {
             const user = await Users.findOne({
               _id: ObjectId(getuserid(req.session))
             });
+
+            await Logins.insertOne({
+              email: req.session.user.email,
+              lastip: req.ip,
+              result: "success",
+              type: "loggedin refresh",
+              lastlogin: new Date()
+            });
             return prepare(user);
           } else {
+            await Logins.insertOne({
+              email: req.session.user.email,
+              lastip: req.ip,
+              result: "failed",
+              type: "loggedin refresh",
+              lastlogin: new Date()
+            });
             throw new Error("User not logged in");
           }
         },
@@ -292,6 +305,7 @@ export const start = async () => {
             .toArray()).map(prepare);
         },
         lastranktime: async (root, { areaId }, { req }) => {
+          //if coach, return average of coachees.
           return prepare(
             await RankTimes.findOne(
               { areaId: areaId, userid: getuserid(req.session) },
@@ -623,17 +637,19 @@ export const start = async () => {
           const user = await Users.findOne({ email: args.username });
           //const user = data[username];
 
-          await Logins.insertOne({
-            email: args.username,
-            lastip: req.ip,
-            lastlogin: new Date()
-          });
-
           if (user) {
             if (user.incorrecttries < 6) {
               if (await bcrypt.compareSync(args.pwd, user.password)) {
                 req.session.user = user;
                 user.serverversion = pjson.version;
+
+                await Logins.insertOne({
+                  email: args.username,
+                  lastip: req.ip,
+                  result: "success",
+                  type: "username login",
+                  lastlogin: new Date()
+                });
 
                 await Users.updateOne(
                   { _id: ObjectId(user._id) },
@@ -659,8 +675,24 @@ export const start = async () => {
                 }
               );
 
+              await Logins.insertOne({
+                email: args.username,
+                lastip: req.ip,
+                result: "failed",
+                type: "username login",
+                lastlogin: new Date()
+              });
+
               throw new Error("Incorrect password.");
             }
+
+            await Logins.insertOne({
+              email: args.username,
+              lastip: req.ip,
+              result: "failed",
+              type: "username login",
+              lastlogin: new Date()
+            });
 
             await Users.updateOne(
               { _id: ObjectId(user._id) },
@@ -671,6 +703,7 @@ export const start = async () => {
                 }
               }
             );
+
             throw new Error("Incorrect password.");
           }
 
@@ -678,12 +711,6 @@ export const start = async () => {
         },
         googleLogin: async (parent, args, { req }) => {
           const tokenInfo = await oAuth2Client.getTokenInfo(args.token);
-
-          await Logins.insertOne({
-            email: args.email,
-            lastip: req.ip,
-            lastlogin: new Date()
-          });
 
           if ((tokenInfo.email = args.email)) {
             //check token authentication...
@@ -696,9 +723,18 @@ export const start = async () => {
               const user = args;
               req.session.user = user;
               args.token = null; //removing the token from saving in database for security
+              args.datecreated = new Date();
               await Users.insertOne(args);
               return prepare(user);
             }
+
+            await Logins.insertOne({
+              email: args.email,
+              lastip: req.ip,
+              result: "success",
+              type: "google login",
+              lastlogin: new Date()
+            });
 
             await Users.updateOne(
               { _id: ObjectId(user._id) },
@@ -718,9 +754,17 @@ export const start = async () => {
               startarea: user.startarea,
               state: user.state,
               coach: user.coach,
+              email: user.email,
               serverversion: pjson.version
             };
           }
+          await Logins.insertOne({
+            email: args.email,
+            result: "failed",
+            type: "google login",
+            ip: req.ip,
+            lastlogin: new Date()
+          });
           throw new Error("Error authenticating with google");
 
           // https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
