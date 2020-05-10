@@ -65,11 +65,11 @@ export const start = async () => {
       `
       type Query {
         isLoggedin: User
-        areas: [Area]
+        areas (readdate: String): [Area]
         users: [User]
         ranktimes(areaId: String): [RankTime]
         goaltimes(areaId: String): [GoalTime]
-        area(_id: String!, navdirection: String): Area
+        area(_id: String!, navdirection: String, readdate: String): Area
         lastranktime(areaId: String): RankTime
         lastgoaltime(areaId: String): GoalTime
         arealinks(areaId: String, areaId: String): [AreaLink]
@@ -167,7 +167,7 @@ export const start = async () => {
         vision: String
         notes: String
         areas: [Area]
-        time: PomodoroData
+        time(readdate: String): PomodoroData
         clicks: ClickData
       }
 
@@ -461,12 +461,21 @@ export const start = async () => {
           );
           return goal ? prepare(goal) : null;
         },
-        time: async ({ _id }, parent, { req }) => {
+        time: async ({ _id }, parent, { req }, query) => {
+          if (parent || item) {
+          }
           return new Promise(function(resolve, reject) {
             Pomodoros.aggregate(
               {
                 $match: {
                   userid: getuserid(req.session),
+                  date: {
+                    $gte: new Date(
+                      query.variableValues.readdate
+                        ? query.variableValues.readdate
+                        : null
+                    )
+                  },
                   $or: [
                     {
                       area: _id
@@ -484,7 +493,11 @@ export const start = async () => {
                   records: { $sum: 1 },
                   direct: {
                     $sum: {
-                      $cond: { if: { $eq: ["$area", _id] }, then: 1, else: 0 }
+                      $cond: {
+                        if: { $eq: ["$area", _id] },
+                        then: 1,
+                        else: 0
+                      }
                     }
                   },
                   countdirect: {
