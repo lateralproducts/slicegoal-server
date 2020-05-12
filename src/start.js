@@ -651,7 +651,7 @@ export const start = async () => {
           //const user = data[username];
 
           if (user) {
-            if (user.incorrecttries < 6) {
+            if (user.incorrecttries < 6 && user.state == "verified") {
               if (await bcrypt.compareSync(args.pwd, user.password)) {
                 req.session.user = user;
                 user.serverversion = pjson.version;
@@ -717,10 +717,26 @@ export const start = async () => {
               }
             );
 
-            throw new Error("Incorrect password.");
+            throw new Error("Login Failed.");
           }
 
-          return prepare(user);
+          await Logins.insertOne({
+            email: args.username,
+            lastip: req.ip,
+            result: "not registered",
+            type: "username login",
+            lastlogin: new Date()
+          });
+
+          await Users.insertOne({
+            email: args.username,
+            password: bcrypt.hashSync(args.pwd, 10),
+            uiversion: args.uiversion,
+            serverversion: pjson.version,
+            state: "new"
+          });
+
+          throw new Error("Email not registered");
         },
         googleLogin: async (parent, args, { req }) => {
           const tokenInfo = await oAuth2Client.getTokenInfo(args.token);
