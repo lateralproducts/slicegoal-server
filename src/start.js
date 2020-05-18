@@ -226,7 +226,7 @@ export const start = async () => {
             return prepare(user);
           } else {
             await Logins.insertOne({
-              email: req.session.user.email,
+              request: args,
               lastip: req.ip,
               result: "failed",
               type: "loggedin refresh",
@@ -447,12 +447,52 @@ export const start = async () => {
             }
           }).toArray()).map(prepare);
         },
-        rank: async ({ _id }, parent, { req }) => {
-          const rank = await RankTimes.findOne(
-            { area: _id, userid: getuserid(req.session) },
-            { sort: { date: -1 } }
-          );
-          return rank ? prepare(rank) : null;
+        rank: async ({ _id, userid }, parent, { req }) => {
+          if (req.session.user.coach & (userid == "coach")) {
+            return new Promise(function(resolve, reject) {
+              RankTimes.aggregate(
+                {
+                  $match: {
+                    area: _id
+                  }
+                },
+                {
+                  $group: {
+                    _id: { area: "$area", userid: "$userid" },
+                    date: {
+                      $last: "$date"
+                    },
+                    rank: { $last: "$rank" }
+                  }
+                },
+                {
+                  $group: {
+                    _id: "$*_*id.area",
+                    rank: { $avg: "$rank" }
+                  }
+                },
+
+                function(err, data) {
+                  console.log(err, data);
+                  if (err) throw err;
+                  resolve(
+                    data[0]
+                      ? {
+                          rank: parseInt(data[0].rank),
+                          note: "coaching average"
+                        }
+                      : 0
+                  );
+                }
+              );
+            });
+          } else {
+            const rank = await RankTimes.findOne(
+              { area: _id, userid: getuserid(req.session) },
+              { sort: { date: -1 } }
+            );
+            return rank ? prepare(rank) : null;
+          }
         },
         goal: async ({ _id }, parent, { req }) => {
           const goal = await GoalTimes.findOne(
