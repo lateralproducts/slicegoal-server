@@ -91,6 +91,7 @@ export const start = async () => {
         createObjective(area: String, datetime: String, objective: String, notes: String): Objective
         updateObjective(objectiveId: String, objective: String, notes: String, complete: String): Boolean
         createSpaced(area: String, datetime: String, prompt: String, answer: String): Spaced
+        updateSpaced(noteid: String, datetime: String, prompt: String, answer: String): Spaced
         markSpacedYes(spacedId: String, datetime: String): Boolean
         markSpacedNo(spacedId: String, datetime: String): Boolean
         savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
@@ -564,12 +565,12 @@ export const start = async () => {
       Mutation: {
         runUpdate: async (parent, args, { req }) => {
           // runUpdate: Boolean
-          const pomos = await Pomodoros.find({
-            links: { $eq: null }
+          const areas = await Areas.find({
+            notes: { $ne: null }
           }).toArray();
 
-          pomos.map(function(pomo) {
-            updatepomos(pomo);
+          areas.map(function(area) {
+            updatenotes(area);
           });
 
           /* const wheelarealinks = await WheelAreaLinks.find().toArray();
@@ -954,12 +955,25 @@ export const start = async () => {
           args.fib0 = 0;
           args.fib1 = 1;
           var nextdate = new Date(); //set nextdate for tomorrow.
-          nextdate.setDate(nextdate.getDate() + 1);
+          if (args.prompt) nextdate.setDate(nextdate.getDate() + 1);
           args.datenext = nextdate;
           const res = await Spaced.insert(args);
           return {
             _id: res.insertedIds[1],
             message: "new objective created"
+          };
+        },
+        updateSpaced: async (root, args, { req }) => {
+          args.date = new Date(args.datetime);
+          var noteid = args.noteid;
+          delete args.noteid;
+          const res = await Spaced.updateOne(
+            { _id: ObjectId(noteid) },
+            { $set: args }
+          );
+          return {
+            _id: noteid,
+            message: "note updated"
           };
         },
         markSpacedYes: async (root, args, { req }) => {
@@ -1072,6 +1086,22 @@ export const start = async () => {
           return data[0].count;
         }
       );
+    }
+
+    async function updatenotes(area) {
+      try {
+        if (area.notes) {
+          console.log(area);
+          await Spaced.insertOne({
+            area: area._id.toString(),
+            answer: area.notes,
+            userid: area.userid
+          });
+          return false;
+        }
+      } catch (error) {
+        console.log(error);
+      }
     }
 
     async function updatepomos(area) {
