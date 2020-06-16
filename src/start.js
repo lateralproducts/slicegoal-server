@@ -52,6 +52,8 @@ export const start = async () => {
     const Pomodoros = db.collection("pomodoros");
     const Objectives = db.collection("objectives");
     const Spaced = db.collection("spaced");
+    const Notes = db.collection("notes");
+    const NoteLinks = db.collection("notelinks");
     const Logins = db.collection("logins");
     const Signup = db.collection("signup");
 
@@ -77,12 +79,13 @@ export const start = async () => {
         readObjectivePomoData(objective: String): PomodoroData
         objectives(area: String): [Objective]
         pomodoros(objectiveId: String): [Pomodoro]
-        spaced(area: String): [Spaced]
+        notes(area: String): [Note]
+        noteLinks(noteid: String): [NoteLink]
       }
 
       type Mutation {
         createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
-        updateArea(rootarea: String, name: String, definition: String, vision: String, notes: String, area: String): Area
+        updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
         deleteArea(area: String): Area
         createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
         deleteAreaLink(rootarea: String, area: String): Area
@@ -90,10 +93,12 @@ export const start = async () => {
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
         createObjective(area: String, datetime: String, objective: String, notes: String): Objective
         updateObjective(objectiveId: String, objective: String, notes: String, complete: String): Boolean
-        createSpaced(area: String, datetime: String, prompt: String, answer: String): Spaced
-        updateSpaced(noteid: String, datetime: String, prompt: String, answer: String): Spaced
-        markSpacedYes(spacedId: String, datetime: String): Boolean
-        markSpacedNo(spacedId: String, datetime: String): Boolean
+        createNote(area: String, datetime: String, prompt: String, answer: String): Spaced
+        updateNote(noteid: String, datetime: String, prompt: String, answer: String): Spaced 
+        createNoteLink(noteid: String, area: String): Boolean
+        removeNoteLink(noteid: String, area: String): Boolean
+        markSpacedYes(noteId: String, datetime: String): Boolean
+        markSpacedNo(noteId: String, datetime: String): Boolean
         savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
         submitFeedback(title: String, description: String): Boolean
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
@@ -124,15 +129,32 @@ export const start = async () => {
         datetimecompleted: Float
       }
 
-      type Spaced {
+      type Note {
         _id: String
         area: String
         prompt: String
         answer: String
+        spaced: Spaced
+      }
+
+      type NoteLink {
+        _id: String
+        noteid: String
+        areaid: String
+        area: Area
+        note: Note
+      }
+
+      type Spaced {
+        _id: String
+        noteid: String
+        note: Note
+        area: String
         datetimecreated: Float
         datetimelast: Float
         fib0: String
         fib1: String
+        datenext: String
       }
 
       type Pomodoro {
@@ -247,16 +269,30 @@ export const start = async () => {
             .sort({ orderrank: 1 })
             .toArray()).map(prepare);
         },
-        spaced: async (parent, args, { req }) => {
-          const datecompare = new Date();
-          console.log(new Date(datecompare.getTime() + 1000 * 3600 * 24 * 1));
-          return (await Spaced.find(
+        notes: async (parent, args, { req }) => {
+          const notelinks = (await NoteLinks.find(
             {
               area: args.area,
               userid: getuserid(req.session),
-              $or: [{ datenext: null }, { datenext: { $lte: new Date() } }]
+              $or: [{ nextdate: null }, { nextdate: { $lte: new Date() } }]
             } //update sort at some stage.
           ).toArray()).map(prepare);
+
+          var notes = await Notes.find({
+            _id: {
+              $in: notelinks.map(function(notelink) {
+                return ObjectId(notelink.noteid);
+              })
+            }
+          }).toArray();
+          return notes.map(prepare);
+        },
+        noteLinks: async (parent, args, { req }) => {
+          const notelinks = (await NoteLinks.find({
+            noteid: args.noteid,
+            userid: getuserid(req.session)
+          }).toArray()).map(prepare);
+          return notelinks;
         },
         areas: async (parent, args, { req }) => {
           return (await Areas.find({
@@ -277,7 +313,7 @@ export const start = async () => {
             Clicks.insertOne({
               userid: getuserid(req.session),
               date: new Date(),
-              area: _id
+              areaid: _id
             });
           }
 
@@ -412,6 +448,31 @@ export const start = async () => {
             : null;
         }
       },
+      Note: {
+        spaced: async ({ _id }, parent, { req }) => {
+          var spaced = await Spaced.findOne({
+            noteid: _id,
+            userid: getuserid(req.session)
+          });
+          return spaced;
+        }
+      },
+      NoteLink: {
+        area: async (args, parent, { req }) => {
+          return prepare(
+            await Areas.findOne({
+              _id: ObjectId(args.area)
+            })
+          );
+        },
+        note: async ({ noteid }, parent, { req }) => {
+          return prepare(
+            await Notes.findOne({
+              _id: ObjectId(noteid)
+            })
+          );
+        }
+      },
       Area: {
         clicks: async ({ _id }, parent, { req }) => {
           return new Promise(function(resolve, reject) {
@@ -449,51 +510,52 @@ export const start = async () => {
           }).toArray()).map(prepare);
         },
         rank: async ({ _id, userid }, parent, { req }) => {
-          if (req.session.user.coach & (userid == "coach")) {
-            return new Promise(function(resolve, reject) {
-              RankTimes.aggregate(
-                {
-                  $match: {
-                    area: _id
-                  }
-                },
-                {
-                  $group: {
-                    _id: { area: "$area", userid: "$userid" },
-                    date: {
-                      $last: "$date"
-                    },
-                    rank: { $last: "$rank" }
-                  }
-                },
-                {
-                  $group: {
-                    _id: "$*_*id.area",
-                    rank: { $avg: "$rank" }
-                  }
-                },
+          if (req.session.user)
+            if (req.session.user.coach & (userid == "coach")) {
+              return new Promise(function(resolve, reject) {
+                RankTimes.aggregate(
+                  {
+                    $match: {
+                      area: _id
+                    }
+                  },
+                  {
+                    $group: {
+                      _id: { area: "$area", userid: "$userid" },
+                      date: {
+                        $last: "$date"
+                      },
+                      rank: { $last: "$rank" }
+                    }
+                  },
+                  {
+                    $group: {
+                      _id: "$*_*id.area",
+                      rank: { $avg: "$rank" }
+                    }
+                  },
 
-                function(err, data) {
-                  console.log(err, data);
-                  if (err) throw err;
-                  resolve(
-                    data[0]
-                      ? {
-                          rank: parseInt(data[0].rank),
-                          note: "coaching average"
-                        }
-                      : 0
-                  );
-                }
+                  function(err, data) {
+                    console.log(err, data);
+                    if (err) throw err;
+                    resolve(
+                      data[0]
+                        ? {
+                            rank: parseInt(data[0].rank),
+                            note: "coaching average"
+                          }
+                        : 0
+                    );
+                  }
+                );
+              });
+            } else {
+              const rank = await RankTimes.findOne(
+                { area: _id, userid: getuserid(req.session) },
+                { sort: { date: -1 } }
               );
-            });
-          } else {
-            const rank = await RankTimes.findOne(
-              { area: _id, userid: getuserid(req.session) },
-              { sort: { date: -1 } }
-            );
-            return rank ? prepare(rank) : null;
-          }
+              return rank ? prepare(rank) : null;
+            }
         },
         goal: async ({ _id }, parent, { req }) => {
           const goal = await GoalTimes.findOne(
@@ -565,12 +627,10 @@ export const start = async () => {
       Mutation: {
         runUpdate: async (parent, args, { req }) => {
           // runUpdate: Boolean
-          const areas = await Areas.find({
-            notes: { $ne: null }
-          }).toArray();
+          const spaced = await Spaced.find().toArray();
 
-          areas.map(function(area) {
-            updatenotes(area);
+          spaced.map(function(space) {
+            migratenotes(space);
           });
 
           /* const wheelarealinks = await WheelAreaLinks.find().toArray();
@@ -946,28 +1006,47 @@ export const start = async () => {
             message: "new objective created"
           };
         },
-        createSpaced: async (root, args, { req }) => {
+        createNote: async (root, args, { req }) => {
           args.userid = getuserid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.datecreated = new Date(args.datetime);
-          args.date = new Date(args.datetime);
-          args.fib0 = 0;
-          args.fib1 = 1;
-          var nextdate = new Date(); //set nextdate for tomorrow.
-          if (args.prompt) nextdate.setDate(nextdate.getDate() + 1);
-          args.datenext = nextdate;
-          const res = await Spaced.insert(args);
+          args.lastedited = new Date(args.datetime);
+          createnote(args);
+
           return {
-            _id: res.insertedIds[1],
-            message: "new objective created"
+            _id: 1,
+            message: "new note created"
           };
         },
-        updateSpaced: async (root, args, { req }) => {
-          args.date = new Date(args.datetime);
+        createNoteLink: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          args.serverversion = pjson.version;
+          args.uiversion = getuiversion(req.session);
+          args.datecreated = new Date(args.datetime);
+          const res = await NoteLinks.insert(args);
+          return res.insertedIds[1] ? true : false;
+        },
+        removeNoteLink: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          NoteLinks.deleteOne(
+            {
+              area: args.area,
+              noteid: args.noteid,
+              userid: args.userid
+            },
+            function(err, obj) {
+              if (err) throw err;
+            }
+          );
+          return true;
+        },
+
+        updateNote: async (root, args, { req }) => {
+          args.lastedited = new Date(args.datetime);
           var noteid = args.noteid;
           delete args.noteid;
-          const res = await Spaced.updateOne(
+          const res = await Notes.updateOne(
             { _id: ObjectId(noteid) },
             { $set: args }
           );
@@ -978,15 +1057,15 @@ export const start = async () => {
         },
         markSpacedYes: async (root, args, { req }) => {
           args.date = new Date(args.datetime);
-          const Id = args.spacedId;
-          delete args.spacedId;
-          const spacedobject = await Spaced.findOne({
-            _id: ObjectId(Id),
+          const noteId = args.noteId;
+          delete args.noteId;
+          const spaced = await Spaced.findOne({
+            noteid: noteId,
             userid: getuserid(req.session)
           });
-          if (spacedobject.fib1) {
-            args.fib1 = spacedobject.fib0 + spacedobject.fib1;
-            args.fib0 = spacedobject.fib1;
+          if (spaced.fib1) {
+            args.fib1 = spaced.fib0 + spaced.fib1;
+            args.fib0 = spaced.fib1;
           } else {
             args.fib1 = 1;
             args.fib0 = 1;
@@ -994,8 +1073,17 @@ export const start = async () => {
           var nextdate = new Date(args.datetime); //set nextdate for today + fibonacci sequence
           nextdate.setDate(nextdate.getDate() + args.fib1);
           args.datenext = nextdate;
-          await Spaced.update(
-            { _id: ObjectId(Id), userid: getuserid(req.session) },
+
+          NoteLinks.update(
+            { noteid: noteId, userid: getuserid(req.session) },
+            {
+              $set: { nextdate: nextdate }
+            },
+            { multi: true }
+          );
+
+          Spaced.update(
+            { noteid: noteId, userid: getuserid(req.session) },
             {
               $set: args
             }
@@ -1006,21 +1094,29 @@ export const start = async () => {
           args.date = new Date(args.datetime);
           args.fib0 = 0;
           args.fib1 = 1;
-          const Id = args.spacedId;
-          delete args.spacedId;
+          const noteId = args.noteId;
+          delete args.noteId;
           var nextdate = new Date();
           nextdate.setDate(nextdate.getDate() + 1);
           args.datenext = nextdate;
 
-          const spacedobject = await Spaced.findOne({
-            _id: ObjectId(Id),
+          const spaced = await Spaced.findOne({
+            noteid: noteId,
             userid: getuserid(req.session)
           });
 
-          args.markedno = spacedobject.markedno ? spacedobject.markedno + 1 : 1;
+          await NoteLinks.update(
+            { noteid: noteId, userid: getuserid(req.session) },
+            {
+              $set: { nextdate: nextdate }
+            },
+            { multi: true }
+          );
+
+          args.markedno = spaced.markedno ? spaced.markedno + 1 : 1;
 
           await Spaced.update(
-            { _id: ObjectId(Id), userid: getuserid(req.session) },
+            { noteid: noteId, userid: getuserid(req.session) },
             {
               $set: args
             }
@@ -1064,6 +1160,71 @@ export const start = async () => {
       else return "test";
     }
 
+    async function createnote(newnote) {
+      try {
+        Notes.insertOne(newnote).then(result => {
+          var note = new Object();
+          note.noteid = result.insertedId.toString();
+          note.userid = newnote.userid;
+          note.fib0 = 0;
+          note.fib1 = 1;
+          var nextdate = new Date(); //set nextdate for tomorrow.
+          if (newnote.prompt) nextdate.setDate(nextdate.getDate() + 1);
+          note.datenext = nextdate;
+          Spaced.insert(note);
+
+          var notelink = new Object();
+          notelink.noteid = result.insertedId.toString();
+          notelink.userid = newnote.userid;
+          notelink.area = newnote.area;
+          notelink.datecreated = new Date();
+          NoteLinks.insert(notelink);
+        });
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    async function migratenotes(spaced) {
+      var newnote = new Object();
+      newnote.area = spaced.area;
+      newnote.answer = spaced.answer;
+      newnote.prompt = spaced.prompt;
+      newnote.userid = spaced.userid;
+      newnote.datecreated = spaced.datecreated;
+      newnote.lastedited = spaced.lastedited;
+      newnote.datetime = spaced.datetime;
+
+      try {
+        Notes.insertOne(newnote).then(result => {
+          var note = new Object();
+          note.noteid = result.insertedId.toString();
+          note.userid = newnote.userid;
+          note.fib0 = 0;
+          note.fib1 = 1;
+          var nextdate = new Date(); //set nextdate for tomorrow.
+          if (newnote.prompt) nextdate.setDate(nextdate.getDate() + 1);
+          note.datenext = nextdate;
+
+          var notelink = new Object();
+          notelink.noteid = result.insertedId.toString();
+          notelink.userid = newnote.userid;
+          notelink.area = newnote.area;
+          notelink.datecreated = new Date();
+          NoteLinks.insert(notelink);
+
+          Spaced.updateOne(
+            {
+              _id: spaced._id
+            },
+            { $set: { noteid: result.insertedId.toString() } }
+          );
+        });
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
     function aggregatePomo(area) {
       Pomodoros.aggregate(
         {
@@ -1088,10 +1249,9 @@ export const start = async () => {
       );
     }
 
-    async function updatenotes(area) {
+    async function updatenotes(spaced) {
       try {
         if (area.notes) {
-          console.log(area);
           await Spaced.insertOne({
             area: area._id.toString(),
             answer: area.notes,
@@ -1107,7 +1267,6 @@ export const start = async () => {
     async function updatepomos(area) {
       try {
         if (area.area) {
-          console.log(area);
           const link = await Pomodoros.findOne({
             area: area.area,
             links: { $not: { $eq: null } }
@@ -1135,7 +1294,6 @@ export const start = async () => {
     async function queryarea(area) {
       try {
         const wheel = await Wheels.findOne({ _id: ObjectId(area.wheel) });
-        // console.log(wheel);
         AreaLinks.insert({
           area: area.area,
           userid: area.userid,
