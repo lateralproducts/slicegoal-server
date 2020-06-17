@@ -74,7 +74,7 @@ export const start = async () => {
         area(_id: String!, navdirection: String, readdate: String): Area
         lastranktime(areaId: String): RankTime
         lastgoaltime(areaId: String): GoalTime
-        arealinks(areaId: String, areaId: String): [AreaLink]
+        arealinks(area: String): [AreaLink]
         readPomoData(area: String): PomodoroData
         readObjectivePomoData(objective: String): PomodoroData
         objectives(area: String): [Objective]
@@ -118,6 +118,7 @@ export const start = async () => {
         rootarea: String
         area: String
         focus: Boolean
+        linkedarea: Area
       }
 
       type Objective {
@@ -455,6 +456,17 @@ export const start = async () => {
             userid: getuserid(req.session)
           });
           return spaced;
+        }
+      },
+      AreaLink: {
+        linkedarea: async (args, parent, { req }) => {
+          return prepare(
+            args.rootarea
+              ? await Areas.findOne({
+                  _id: ObjectId(args.rootarea)
+                })
+              : { _id: ObjectId(args.area), name: null }
+          );
         }
       },
       NoteLink: {
