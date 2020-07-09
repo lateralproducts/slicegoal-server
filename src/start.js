@@ -54,6 +54,7 @@ export const start = async () => {
     const Spaced = db.collection("spaced");
     const Notes = db.collection("notes");
     const NoteLinks = db.collection("notelinks");
+    const FocusLinks = db.collection("focuslinks");
     const Logins = db.collection("logins");
     const Signup = db.collection("signup");
 
@@ -81,6 +82,8 @@ export const start = async () => {
         pomodoros(objectiveId: String): [Pomodoro]
         notes(area: String): [Note]
         noteLinks(noteid: String): [NoteLink]
+        focusLinks: [Focus]
+        focusLink(focuslink: String): Focus
       }
 
       type Mutation {
@@ -110,7 +113,14 @@ export const start = async () => {
         updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
         runUpdate: Boolean!
         removeStartArea: Boolean!
+        updateFocusOrder(objectives: [String]): Boolean
         updateObjectiveOrder(objectives: [String]): Boolean
+        saveFocusLink(
+          area: String!,
+          objective: String!,
+          datetime: String!,
+          links: [String]
+        ): Boolean
       }
 
       type AreaLink {
@@ -128,6 +138,13 @@ export const start = async () => {
         area: String
         datetimecreated: Float
         datetimecompleted: Float
+      }
+
+      type Focus {
+        _id: String
+        area: Area
+        objective: Objective
+        links: [String]
       }
 
       type Note {
@@ -269,6 +286,24 @@ export const start = async () => {
           )
             .sort({ orderrank: 1 })
             .toArray()).map(prepare);
+        },
+        focusLinks: async (parent, args, { req }) => {
+          return (await FocusLinks.find(
+            {
+              userid: getuserid(req.session)
+            } //update sort at some stage.
+          )
+            .sort({ orderrank: 1 })
+            .toArray()).map(prepare);
+        },
+        focusLink: async (parent, args, { req }) => {
+          return await FocusLinks.findOne(
+            {
+              userid: getuserid(req.session),
+              _id: ObjectId(args.focuslink)
+            },
+            { sort: { date: -1 } } //update sort at some stage.
+          );
         },
         notes: async (parent, args, { req }) => {
           const notelinks = (await NoteLinks.find(
@@ -485,6 +520,22 @@ export const start = async () => {
           );
         }
       },
+      Focus: {
+        area: async ({ area }, parent, { req }) => {
+          return prepare(
+            await Areas.findOne({
+              _id: ObjectId(area)
+            })
+          );
+        },
+        objective: async ({ objective }, parent, { req }) => {
+          return prepare(
+            await Objectives.findOne({
+              _id: ObjectId(objective)
+            })
+          );
+        }
+      },
       Area: {
         clicks: async ({ _id }, parent, { req }) => {
           return new Promise(function(resolve, reject) {
@@ -696,6 +747,16 @@ export const start = async () => {
             { $set: args }
           );
           return args;
+        },
+        updateFocusOrder: async (parent, args, { req }) => {
+          console.log(args);
+          args.objectives.map(function(_id, count) {
+            FocusLinks.updateOne(
+              { _id: ObjectId(_id) },
+              { $set: { orderrank: count } }
+            );
+          });
+          return true;
         },
         updateObjectiveOrder: async (parent, args, { req }) => {
           console.log(args);
@@ -925,6 +986,14 @@ export const start = async () => {
           args.uiversion = getuiversion(req.session);
           args.date = new Date(args.datetime);
           await Pomodoros.insertOne(args);
+          return true;
+        },
+        saveFocusLink: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          args.serverversion = pjson.version;
+          args.uiversion = getuiversion(req.session);
+          args.date = new Date(args.datetime);
+          await FocusLinks.insertOne(args);
           return true;
         },
         submitFeedback: async (root, args, { req }) => {
