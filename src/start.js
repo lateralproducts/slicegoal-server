@@ -92,6 +92,7 @@ export const start = async () => {
         deleteArea(area: String): Area
         createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
         deleteAreaLink(rootarea: String, area: String): Area
+        createCoachArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
         createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
         createObjective(area: String, datetime: String, objective: String, notes: String): Objective
@@ -210,6 +211,7 @@ export const start = async () => {
         areas: [Area]
         time(readdate: String): PomodoroData
         clicks: ClickData
+        coach: Boolean
       }
 
       type User {
@@ -220,7 +222,7 @@ export const start = async () => {
         area: Area
         serverversion: String
         state: String
-        coach: Boolean
+        profile: String
       }
 
       type RankTime {
@@ -332,12 +334,21 @@ export const start = async () => {
         },
         areas: async (parent, args, { req }) => {
           return (await Areas.find({
-            $or: [{ userid: getuserid(req.session) }, { userid: "coach" }]
+            $or: [
+              { userid: getuserid(req.session) },
+              { coach: true, userid: { $in: getcoachid(req.session) } }
+            ]
           }).toArray()).map(prepare);
         },
         users: async (parent, args, { req }) => {
-          if (req.session.user.coach) {
-            return (await Users.find({}).toArray()).map(prepare);
+          if (req.session.user.thiscoach != null) {
+            return [req.session.user.thiscoach];
+          }
+
+          if (req.session.user.profile == "coach") {
+            return (await Users.find({
+              coaches: getuserid(req.session)
+            }).toArray()).map(prepare);
           }
 
           return (await Users.find({
@@ -356,7 +367,10 @@ export const start = async () => {
           return prepare(
             await Areas.findOne({
               _id: ObjectId(_id),
-              $or: [{ userid: getuserid(req.session) }, { userid: "coach" }]
+              $or: [
+                { userid: getuserid(req.session) },
+                { coach: true, userid: { $in: getcoachid(req.session) } }
+              ]
             })
           );
         },
@@ -572,10 +586,11 @@ export const start = async () => {
             }
           }).toArray()).map(prepare);
         },
-        rank: async ({ _id, userid }, parent, { req }) => {
+        rank: async ({ _id, coach }, parent, { req }) => {
           if (req.session.user)
-            if (req.session.user.coach & (userid == "coach")) {
+            if ((req.session.user.profile === "coach") & (coach === true)) {
               return new Promise(function(resolve, reject) {
+                //returning the average of the area for coaching
                 RankTimes.aggregate(
                   {
                     $match: {
@@ -772,12 +787,15 @@ export const start = async () => {
           const newuser = await Users.findOne({ email: email });
 
           //make it possible only for users who have impersonate function to impersonate another user for coaches
-          if (req.session.user.coach) {
+          if (req.session.user.thiscoach) {
+            req.session.user = newuser;
+            return newuser;
+          } else if (req.session.user.profile == "coach") {
+            newuser.thiscoach = req.session.user;
             req.session.user = newuser;
             //setTimeout(() => console.log("waited 5 seconds"), 10000);
             return newuser;
-          }
-          return null;
+          } else return null;
         },
         signup: async (parent, args, { req }) => {
           /* await Signup.insertOne({
@@ -956,7 +974,7 @@ export const start = async () => {
               firstname: user.firstname,
               startarea: user.startarea,
               state: user.state,
-              coach: user.coach,
+              profile: user.profile,
               email: user.email,
               serverversion: pjson.version
             };
@@ -1037,6 +1055,30 @@ export const start = async () => {
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.created = new Date();
+
+          const res = await Areas.insert(args);
+
+          await AreaLinks.insertOne({
+            rootarea: args.rootarea,
+            area: res.insertedIds[0].toString(),
+            areaname: args.name,
+            userid: getuserid(req.session),
+            serverversion: pjson.version,
+            uiversion: getuiversion(req.session)
+          });
+          return prepare(
+            await Areas.findOne({
+              _id: res.insertedIds[0],
+              userid: getuserid(req.session)
+            })
+          );
+        },
+        createCoachArea: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          args.serverversion = pjson.version;
+          args.uiversion = getuiversion(req.session);
+          args.created = new Date();
+          args.coach = true;
 
           const res = await Areas.insert(args);
 
@@ -1234,6 +1276,11 @@ export const start = async () => {
     function getuserid(session) {
       if (session.user) return session.user._id;
       else return "5d70b68aa1e6bf52b9906b8e";
+    }
+
+    function getcoachid(session) {
+      if (session.user.coaches) return session.user.coaches;
+      else return [];
     }
 
     function getuiversion(session) {
