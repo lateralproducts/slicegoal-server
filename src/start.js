@@ -80,7 +80,7 @@ export const start = async () => {
         readObjectivePomoData(objective: String): PomodoroData
         objectives(area: String): [Objective]
         pomodoros(objectiveId: String): [Pomodoro]
-        notes(area: String): [Note]
+        notes(area: String): [NoteLink]
         noteLinks(noteid: String): [NoteLink]
         focusLinks: [Focus]
         focusLink(focuslink: String): Focus
@@ -97,10 +97,11 @@ export const start = async () => {
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
         createObjective(area: String, datetime: String, objective: String, notes: String): Objective
         updateObjective(objectiveId: String, objective: String, notes: String, complete: String): Boolean
-        createNote(area: String, datetime: String, prompt: String, answer: String): Spaced
+        createNote(area: String, datetime: String, prompt: String, answer: String, linknote: String): Spaced
         updateNote(noteid: String, datetime: String, prompt: String, answer: String): Spaced 
         createNoteLink(noteid: String, area: String): Boolean
-        removeNoteLink(noteid: String, area: String): Boolean
+        updateNoteLink(linkid: String, notes: String): Boolean
+        removeNoteLink(linkid: String): Boolean
         markSpacedYes(noteId: String, datetime: String): Boolean
         markSpacedNo(noteId: String, datetime: String): Boolean
         savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
@@ -154,6 +155,7 @@ export const start = async () => {
         prompt: String
         answer: String
         spaced: Spaced
+        notelink: String
       }
 
       type NoteLink {
@@ -162,6 +164,7 @@ export const start = async () => {
         areaid: String
         area: Area
         note: Note
+        notes: String 
       }
 
       type Spaced {
@@ -316,14 +319,7 @@ export const start = async () => {
             } //update sort at some stage.
           ).toArray()).map(prepare);
 
-          var notes = await Notes.find({
-            _id: {
-              $in: notelinks.map(function(notelink) {
-                return ObjectId(notelink.noteid);
-              })
-            }
-          }).toArray();
-          return notes.map(prepare);
+          return notelinks.map(prepare);
         },
         noteLinks: async (parent, args, { req }) => {
           const notelinks = (await NoteLinks.find({
@@ -808,7 +804,8 @@ export const start = async () => {
             password: bcrypt.hashSync(args.pwd, 10),
             uiversion: args.uiversion,
             serverversion: pjson.version,
-            state: "new"
+            state: "new",
+            profile: "client"
           });
 
           const newuser = await Users.findOne({ email: args.username });
@@ -925,7 +922,8 @@ export const start = async () => {
             password: bcrypt.hashSync(args.pwd, 10),
             uiversion: args.uiversion,
             serverversion: pjson.version,
-            state: "new"
+            state: "new",
+            profile: "client"
           });
 
           throw new Error("Email not registered");
@@ -938,6 +936,7 @@ export const start = async () => {
 
             const user = await Users.findOne({ email: args.email });
             if (!user) {
+              args.profile = "client";
               args.state = "new";
               args.serverversion = pjson.version;
               args.lastip = req.ip;
@@ -1154,10 +1153,20 @@ export const start = async () => {
           args.userid = getuserid(req.session);
           NoteLinks.deleteOne(
             {
-              area: args.area,
-              noteid: args.noteid,
+              _id: ObjectId(args.linkid),
               userid: args.userid
             },
+            function(err, obj) {
+              if (err) throw err;
+            }
+          );
+          return true;
+        },
+        updateNoteLink: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          NoteLinks.updateOne(
+            { _id: ObjectId(args.linkid) },
+            { $set: { notes: args.notes } },
             function(err, obj) {
               if (err) throw err;
             }
@@ -1305,6 +1314,7 @@ export const start = async () => {
           notelink.noteid = result.insertedId.toString();
           notelink.userid = newnote.userid;
           notelink.area = newnote.area;
+          notelink.notes = newnote.linknote;
           notelink.datecreated = new Date();
           NoteLinks.insert(notelink);
         });
