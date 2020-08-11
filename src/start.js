@@ -123,6 +123,9 @@ export const start = async () => {
           datetime: String!,
           links: [String]
         ): Boolean
+        removeFocusLink(
+          linkid: String!
+        ): Boolean
       }
 
       type AreaLink {
@@ -380,7 +383,10 @@ export const start = async () => {
         },
         arealinks: async (root, args, { req }) => {
           args.userid = getuserid(req.session);
-          return (await AreaLinks.find(args).toArray()).map(prepare);
+          return (await AreaLinks.find({
+            rootarea: { $not: { $eq: null } },
+            area: args.area
+          }).toArray()).map(prepare);
         },
         goaltimes: async (root, { _id }, { req }) => {
           return (await GoalTimes.find({ userid: getuserid(req.session) })
@@ -760,7 +766,6 @@ export const start = async () => {
           return args;
         },
         updateFocusOrder: async (parent, args, { req }) => {
-          console.log(args);
           args.objectives.map(function(_id, count) {
             FocusLinks.updateOne(
               { _id: ObjectId(_id) },
@@ -770,7 +775,6 @@ export const start = async () => {
           return true;
         },
         updateObjectiveOrder: async (parent, args, { req }) => {
-          console.log(args);
           args.objectives.map(function(_id, count) {
             Objectives.updateOne(
               { _id: ObjectId(_id) },
@@ -1011,6 +1015,11 @@ export const start = async () => {
           args.uiversion = getuiversion(req.session);
           args.date = new Date(args.datetime);
           await FocusLinks.insertOne(args);
+          return true;
+        },
+        removeFocusLink: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          await FocusLinks.deleteOne({ _id: ObjectId(args.linkid) });
           return true;
         },
         submitFeedback: async (root, args, { req }) => {
@@ -1454,7 +1463,6 @@ export const start = async () => {
             $unset: { areaId: "" }
           }
         );
-        // console.log(ranktime);
         return true;
       } catch (error) {
         console.log(error);
