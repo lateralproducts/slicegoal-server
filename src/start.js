@@ -141,8 +141,9 @@ export const start = async () => {
         objective: String
         notes: String
         area: String
-        datetimecreated: Float
-        datetimecompleted: Float
+        datetime: String
+        complete: String
+        date: String
       }
 
       type Focus {
@@ -457,7 +458,6 @@ export const start = async () => {
               },
 
               function(err, data) {
-                console.log(err, data);
                 if (err) throw err;
                 resolve(data[0] ? data[0] : 0);
               }
@@ -485,7 +485,6 @@ export const start = async () => {
               },
 
               function(err, data) {
-                console.log(err, data);
                 if (err) throw err;
                 resolve(data[0] ? data[0] : 0);
               }
@@ -569,7 +568,6 @@ export const start = async () => {
               },
 
               function(err, data) {
-                console.log(err, data);
                 if (err) throw err;
                 resolve(data[0] ? data[0] : 0);
               }
@@ -616,7 +614,6 @@ export const start = async () => {
                   },
 
                   function(err, data) {
-                    console.log(err, data);
                     if (err) throw err;
                     resolve(
                       data[0]
@@ -696,7 +693,6 @@ export const start = async () => {
               },
 
               function(err, data) {
-                console.log(err, data);
                 if (err) throw err;
                 resolve(data[0] ? data[0] : 0);
               }
@@ -1130,7 +1126,8 @@ export const start = async () => {
           args.userid = getuserid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
-          args.date = new Date(args.datetime);
+          args.date = args.datetime ? new Date(args.datetime) : null;
+          args.datecreated = new Date();
           const res = await Objectives.insert(args);
           return {
             _id: res.insertedIds[1],
@@ -1389,8 +1386,8 @@ export const start = async () => {
         function(err, data) {
           if (err) throw err;
 
-          console.log(JSON.stringify(data, undefined, 2));
-          console.log(data[0].count);
+          /*  console.log(JSON.stringify(data, undefined, 2));
+          console.log(data[0].count); */
           return data[0].count;
         }
       );
