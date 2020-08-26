@@ -51,6 +51,7 @@ export const start = async () => {
     const GoalTimes = db.collection("goaltimes");
     const Pomodoros = db.collection("pomodoros");
     const Objectives = db.collection("objectives");
+    const ObjectiveLinks = db.collection("objectivelinks");
     const Spaced = db.collection("spaced");
     const Notes = db.collection("notes");
     const NoteLinks = db.collection("notelinks");
@@ -78,7 +79,8 @@ export const start = async () => {
         arealinks(area: String): [AreaLink]
         readPomoData(area: String): PomodoroData
         readObjectivePomoData(objective: String): PomodoroData
-        objectives(area: String): [Objective]
+        objectives(area: String!): [Objective]
+        objectiveLinks(area: String, objective: String): [ObjectiveLink]
         pomodoros(objectiveId: String): [Pomodoro]
         notes(area: String): [NoteLink]
         noteLinks(noteid: String): [NoteLink]
@@ -95,8 +97,6 @@ export const start = async () => {
         createCoachArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
         createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
-        createObjective(area: String, datetime: String, objective: String, notes: String): Objective
-        updateObjective(objectiveId: String, objective: String, notes: String, complete: String): Boolean
         createNote(area: String, datetime: String, prompt: String, answer: String, linknote: String): Spaced
         updateNote(noteid: String, datetime: String, prompt: String, answer: String): Spaced 
         createNoteLink(noteid: String, area: String): Boolean
@@ -116,7 +116,12 @@ export const start = async () => {
         runUpdate: Boolean!
         removeStartArea: Boolean!
         updateFocusOrder(objectives: [String]): Boolean
+        createObjective(area: String, datetime: String, objective: String, notes: String): Objective
+        updateObjective(objectiveId: String, objective: String, notes: String, datetime: String, complete: String): Boolean
         updateObjectiveOrder(objectives: [String]): Boolean
+        createObjectiveLink(objectiveid: String, areaid: String): Boolean
+        updateObjectiveLink(linkid: String, notes: String): Boolean
+        removeObjectiveLink(linkid: String): Boolean
         saveFocusLink(
           area: String!,
           objective: String!,
@@ -144,6 +149,15 @@ export const start = async () => {
         datetime: String
         complete: String
         date: String
+      }
+
+      type ObjectiveLink {
+        _id: String
+        objectiveid: String
+        areaid: String
+        notes: String
+        area: Area
+        objective: Objective
       }
 
       type Focus {
@@ -295,6 +309,17 @@ export const start = async () => {
           )
             .sort({ orderrank: 1 })
             .toArray()).map(prepare);
+        },
+        objectiveLinks: async (parent, args, { req }) => {
+          var query = Object();
+          args.area ? (query.areaid = args.area) : "";
+          args.objective ? (query.objectiveid = args.objective) : "";
+          query.userid = getuserid(req.session);
+          query.complete = { $eq: null };
+
+          return (await ObjectiveLinks.find(query, {
+            sort: { orderrank: 1 }
+          }).toArray()).map(prepare);
         },
         focusLinks: async (parent, args, { req }) => {
           return (await FocusLinks.find(
@@ -535,6 +560,23 @@ export const start = async () => {
           );
         }
       },
+      ObjectiveLink: {
+        area: async ({ areaid }, parent, { req }) => {
+          return prepare(
+            await Areas.findOne({
+              _id: ObjectId(areaid)
+            })
+          );
+        },
+        objective: async ({ objectiveid }, parent, { req }) => {
+          return prepare(
+            await Objectives.findOne({
+              _id: ObjectId(objectiveid)
+              //complete: { $eq: null } This causes an error.
+            })
+          );
+        }
+      },
       Focus: {
         area: async ({ area }, parent, { req }) => {
           return prepare(
@@ -703,10 +745,10 @@ export const start = async () => {
       Mutation: {
         runUpdate: async (parent, args, { req }) => {
           // runUpdate: Boolean
-          const spaced = await Spaced.find().toArray();
+          const objectives = await Objectives.find().toArray();
 
-          spaced.map(function(space) {
-            migratenotes(space);
+          objectives.map(function(objective) {
+            migrateobjectives(objective);
           });
 
           /* const wheelarealinks = await WheelAreaLinks.find().toArray();
@@ -772,7 +814,7 @@ export const start = async () => {
         },
         updateObjectiveOrder: async (parent, args, { req }) => {
           args.objectives.map(function(_id, count) {
-            Objectives.updateOne(
+            ObjectiveLinks.updateOne(
               { _id: ObjectId(_id) },
               { $set: { orderrank: count } }
             );
@@ -1128,9 +1170,9 @@ export const start = async () => {
           args.uiversion = getuiversion(req.session);
           args.date = args.datetime ? new Date(args.datetime) : null;
           args.datecreated = new Date();
-          const res = await Objectives.insert(args);
+          createobjective(args);
           return {
-            _id: res.insertedIds[1],
+            _id: 1,
             message: "new objective created"
           };
         },
@@ -1179,7 +1221,58 @@ export const start = async () => {
           );
           return true;
         },
-
+        updateObjectiveLink: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          ObjectiveLinks.updateOne(
+            { _id: ObjectId(args.linkid) },
+            { $set: { notes: args.notes } },
+            function(err, obj) {
+              if (err) throw err;
+            }
+          );
+          return true;
+        },
+        createObjectiveLink: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          args.serverversion = pjson.version;
+          args.uiversion = getuiversion(req.session);
+          args.datecreated = new Date(args.datetime);
+          const res = await ObjectiveLinks.insert(args);
+          return res.insertedIds[1] ? true : false;
+        },
+        removeObjectiveLink: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          ObjectiveLinks.deleteOne(
+            {
+              _id: ObjectId(args.linkid),
+              userid: args.userid
+            },
+            function(err, obj) {
+              if (err) throw err;
+            }
+          );
+          return true;
+        },
+        updateObjective: async (root, args, { req }) => {
+          var objectiveId = args.objectiveId;
+          delete args.objectiveId;
+          args.date = args.datetime ? new Date(args.datetime) : null;
+          //args.complete = args.complete ? new Date(args.complete) : null;
+          args.lastupdated = new Date();
+          await Objectives.updateOne(
+            { _id: ObjectId(objectiveId) },
+            { $set: args }
+          );
+          if (args.complete)
+            await ObjectiveLinks.update(
+              { objectiveid: objectiveId },
+              {
+                $set: { complete: args.complete, lastupdated: args.lastupdated }
+              },
+              { multi: true }
+            );
+          return true;
+        },
         updateNote: async (root, args, { req }) => {
           args.lastedited = new Date(args.datetime);
           var noteid = args.noteid;
@@ -1261,19 +1354,6 @@ export const start = async () => {
           );
           return true;
         },
-        updateObjective: async (root, args, { req }) => {
-          if (args.complete) args.complete = new Date(args.complete);
-          const objective = args.objectiveId;
-          delete args.objectiveId;
-          await Objectives.update(
-            { _id: ObjectId(objective), userid: getuserid(req.session) },
-            {
-              $set: args
-            }
-          );
-          return true;
-        },
-
         deleteArea: async (root, { rootarea, area }, { req }) => {
           var message = "";
           AreaLinks.deleteOne(
@@ -1303,6 +1383,23 @@ export const start = async () => {
       else return "test";
     }
 
+    async function createobjective(newobjective) {
+      try {
+        Objectives.insertOne(newobjective).then(result => {
+          var objectivelink = new Object();
+          objectivelink.objectiveid = result.insertedId.toString();
+          objectivelink.userid = newobjective.userid;
+          objectivelink.areaid = newobjective.area;
+          objectivelink.datetime = newobjective.datetime;
+          objectivelink.date = new Date(newobjective.datetime);
+          objectivelink.datecreated = new Date();
+          ObjectiveLinks.insert(objectivelink);
+        });
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
     async function createnote(newnote) {
       try {
         Notes.insertOne(newnote).then(result => {
@@ -1324,6 +1421,23 @@ export const start = async () => {
           notelink.datecreated = new Date();
           NoteLinks.insert(notelink);
         });
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    async function migrateobjectives(objective) {
+      var objectivelink = new Object();
+      objectivelink.areaid = objective.area;
+      objectivelink.userid = objective.userid;
+      objectivelink.objectiveid = objective._id.toString();
+      objectivelink.date = objective.date;
+      objectivelink.orderrank = objective.orderrank;
+      objectivelink.datetime = objective.datetime;
+      objectivelink.complete = objective.complete;
+
+      try {
+        ObjectiveLinks.insertOne(objectivelink);
       } catch (error) {
         console.log(error);
       }
