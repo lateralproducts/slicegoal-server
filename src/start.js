@@ -27,14 +27,16 @@ const oAuth2Client = new OAuth2Client({
 
 const app = express();
 
-app.use(cors());
+var env = "test";
 
+app.use(cors());
 /* const homePath = "/graphiql";
 const URL = "http://localhost";
 const PORT = 3001; */
 var MONGO_URL = `${process.env.MONGODB_URL}`; //27017
 if (MONGO_URL == "undefined") {
   MONGO_URL = "mongodb://172.31.1.156:27017/strategy";
+  env = "prod";
   //override address if necessary
 }
 console.log("attempting to open server: " + MONGO_URL);
@@ -57,13 +59,12 @@ export const start = async () => {
     const NoteLinks = db.collection("notelinks");
     const FocusLinks = db.collection("focuslinks");
     const Logins = db.collection("logins");
-    const Signup = db.collection("signup");
-
-    const Wheels = db.collection("wheels");
     const Clicks = db.collection("clicks");
-    //const WheelAreaLinks = db.collection("wheelarealink");
-
     const Feedback = db.collection("feedback");
+
+    //const Wheels = db.collection("wheels");
+    //const WheelAreaLinks = db.collection("wheelarealink");
+    //const Signup = db.collection("signup");
 
     const typeDefs = [
       `
@@ -371,9 +372,11 @@ export const start = async () => {
           }
 
           if (req.session.user.profile == "coach") {
-            return (await Users.find({
+            const clients = await Users.find({
               coaches: getuserid(req.session)
-            }).toArray()).map(prepare);
+            }).toArray(); //.map(function(client) {return client._id;})
+            req.session.user.clients = clients;
+            return clients.map(prepare);
           }
 
           return (await Users.find({
@@ -394,7 +397,7 @@ export const start = async () => {
               _id: ObjectId(_id),
               $or: [
                 { userid: getuserid(req.session) },
-                { coach: true, userid: { $in: getcoachid(req.session) } }
+                { coach: true, userid: { $in: getcoachid(req.session) } } //this makes the area visible to clients. Using coach:true field.
               ]
             })
           );
@@ -636,7 +639,8 @@ export const start = async () => {
                 RankTimes.aggregate(
                   {
                     $match: {
-                      area: _id
+                      area: _id,
+                      userid: { $in: req.session.user.clients }
                     }
                   },
                   {
@@ -745,11 +749,11 @@ export const start = async () => {
       Mutation: {
         runUpdate: async (parent, args, { req }) => {
           // runUpdate: Boolean
-          const objectives = await Objectives.find().toArray();
+          /* const objectives = await Objectives.find().toArray();
 
           objectives.map(function(objective) {
             migrateobjectives(objective);
-          });
+          }); */
 
           /* const wheelarealinks = await WheelAreaLinks.find().toArray();
           wheelarealinks.map(function(wheelarealink) {
@@ -990,6 +994,13 @@ export const start = async () => {
               return prepare(user);
             }
 
+            if (user.profile == "coach") {
+              const clients = await Users.find({
+                coaches: user._id.toString()
+              }).toArray();
+              user.clients = clients;
+            }
+
             await Logins.insertOne({
               email: args.email,
               lastip: req.ip,
@@ -1149,7 +1160,7 @@ export const start = async () => {
           const res = await RankTimes.insert(args);
           return {
             _id: res.insertedIds[1],
-            message: "new rank entry created prod"
+            message: "new rank entry created"
           };
         },
         createGoalTime: async (root, args, { req }) => {
@@ -1370,7 +1381,9 @@ export const start = async () => {
 
     function getuserid(session) {
       if (session.user) return session.user._id;
-      else return "5d70b68aa1e6bf52b9906b8e";
+      else if (env === "test") {
+        return "5d70b68aa1e6bf52b9906b8e";
+      } else throw new Error("Invalid Session");
     }
 
     function getcoachid(session) {
@@ -1426,7 +1439,7 @@ export const start = async () => {
       }
     }
 
-    async function migrateobjectives(objective) {
+    /*  async function migrateobjectives(objective) {
       var objectivelink = new Object();
       objectivelink.areaid = objective.area;
       objectivelink.userid = objective.userid;
@@ -1501,7 +1514,7 @@ export const start = async () => {
           if (err) throw err;
 
           /*  console.log(JSON.stringify(data, undefined, 2));
-          console.log(data[0].count); */
+          console.log(data[0].count); 
           return data[0].count;
         }
       );
@@ -1549,20 +1562,6 @@ export const start = async () => {
       }
     }
 
-    async function queryarea(area) {
-      try {
-        const wheel = await Wheels.findOne({ _id: ObjectId(area.wheel) });
-        AreaLinks.insert({
-          area: area.area,
-          userid: area.userid,
-          rootarea: wheel.rootarea
-        });
-        return wheel;
-      } catch (error) {
-        console.log(error);
-      }
-    }
-
     async function updaterank(ranktime) {
       try {
         await RankTimes.update(
@@ -1595,7 +1594,7 @@ export const start = async () => {
       } catch (error) {
         console.log(error);
       }
-    }
+    } */
 
     const opts = {
       port: 3001,
