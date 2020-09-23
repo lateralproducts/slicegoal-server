@@ -364,7 +364,9 @@ export const start = async () => {
               { userid: getuserid(req.session) },
               { coach: true, userid: { $in: getcoachid(req.session) } }
             ]
-          }).toArray()).map(prepare);
+          })
+            .sort({ clicks: -1 })
+            .toArray()).map(prepare);
         },
         users: async (parent, args, { req }) => {
           if (req.session.user.thiscoach != null) {
@@ -384,13 +386,7 @@ export const start = async () => {
           }).toArray()).map(prepare);
         },
         area: async (root, { _id, navdirection }, { req }) => {
-          if (navdirection == "forward") {
-            Clicks.insertOne({
-              userid: getuserid(req.session),
-              date: new Date(),
-              areaid: _id
-            });
-          }
+          logareaclick(_id, navdirection, req);
 
           return prepare(
             await Areas.findOne({
@@ -1408,6 +1404,28 @@ export const start = async () => {
           objectivelink.datecreated = new Date();
           ObjectiveLinks.insert(objectivelink);
         });
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    async function logareaclick(_id, navdirection, req) {
+      try {
+        if (navdirection == "forward") {
+          Clicks.insertOne({
+            userid: getuserid(req.session),
+            date: new Date(),
+            areaid: _id
+          });
+
+          Areas.updateOne(
+            {
+              userid: getuserid(req.session),
+              _id: ObjectId(_id)
+            },
+            { $inc: { clicks: 1 } }
+          );
+        }
       } catch (error) {
         console.log(error);
       }
