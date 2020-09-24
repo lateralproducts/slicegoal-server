@@ -636,7 +636,11 @@ export const start = async () => {
                   {
                     $match: {
                       area: _id,
-                      userid: { $in: req.session.user.clients }
+                      userid: {
+                        $in: req.session.user.clients
+                          ? req.session.user.clients
+                          : []
+                      }
                     }
                   },
                   {
@@ -1384,7 +1388,7 @@ export const start = async () => {
 
     function getcoachid(session) {
       if (session.user.coaches) return session.user.coaches;
-      else return [];
+      else return ["none"];
     }
 
     function getuiversion(session) {
