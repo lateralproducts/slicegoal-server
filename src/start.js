@@ -117,8 +117,9 @@ export const start = async () => {
         runUpdate: Boolean!
         removeStartArea: Boolean!
         updateFocusOrder(objectives: [String]): Boolean
-        createObjective(area: String, datetime: String, objective: String, notes: String): Objective
-        updateObjective(objectiveId: String, objective: String, notes: String, datetime: String, complete: String): Boolean
+        createObjective(area: String, datetime: String, objective: String, notes: String, keys:[KeyIn]): Objective
+        updateObjective(objectiveId: String, objective: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Boolean
+        checkKey(objectiveId: String, index: Int, check: Boolean): Boolean
         updateObjectiveOrder(objectives: [String]): Boolean
         createObjectiveLink(objectiveid: String, areaid: String): Boolean
         updateObjectiveLink(linkid: String, notes: String): Boolean
@@ -150,6 +151,17 @@ export const start = async () => {
         datetime: String
         complete: String
         date: String
+        keys: [Key]
+      }
+
+      input KeyIn {
+        title: String
+        checked: Boolean
+      }
+
+      type Key {
+        title: String
+        checked: Boolean
       }
 
       type ObjectiveLink {
@@ -346,7 +358,8 @@ export const start = async () => {
               area: args.area,
               userid: getuserid(req.session),
               $or: [{ nextdate: null }, { nextdate: { $lte: new Date() } }]
-            } //update sort at some stage.
+            },
+            { sort: { datecreated: -1 } } //return reverse chron. Last note created at top of list.
           ).toArray()).map(prepare);
 
           return notelinks.map(prepare);
@@ -1221,6 +1234,18 @@ export const start = async () => {
           );
           return true;
         },
+        checkKey: async (root, args, { req }) => {
+          await Objectives.updateOne(
+            { _id: ObjectId(args.objectiveId), userid: getuserid(req.session) },
+            {
+              $set: {
+                [`keys.${args.index}.checked`]: args.check,
+                [`keys.${args.index}.date`]: new Date()
+              }
+            }
+          );
+          return true;
+        },
         updateNoteLink: async (root, args, { req }) => {
           args.userid = getuserid(req.session);
           NoteLinks.updateOne(
@@ -1427,7 +1452,7 @@ export const start = async () => {
               userid: getuserid(req.session),
               _id: ObjectId(_id)
             },
-            { $inc: { clicks: 1 } }
+            { $inc: { clicks: 1 }, $set: { lastclicked: new Date() } }
           );
         }
       } catch (error) {

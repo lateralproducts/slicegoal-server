@@ -1,5 +1,5 @@
-# This file is a template, and might need editing before it works on your project.
 variables:
+# This file is a template, and might need editing before it works on your project.
 # TEST_NAME: registry.gitlab.com/daniel175/production-strategy-platform:latest
 # TARGET_DIR: /Users/danielschrader/Desktop/Build2/$CI_PROJECT_NAME
 # TEST_NAME: registry.gitlab.com/daniel175/production-strategy-platform:$CI_COMMIT_REF_NAME
