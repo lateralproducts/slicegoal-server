@@ -118,21 +118,14 @@ export const start = async () => {
         removeStartArea: Boolean!
         updateFocusOrder(objectives: [String]): Boolean
         createObjective(area: String, datetime: String, objective: String, notes: String, keys:[KeyIn]): Objective
-        updateObjective(objectiveId: String, objective: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Boolean
-        checkKey(objectiveId: String, index: Int, check: Boolean): Boolean
+        updateObjective(objectiveId: String!, objective: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Boolean
+        checkKey(objectiveId: String!, index: Int, check: Boolean): Boolean
         updateObjectiveOrder(objectives: [String]): Boolean
         createObjectiveLink(objectiveid: String, areaid: String): Boolean
-        updateObjectiveLink(linkid: String, notes: String): Boolean
-        removeObjectiveLink(linkid: String): Boolean
-        saveFocusLink(
-          area: String!,
-          objective: String!,
-          datetime: String!,
-          links: [String]
-        ): Boolean
-        removeFocusLink(
-          linkid: String!
-        ): Boolean
+        updateObjectiveLink(linkid: String!, notes: String, snooze: String): Boolean
+        removeObjectiveLink(linkid: String!): Boolean
+        saveFocusLink(area: String!, objective: String!, datetime: String!, links: [String]): Boolean
+        snoozeFocusLink(linkid: String!, snooze: String!): Boolean
       }
 
       type AreaLink {
@@ -337,7 +330,8 @@ export const start = async () => {
         focusLinks: async (parent, args, { req }) => {
           return (await FocusLinks.find(
             {
-              userid: getuserid(req.session)
+              userid: getuserid(req.session),
+              $or: [{ snooze: null }, { snooze: { $lt: new Date() } }]
             } //update sort at some stage.
           )
             .sort({ orderrank: 1 })
@@ -1096,12 +1090,18 @@ export const start = async () => {
             return true;
           }
         },
-        removeFocusLink: async (root, args, { req }) => {
+        snoozeFocusLink: async (root, args, { req }) => {
           args.userid = getuserid(req.session);
-          await FocusLinks.deleteOne({
-            _id: ObjectId(args.linkid),
-            userid: args.userid
-          });
+          args.snoozedate = new Date(args.snooze);
+          args.snoozedate.setHours(0, 0, 0, 0);
+          await FocusLinks.updateOne(
+            { _id: ObjectId(args.linkid), userid: args.userid },
+            {
+              $set: {
+                snooze: args.snoozedate
+              }
+            }
+          );
           return true;
         },
         submitFeedback: async (root, args, { req }) => {
