@@ -103,6 +103,7 @@ export const start = async () => {
         createNoteLink(noteid: String, area: String): Boolean
         updateNoteLink(linkid: String, notes: String): Boolean
         removeNoteLink(linkid: String): Boolean
+        createNewNoteLink(areaname: String!, noteid: String!): Boolean
         markSpacedYes(noteId: String, datetime: String): Boolean
         markSpacedNo(noteId: String, datetime: String): Boolean
         savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
@@ -1241,6 +1242,21 @@ export const start = async () => {
           const res = await NoteLinks.insert(args);
           return res.insertedIds[1] ? true : false;
         },
+        createNewNoteLink: async (root, args, { req }) => {
+          var newarea = new Object(); //create new area.
+          newarea.userid = getuserid(req.session);
+          newarea.name = args.areaname;
+          const res = await Areas.insert(newarea);
+
+          await NoteLinks.insertOne({
+            //insert the link to connect note and new area.
+            noteid: args.noteid,
+            userid: getuserid(req.session),
+            area: res.insertedIds[0].toString(),
+            datecreated: new Date(args.datetime)
+          });
+          return res.insertedIds[1] ? true : false;
+        },
         removeNoteLink: async (root, args, { req }) => {
           args.userid = getuserid(req.session);
           NoteLinks.deleteOne(
@@ -1428,6 +1444,7 @@ export const start = async () => {
       if (session.user) return session.user._id;
       else if (env === "test") {
         return "5d70b68aa1e6bf52b9906b8e";
+        //throw new Error("Invalid Session");
       } else throw new Error("Invalid Session");
     }
 
