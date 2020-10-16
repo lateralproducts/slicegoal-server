@@ -646,7 +646,7 @@ export const start = async () => {
                       area: _id,
                       userid: {
                         $in: req.session.user.clients
-                          ? req.session.user.clients
+                          ? req.session.user.clients.map(client => client._id)
                           : []
                       }
                     }
@@ -675,7 +675,7 @@ export const start = async () => {
                             rank: parseInt(data[0].rank),
                             note: "coaching average"
                           }
-                        : 0
+                        : null
                     );
                   }
                 );
@@ -839,11 +839,16 @@ export const start = async () => {
           //make it possible only for users who have impersonate function to impersonate another user for coaches
           if (req.session.user.thiscoach) {
             req.session.user = newuser;
+
+            const clients = await Users.find({
+              coaches: newuser._id.toString()
+            }).toArray();
+            req.session.user.clients = clients;
+
             return newuser;
           } else if (req.session.user.profile == "coach") {
             newuser.thiscoach = req.session.user;
             req.session.user = newuser;
-            //setTimeout(() => console.log("waited 5 seconds"), 10000);
             return newuser;
           } else return null;
         },
