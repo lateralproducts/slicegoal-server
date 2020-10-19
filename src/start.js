@@ -117,11 +117,11 @@ export const start = async () => {
         updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
         runUpdate: Boolean!
         removeStartArea: Boolean!
-        updateFocusOrder(objectives: [String]): Boolean
         createObjective(area: String, datetime: String, objective: String, notes: String, keys:[KeyIn]): Objective
         updateObjective(objectiveId: String!, objective: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Boolean
         checkKey(objectiveId: String!, index: Int, check: Boolean): Boolean
         updateObjectiveOrder(objectives: [String]): Boolean
+        updateFocusOrder(objectives: [String]): Boolean
         createObjectiveLink(objectiveid: String, areaid: String): Boolean
         updateObjectiveLink(linkid: String!, notes: String, snooze: String): Boolean
         removeObjectiveLink(linkid: String!): Boolean
@@ -673,7 +673,7 @@ export const start = async () => {
                       data[0]
                         ? {
                             rank: parseInt(data[0].rank),
-                            note: "coaching average"
+                            note: "coaching team average"
                           }
                         : null
                     );
@@ -815,18 +815,18 @@ export const start = async () => {
           );
           return args;
         },
-        updateFocusOrder: async (parent, args, { req }) => {
+        updateObjectiveOrder: async (parent, args, { req }) => {
           args.objectives.map(function(_id, count) {
-            FocusLinks.updateOne(
+            ObjectiveLinks.updateOne(
               { _id: ObjectId(_id) },
               { $set: { orderrank: count } }
             );
           });
           return true;
         },
-        updateObjectiveOrder: async (parent, args, { req }) => {
+        updateFocusOrder: async (parent, args, { req }) => {
           args.objectives.map(function(_id, count) {
-            ObjectiveLinks.updateOne(
+            FocusLinks.updateOne(
               { _id: ObjectId(_id) },
               { $set: { orderrank: count } }
             );
