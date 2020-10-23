@@ -281,7 +281,7 @@ export const start = async () => {
 
     const resolvers = {
       Query: {
-        isLoggedin: async (root, args, { req }) => {
+        isLoggedin: async (root, args, { req, ip }) => {
           if (req.session.user) {
             const user = await Users.findOne({
               _id: ObjectId(getuserid(req.session))
@@ -289,7 +289,7 @@ export const start = async () => {
 
             await Logins.insertOne({
               email: req.session.user.email,
-              lastip: req.ip,
+              lastip: ip,
               result: "success",
               type: "loggedin refresh",
               lastlogin: new Date()
@@ -298,7 +298,7 @@ export const start = async () => {
           } else {
             await Logins.insertOne({
               request: args,
-              lastip: req.ip,
+              lastip: ip,
               result: "failed",
               type: "loggedin refresh",
               lastlogin: new Date()
@@ -894,7 +894,7 @@ export const start = async () => {
 
           return true;
         }, */
-        login: async (parent, args, { req }) => {
+        login: async (parent, args, { req, ip }) => {
           const user = await Users.findOne({ email: args.username });
           //const user = data[username];
 
@@ -906,7 +906,7 @@ export const start = async () => {
 
                 await Logins.insertOne({
                   email: args.username,
-                  lastip: req.ip,
+                  lastip: ip,
                   result: "success",
                   type: "username login",
                   lastlogin: new Date()
@@ -917,7 +917,7 @@ export const start = async () => {
                   {
                     $set: {
                       uiversion: args.uiversion,
-                      lastip: req.ip,
+                      lastip: ip,
                       lastlogin: new Date()
                     }
                   }
@@ -938,7 +938,7 @@ export const start = async () => {
 
               await Logins.insertOne({
                 email: args.username,
-                lastip: req.ip,
+                lastip: ip,
                 result: "failed",
                 type: "username login",
                 lastlogin: new Date()
@@ -949,7 +949,7 @@ export const start = async () => {
 
             await Logins.insertOne({
               email: args.username,
-              lastip: req.ip,
+              lastip: ip,
               result: "failed",
               type: "username login",
               lastlogin: new Date()
@@ -970,7 +970,7 @@ export const start = async () => {
 
           await Logins.insertOne({
             email: args.username,
-            lastip: req.ip,
+            lastip: ip,
             result: "not registered",
             type: "username login",
             lastlogin: new Date()
@@ -987,7 +987,7 @@ export const start = async () => {
 
           throw new Error("Email not registered");
         },
-        googleLogin: async (parent, args, { req }) => {
+        googleLogin: async (parent, args, { req, ip }) => {
           const tokenInfo = await oAuth2Client.getTokenInfo(args.token);
 
           if ((tokenInfo.email = args.email)) {
@@ -998,7 +998,7 @@ export const start = async () => {
               args.profile = "client";
               args.state = "new";
               args.serverversion = pjson.version;
-              args.lastip = req.ip;
+              args.lastip = ip;
               const user = args;
               req.session.user = user;
               args.token = null; //removing the token from saving in database for security
@@ -1016,7 +1016,7 @@ export const start = async () => {
 
             await Logins.insertOne({
               email: args.email,
-              lastip: req.ip,
+              lastip: ip,
               result: "success",
               type: "google login",
               lastlogin: new Date()
@@ -1028,7 +1028,7 @@ export const start = async () => {
                 $set: {
                   uiversion: args.uiversion,
                   googleid: args.googleid,
-                  lastip: req.ip
+                  lastip: ip
                 }
               }
             );
@@ -1048,7 +1048,7 @@ export const start = async () => {
             email: args.email,
             result: "failed",
             type: "google login",
-            ip: req.ip,
+            ip: ip,
             lastlogin: new Date()
           });
           throw new Error("Error authenticating with google");
@@ -1704,7 +1704,8 @@ export const start = async () => {
     // context
     const context = req => ({
       req: req.request,
-      version: pjson.version
+      version: pjson.version,
+      ip: getuserIpAddress(req)
     });
 
     // server
@@ -1715,7 +1716,7 @@ export const start = async () => {
     });
 
     /* function loggingMiddleware(req, res, next) {
-      console.log("ip:", req.ip);
+      console.log("ip:", ip);
       next();
     }
     server.express.use(loggingMiddleware); */
@@ -1725,7 +1726,7 @@ export const start = async () => {
     server.express.use(
       session({
         name: "qid",
-        secret: `some-random-secret-here`,
+        secret: `whale-schradernator`, //random secret
         resave: true,
         saveUninitialized: true,
         cookie: {
@@ -1734,6 +1735,14 @@ export const start = async () => {
         }
       })
     );
+
+    const getuserIpAddress = request => {
+      const headers = request.headers;
+      if (!headers) return null;
+      const ipAddress = headers["x-forwarded-for"];
+      if (!ipAddress) return null;
+      return ipAddress;
+    };
 
     // start server
     server.start(opts, () =>
