@@ -1736,10 +1736,10 @@ export const start = async () => {
       })
     );
 
-    const getuserIpAddress = request => {
+    const getuserIpAddress = ({ request }) => {
       const headers = request.headers;
       if (!headers) return null;
-      return headers.toString();
+      return headers;
       const ipAddress = headers["x-forwarded-for"];
       if (!ipAddress) return null;
       return ipAddress;
