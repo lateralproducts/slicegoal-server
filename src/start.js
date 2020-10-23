@@ -289,7 +289,7 @@ export const start = async () => {
 
             await Logins.insertOne({
               email: req.session.user.email,
-              lastip: ip,
+              lastip: getuserIpAddress(req),
               result: "success",
               type: "loggedin refresh",
               lastlogin: new Date()
@@ -298,7 +298,7 @@ export const start = async () => {
           } else {
             await Logins.insertOne({
               request: args,
-              lastip: ip,
+              lastip: getuserIpAddress(req),
               result: "failed",
               type: "loggedin refresh",
               lastlogin: new Date()
@@ -906,7 +906,7 @@ export const start = async () => {
 
                 await Logins.insertOne({
                   email: args.username,
-                  lastip: ip,
+                  lastip: getuserIpAddress(req),
                   result: "success",
                   type: "username login",
                   lastlogin: new Date()
@@ -917,7 +917,7 @@ export const start = async () => {
                   {
                     $set: {
                       uiversion: args.uiversion,
-                      lastip: ip,
+                      lastip: getuserIpAddress(req),
                       lastlogin: new Date()
                     }
                   }
@@ -938,7 +938,7 @@ export const start = async () => {
 
               await Logins.insertOne({
                 email: args.username,
-                lastip: ip,
+                lastip: getuserIpAddress(req),
                 result: "failed",
                 type: "username login",
                 lastlogin: new Date()
@@ -949,7 +949,7 @@ export const start = async () => {
 
             await Logins.insertOne({
               email: args.username,
-              lastip: ip,
+              lastip: getuserIpAddress(req),
               result: "failed",
               type: "username login",
               lastlogin: new Date()
@@ -970,7 +970,7 @@ export const start = async () => {
 
           await Logins.insertOne({
             email: args.username,
-            lastip: ip,
+            lastip: getuserIpAddress(req),
             result: "not registered",
             type: "username login",
             lastlogin: new Date()
@@ -1016,7 +1016,7 @@ export const start = async () => {
 
             await Logins.insertOne({
               email: args.email,
-              lastip: ip,
+              lastip: getuserIpAddress(req),
               result: "success",
               type: "google login",
               lastlogin: new Date()
@@ -1028,7 +1028,7 @@ export const start = async () => {
                 $set: {
                   uiversion: args.uiversion,
                   googleid: args.googleid,
-                  lastip: ip
+                  lastip: getuserIpAddress(req)
                 }
               }
             );
@@ -1048,7 +1048,7 @@ export const start = async () => {
             email: args.email,
             result: "failed",
             type: "google login",
-            ip: ip,
+            ip: getuserIpAddress(req),
             lastlogin: new Date()
           });
           throw new Error("Error authenticating with google");
@@ -1704,8 +1704,7 @@ export const start = async () => {
     // context
     const context = req => ({
       req: req.request,
-      version: pjson.version,
-      ip: getuserIpAddress(req)
+      version: pjson.version
     });
 
     // server
@@ -1739,7 +1738,6 @@ export const start = async () => {
     const getuserIpAddress = ({ request }) => {
       const headers = request.headers;
       if (!headers) return null;
-      return headers;
       const ipAddress = headers["x-forwarded-for"];
       if (!ipAddress) return null;
       return ipAddress;
