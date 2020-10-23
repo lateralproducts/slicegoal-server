@@ -1738,8 +1738,8 @@ export const start = async () => {
 
     const getuserIpAddress = request => {
       const headers = request.headers;
-      return headers;
       if (!headers) return null;
+      return headers.toString();
       const ipAddress = headers["x-forwarded-for"];
       if (!ipAddress) return null;
       return ipAddress;
