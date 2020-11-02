@@ -125,6 +125,7 @@ export const start = async () => {
         createObjectiveLink(objectiveid: String, areaid: String): Boolean
         updateObjectiveLink(linkid: String!, notes: String, snooze: String): Boolean
         removeObjectiveLink(linkid: String!): Boolean
+        snoozeObjectiveLink(linkid: String!, snooze: String!): Boolean
         saveFocusLink(area: String!, objective: String!, datetime: String!, links: [String]): Boolean
         snoozeFocusLink(linkid: String!, snooze: String!): Boolean
       }
@@ -323,6 +324,7 @@ export const start = async () => {
           args.objective ? (query.objectiveid = args.objective) : "";
           query.userid = getuserid(req.session);
           query.complete = { $eq: null };
+          query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }];
 
           return (await ObjectiveLinks.find(query, {
             sort: { orderrank: 1 }
@@ -1110,6 +1112,20 @@ export const start = async () => {
           );
           return true;
         },
+        snoozeObjectiveLink: async (root, args, { req }) => {
+          args.userid = getuserid(req.session);
+          args.snoozedate = new Date(args.snooze);
+          args.snoozedate.setHours(0, 0, 0, 0);
+          await ObjectiveLinks.updateOne(
+            { _id: ObjectId(args.linkid), userid: args.userid },
+            {
+              $set: {
+                snooze: args.snoozedate
+              }
+            }
+          );
+          return true;
+        },
         submitFeedback: async (root, args, { req }) => {
           args.userid = getuserid(req.session);
           args.serverversion = pjson.version;
@@ -1243,7 +1259,7 @@ export const start = async () => {
           args.userid = getuserid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
-          args.datecreated = new Date(args.datetime);
+          args.datecreated = new Date();
           const res = await NoteLinks.insert(args);
           return res.insertedIds[1] ? true : false;
         },
