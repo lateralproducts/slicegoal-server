@@ -1074,29 +1074,7 @@ export const start = async () => {
           return true;
         },
         saveFocusLink: async (root, args, { req }) => {
-          var focuslink = await FocusLinks.findOne(
-            {
-              userid: getuserid(req.session),
-              objective: args.objective
-            },
-            { sort: { date: -1 } } //update sort at some stage.
-          );
-
-          if (focuslink) {
-            args.userid = getuserid(req.session);
-            await FocusLinks.deleteOne({
-              _id: focuslink._id,
-              userid: args.userid
-            });
-            return true;
-          } else {
-            args.userid = getuserid(req.session);
-            args.serverversion = pjson.version;
-            args.uiversion = getuiversion(req.session);
-            args.date = new Date(args.datetime);
-            await FocusLinks.insertOne(args);
-            return true;
-          }
+          return updatefocuslink(req, args);
         },
         snoozeFocusLink: async (root, args, { req }) => {
           args.userid = getuserid(req.session);
@@ -1364,6 +1342,7 @@ export const start = async () => {
               },
               { multi: true }
             );
+          removefocuslink(req, objectiveId);
           return true;
         },
         updateNote: async (root, args, { req }) => {
@@ -1541,6 +1520,41 @@ export const start = async () => {
         });
       } catch (error) {
         console.log(error);
+      }
+    }
+
+    async function removefocuslink(req, objectiveid) {
+      await FocusLinks.deleteOne({
+        objective: objectiveid,
+        userid: getuserid(req.session)
+      });
+
+      return true;
+    }
+
+    async function updatefocuslink(req, args) {
+      var focuslink = await FocusLinks.findOne(
+        {
+          userid: getuserid(req.session),
+          objective: args.objective
+        },
+        { sort: { date: -1 } } //update sort at some stage.
+      );
+
+      if (focuslink) {
+        args.userid = getuserid(req.session);
+        await FocusLinks.deleteOne({
+          _id: focuslink._id,
+          userid: args.userid
+        });
+        return true;
+      } else {
+        args.userid = getuserid(req.session);
+        args.serverversion = pjson.version;
+        args.uiversion = getuiversion(req.session);
+        args.date = new Date(args.datetime);
+        await FocusLinks.insertOne(args);
+        return true;
       }
     }
 
