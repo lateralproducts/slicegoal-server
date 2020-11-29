@@ -85,7 +85,7 @@ export const start = async () => {
         pomodoros(objectiveId: String): [Pomodoro]
         notes(area: String): [NoteLink]
         noteLinks(noteid: String): [NoteLink]
-        focusLinks: [Focus]
+        focusLinks(limit: Int): [Focus]
         focusLink(focuslink: String): Focus
       }
 
@@ -338,6 +338,7 @@ export const start = async () => {
             } //update sort at some stage.
           )
             .sort({ orderrank: 1 })
+            .limit(args.limit)
             .toArray()).map(prepare);
         },
         focusLink: async (parent, args, { req }) => {
