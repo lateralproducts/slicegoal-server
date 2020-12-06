@@ -98,7 +98,7 @@ export const start = async () => {
         createCoachArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
         createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
-        createNote(area: String, datetime: String, prompt: String, answer: String, linknote: String): Spaced
+        createNote(area: String, datetime: String, prompt: String, answer: String, linknote: String, arealinks: [AreaLinkIn]): Spaced
         updateNote(noteid: String, datetime: String, prompt: String, answer: String): Spaced 
         createNoteLink(noteid: String, area: String): Boolean
         updateNoteLink(linkid: String, notes: String): Boolean
@@ -152,6 +152,16 @@ export const start = async () => {
       input KeyIn {
         title: String
         checked: Boolean
+      }
+
+      input AreaLinkIn {
+        area: AreaId
+        notes: String
+        _id: String
+      }
+
+      input AreaId {
+        _id: String
       }
 
       type Key {
@@ -1518,6 +1528,17 @@ export const start = async () => {
           notelink.notes = newnote.linknote;
           notelink.datecreated = new Date();
           NoteLinks.insert(notelink);
+
+          if (newnote.arealinks)
+            newnote.arealinks.map(link => {
+              var notelink = new Object();
+              notelink.noteid = result.insertedId.toString();
+              notelink.userid = newnote.userid;
+              notelink.area = link.area._id;
+              notelink.notes = link.notes;
+              notelink.datecreated = new Date();
+              NoteLinks.insert(notelink);
+            });
         });
       } catch (error) {
         console.log(error);
