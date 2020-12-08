@@ -84,6 +84,7 @@ export const start = async () => {
         objectiveLinks(area: String, objective: String): [ObjectiveLink]
         pomodoros(objectiveId: String): [Pomodoro]
         notes(area: String): [NoteLink]
+        searchnotes(search: String): [Note]
         noteLinks(noteid: String): [NoteLink]
         focusLinks(limit: Int): [Focus]
         focusLink(focuslink: String): Focus
@@ -372,6 +373,17 @@ export const start = async () => {
 
           return notelinks.map(prepare);
         },
+        searchnotes: async (parent, args, { req }) => {
+          const notes = (await Notes.find(
+            {
+              answer: new RegExp(args.search),
+              userid: getuserid(req.session)
+            },
+            { sort: { datecreated: -1 } } //return reverse chron. Last note created at top of list.
+          ).toArray()).map(prepare);
+
+          return notes.map(prepare);
+        },
         noteLinks: async (parent, args, { req }) => {
           const notelinks = (await NoteLinks.find({
             noteid: args.noteid,
@@ -459,8 +471,8 @@ export const start = async () => {
         pomodoros: async (root, { objectiveId }, { req }) => {
           return (await Pomodoros.find(
             {
-              objective: objectiveId
-              //userid: getuserid(req.session)
+              objective: objectiveId,
+              userid: getuserid(req.session)
             },
             { sort: { date: -1 } }
           ).toArray()).map(prepare);
@@ -1455,7 +1467,6 @@ export const start = async () => {
       if (session.user) return session.user._id;
       else if (env === "test") {
         return "5d70b68aa1e6bf52b9906b8e";
-        //throw new Error("Invalid Session");
       } else throw new Error("Invalid Session");
     }
 
@@ -1780,6 +1791,7 @@ export const start = async () => {
         secret: `whale-schradernator`, //random secret
         resave: true,
         saveUninitialized: true,
+        rolling: true,
         cookie: {
           secure: false, //if this is true it is not working in production. cookies don't work at all in dev with apache on http.
           maxAge: ms("1d")
