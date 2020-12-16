@@ -631,7 +631,7 @@ export const start = async () => {
             Clicks.aggregate(
               {
                 $match: {
-                  area: _id
+                  areaid: _id
                 }
               },
               {
