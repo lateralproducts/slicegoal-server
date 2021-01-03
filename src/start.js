@@ -84,7 +84,7 @@ export const start = async () => {
         objectiveLinks(area: String, objective: String): [ObjectiveLink]
         pomodoros(objectiveId: String): [Pomodoro]
         notes(area: String): [NoteLink]
-        searchnotes(search: String): [Note]
+        searchnotes(search: String, spaced: Boolean): [Note]
         noteLinks(noteid: String): [NoteLink]
         focusLinks(limit: Int): [Focus]
         focusLink(focuslink: String): Focus
@@ -377,7 +377,8 @@ export const start = async () => {
           const notes = (await Notes.find(
             {
               answer: new RegExp(args.search),
-              userid: getuserid(req.session)
+              userid: getuserid(req.session),
+              prompt: args.spaced ? { $not: { $eq: "" } } : ""
             },
             { sort: { datecreated: -1 } } //return reverse chron. Last note created at top of list.
           ).toArray()).map(prepare);
