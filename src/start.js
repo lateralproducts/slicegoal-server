@@ -157,6 +157,7 @@ export const start = async () => {
 
       input AreaLinkIn {
         area: AreaId
+        name: String
         notes: String
         _id: String
       }
@@ -1250,7 +1251,7 @@ export const start = async () => {
           args.uiversion = getuiversion(req.session);
           args.datecreated = new Date(args.datetime);
           args.lastedited = new Date(args.datetime);
-          createnote(args);
+          createnote(args, req);
 
           return {
             _id: 1,
@@ -1520,38 +1521,52 @@ export const start = async () => {
       }
     }
 
-    async function createnote(newnote) {
+    async function createnote(newnote, req) {
       try {
-        Notes.insertOne(newnote).then(result => {
-          var note = new Object();
-          note.noteid = result.insertedId.toString();
-          note.userid = newnote.userid;
-          note.fib0 = 0;
-          note.fib1 = 1;
-          var nextdate = new Date(); //set nextdate for tomorrow.
-          if (newnote.prompt) nextdate.setDate(nextdate.getDate() + 1);
-          note.datenext = nextdate;
-          Spaced.insert(note);
+        const result = await Notes.insertOne(newnote);
 
-          var notelink = new Object();
-          notelink.noteid = result.insertedId.toString();
-          notelink.userid = newnote.userid;
-          notelink.area = newnote.area;
-          notelink.notes = newnote.linknote;
-          notelink.datecreated = new Date();
-          NoteLinks.insert(notelink);
+        var note = new Object();
+        note.noteid = result.insertedId.toString();
+        note.userid = newnote.userid;
+        note.fib0 = 0;
+        note.fib1 = 1;
+        var nextdate = new Date(); //set nextdate for tomorrow.
+        if (newnote.prompt) nextdate.setDate(nextdate.getDate() + 1);
+        note.datenext = nextdate;
+        Spaced.insert(note);
 
-          if (newnote.arealinks)
-            newnote.arealinks.map(link => {
-              var notelink = new Object();
-              notelink.noteid = result.insertedId.toString();
-              notelink.userid = newnote.userid;
-              notelink.area = link.area._id;
-              notelink.notes = link.notes;
-              notelink.datecreated = new Date();
-              NoteLinks.insert(notelink);
-            });
-        });
+        var notelink = new Object();
+        notelink.noteid = result.insertedId.toString();
+        notelink.userid = newnote.userid;
+        notelink.area = newnote.area;
+        notelink.notes = newnote.linknote;
+        notelink.datecreated = new Date();
+        NoteLinks.insert(notelink);
+
+        if (newnote.arealinks)
+          newnote.arealinks.map(async link => {
+            var areaid = link.area._id;
+            if (!areaid) {
+              var area = {
+                name: link.name,
+                userid: getuserid(req.session),
+                serverversion: pjson.version,
+                uiversion: getuiversion(req.session),
+                created: new Date()
+              };
+
+              const res = await Areas.insert(area);
+              areaid = res.insertedIds[0].toString();
+            }
+
+            var notelink = new Object();
+            notelink.noteid = result.insertedId.toString();
+            notelink.userid = newnote.userid;
+            notelink.area = areaid;
+            notelink.notes = link.notes;
+            notelink.datecreated = new Date();
+            NoteLinks.insert(notelink);
+          });
       } catch (error) {
         console.log(error);
       }
