@@ -1359,7 +1359,7 @@ export const start = async () => {
             { _id: ObjectId(objectiveId) },
             { $set: args }
           );
-          if (args.complete)
+          if (args.complete) {
             await ObjectiveLinks.update(
               { objectiveid: objectiveId },
               {
@@ -1367,7 +1367,8 @@ export const start = async () => {
               },
               { multi: true }
             );
-          removefocuslink(req, objectiveId);
+            removefocuslink(req, objectiveId);
+          }
           return true;
         },
         updateNote: async (root, args, { req }) => {
