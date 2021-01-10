@@ -1099,7 +1099,29 @@ export const start = async () => {
           return true;
         },
         saveFocusLink: async (root, args, { req }) => {
-          return updatefocuslink(req, args);
+          var focuslink = await FocusLinks.findOne(
+            {
+              userid: getuserid(req.session),
+              objective: args.objective
+            },
+            { sort: { date: -1 } } //update sort at some stage.
+          );
+
+          if (focuslink) {
+            args.userid = getuserid(req.session);
+            await FocusLinks.deleteOne({
+              _id: focuslink._id,
+              userid: args.userid
+            });
+            return true;
+          } else {
+            args.userid = getuserid(req.session);
+            args.serverversion = pjson.version;
+            args.uiversion = getuiversion(req.session);
+            args.date = new Date(args.datetime);
+            await FocusLinks.insertOne(args);
+            return true;
+          }
         },
         snoozeFocusLink: async (root, args, { req }) => {
           args.userid = getuserid(req.session);
@@ -1580,32 +1602,6 @@ export const start = async () => {
       });
 
       return true;
-    }
-
-    async function updatefocuslink(req, args) {
-      var focuslink = await FocusLinks.findOne(
-        {
-          userid: getuserid(req.session),
-          objective: args.objective
-        },
-        { sort: { date: -1 } } //update sort at some stage.
-      );
-
-      if (focuslink) {
-        args.userid = getuserid(req.session);
-        await FocusLinks.deleteOne({
-          _id: focuslink._id,
-          userid: args.userid
-        });
-        return true;
-      } else {
-        args.userid = getuserid(req.session);
-        args.serverversion = pjson.version;
-        args.uiversion = getuiversion(req.session);
-        args.date = new Date(args.datetime);
-        await FocusLinks.insertOne(args);
-        return true;
-      }
     }
 
     /*  async function migrateobjectives(objective) {
