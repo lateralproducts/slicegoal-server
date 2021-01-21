@@ -12,6 +12,17 @@ import session from "express-session";
 import bcrypt from "bcryptjs";
 import ms from "ms";
 
+var nodemailer = require("nodemailer");
+var schedule = require("node-schedule");
+
+var transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "daniel@schrader.consulting",
+    pass: "zppvcnkyknshdpdx"
+  }
+});
+
 //import { verifier } from "google-id-token-verifier";
 const { OAuth2Client } = require("google-auth-library");
 
@@ -30,6 +41,9 @@ const app = express();
 var env = "test";
 
 app.use(cors());
+
+const URLpath = "https://localhost:8000";
+
 /* const homePath = "/graphiql";
 const URL = "http://localhost";
 const PORT = 3001; */
@@ -65,6 +79,94 @@ export const start = async () => {
     //const Wheels = db.collection("wheels");
     //const WheelAreaLinks = db.collection("wheelarealink");
     //const Signup = db.collection("signup");
+
+    var j = schedule.scheduleJob({ hour: 8, minute: 0 }, function() {
+      objectivesummaryemail("daniel@schrader.consulting");
+    });
+
+    async function objectivesummaryemail(email) {
+      const user = await Users.findOne({ email: email });
+
+      const links = await FocusLinks.find({
+        userid: user._id.toString(),
+        $or: [{ snooze: null }, { snooze: { $lt: new Date() } }]
+      })
+        .sort({ orderrank: 1 })
+        .limit(100)
+        .toArray();
+
+      const objectives = await Objectives.find({
+        _id: {
+          $in: links.map(function(link) {
+            return ObjectId(link.objective);
+          })
+        },
+        $or: [{ snooze: null }, { snooze: { $lt: new Date() } }]
+      })
+        .sort({ orderrank: 1 })
+        .limit(100)
+        .toArray();
+
+      var mailOptions = {
+        from: "daniel@schrader.consulting",
+        to: user.email,
+        subject: "hey " + user.firstname + ", cavestep says woop woop!!",
+        html:
+          "<head><style>a {border: 1px dotted hsla(0, 0%, 0%, 0.5);cursor: help;background-color: lightblue;text-align: center;}</style></head>" +
+          objectives
+            .map(function(obj) {
+              return (
+                "<a href='" +
+                URLpath +
+                "/?objective=" +
+                obj._id +
+                "'>" +
+                obj.objective +
+                "</a>"
+              );
+            })
+            .join("")
+      };
+
+      transporter.sendMail(mailOptions, function(error, info) {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log("Email sent: " + info.response);
+        }
+      });
+    }
+
+    async function newUserEmail(client, coach) {
+      var mailOptions = {
+        from: "daniel@schrader.consulting",
+        to: client.email,
+        subject: "hey " + client.firstname + ", cavestep says hello!!",
+        html:
+          "<head><style>a {border: 1px dotted hsla(0, 0%, 0%, 0.5);cursor: help;background-color: lightblue;text-align: center;}</style></head>" +
+          "<a href='" +
+          URLpath +
+          "/?page=verify&user=" +
+          client._id +
+          "&code=" +
+          client.code +
+          "&name=" +
+          client.firstname +
+          "'>" +
+          "verify email here" +
+          "</a><div>" +
+          coach.firstname +
+          " has added you as a client!</div>"
+      };
+
+      transporter.sendMail(mailOptions, function(error, info) {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log("Email sent to:" + client.email + " - " + info.response);
+        }
+      });
+    }
 
     const typeDefs = [
       `
@@ -113,7 +215,7 @@ export const start = async () => {
         login(username: String!, pwd: String!, uiversion: String): User
         setUser(email: String!): User
         logout: Boolean!
-        googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String): User
+        googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
         signup(email: String, name: String, username: String, pwd: String, uiversion: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
         runUpdate: Boolean!
@@ -129,6 +231,8 @@ export const start = async () => {
         snoozeObjectiveLink(linkid: String!, snooze: String!): Boolean
         saveFocusLink(area: String!, objective: String!, datetime: String!, links: [String]): Boolean
         snoozeFocusLink(linkid: String!, snooze: String!): Boolean
+        createClient(email: String!, firstname: String!, lastname: String, startarea: String): Boolean
+        verifyAccount(userid: String, code: String, password: String): User
       }
 
       type AreaLink {
@@ -397,7 +501,7 @@ export const start = async () => {
           return (await Areas.find({
             $or: [
               { userid: getuserid(req.session) },
-              { coach: true, userid: { $in: getcoachid(req.session) } }
+              { userid: { $in: getcoachid(req.session) } }
             ]
           })
             .sort({ clicks: -1 })
@@ -408,7 +512,10 @@ export const start = async () => {
             return [req.session.user.thiscoach];
           }
 
-          if (req.session.user.profile == "coach") {
+          if (
+            req.session.user.profile == "coach" ||
+            req.session.user.profile == "daniel"
+          ) {
             const clients = await Users.find({
               coaches: getuserid(req.session)
             }).toArray(); //.map(function(client) {return client._id;})
@@ -428,7 +535,7 @@ export const start = async () => {
               _id: ObjectId(_id),
               $or: [
                 { userid: getuserid(req.session) },
-                { coach: true, userid: { $in: getcoachid(req.session) } } //this makes the area visible to clients. Using coach:true field.
+                { userid: { $in: getcoachid(req.session) } } //this makes the area visible to clients. Using coach:true field.
               ]
             })
           );
@@ -841,6 +948,36 @@ export const start = async () => {
             { $set: args }
           );
           return args;
+        },
+        createClient: async (parent, args, { req }) => {
+          if (req.session.user) {
+            args.profile = "client";
+            args.state = "new";
+            args.coaches = [req.session.user._id];
+            args.code = bcrypt.hashSync("verifythisyo", 10);
+            var insertedId = await Users.insertOne(args);
+            if (insertedId.insertedId) newUserEmail(args, req.session.user);
+            return true;
+          }
+          return false;
+        },
+        verifyAccount: async (parent, args, { req }) => {
+          const user = await Users.findOneAndUpdate(
+            { _id: ObjectId(args.userid), code: args.code, state: "new" },
+            {
+              $set: {
+                state: "verified",
+                password: bcrypt.hashSync(args.password, 10)
+              }
+            }
+          );
+          req.session.user = user.value;
+          if (user.value) return prepare(user.value);
+          else {
+            throw new Error(
+              "Your account didn't verify. If you've signed up before, try logging in."
+            );
+          }
         },
         updateObjectiveOrder: async (parent, args, { req }) => {
           args.objectives.map(function(_id, count) {
