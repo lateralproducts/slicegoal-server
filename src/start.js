@@ -188,7 +188,7 @@ export const start = async () => {
         notes(area: String): [NoteLink]
         searchnotes(search: String, spaced: Boolean): [Note]
         noteLinks(noteid: String): [NoteLink]
-        focusLinks(limit: Int): [Focus]
+        focusLinks(limit: Int, area: String): [Focus]
         focusLink(focuslink: String): Focus
       }
 
@@ -450,7 +450,8 @@ export const start = async () => {
           return (await FocusLinks.find(
             {
               userid: getuserid(req.session),
-              $or: [{ snooze: null }, { snooze: { $lt: new Date() } }]
+              $or: [{ snooze: null }, { snooze: { $lt: new Date() } }],
+              links: args.area
             } //update sort at some stage.
           )
             .sort({ orderrank: 1 })
