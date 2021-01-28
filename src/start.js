@@ -18,8 +18,8 @@ var schedule = require("node-schedule");
 var transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "daniel@schrader.consulting",
-    pass: "zppvcnkyknshdpdx"
+    user: "daniel@lateralproducts.com",
+    pass: "gaxlfyfntrigianv"
   }
 });
 
@@ -42,7 +42,12 @@ var env = "test";
 
 app.use(cors());
 
-const URLpath = "https://localhost:8000";
+var URLpath = `${process.env.URLpath}`;
+if (URLpath == "undefined") {
+  MONGO_URL = "https://lateralproducts.com";
+  env = "prod";
+  //override address if necessary
+}
 
 /* const homePath = "/graphiql";
 const URL = "http://localhost";
@@ -108,11 +113,14 @@ export const start = async () => {
         .toArray();
 
       var mailOptions = {
-        from: "daniel@schrader.consulting",
+        from: "daniel@lateralproducts.com",
         to: user.email,
-        subject: "hey " + user.firstname + ", cavestep says woop woop!!",
+        subject: "your cavestep objectives",
         html:
           "<head><style>a {border: 1px dotted hsla(0, 0%, 0%, 0.5);cursor: help;background-color: lightblue;text-align: center;}</style></head>" +
+          "<div>hey " +
+          user.firstname +
+          ", here are your objectives for today!</div>" +
           objectives
             .map(function(obj) {
               return (
@@ -139,11 +147,19 @@ export const start = async () => {
 
     async function newUserEmail(client, coach) {
       var mailOptions = {
-        from: "daniel@schrader.consulting",
+        from: "daniel@lateralproducts.com",
         to: client.email,
-        subject: "hey " + client.firstname + ", cavestep says hello!!",
+        subject:
+          (client.firstname ? "Hey " + client.firstname + ", " : "") +
+          "you’ve been invited to a coaching wheel!", //to cavestep🦶
         html:
           "<head><style>a {border: 1px dotted hsla(0, 0%, 0%, 0.5);cursor: help;background-color: lightblue;text-align: center;}</style></head>" +
+          (coach.firstname
+            ? coach.firstname + " has invited you to a coaching wheel!"
+            : "You've been invited to a coaching wheel!") + // to cavestep🦶
+          "</div><div>" +
+          "click below to start your journey." + //cavestep
+          "</div>" +
           "<a href='" +
           URLpath +
           "/?page=verify&user=" +
@@ -153,10 +169,8 @@ export const start = async () => {
           "&name=" +
           client.firstname +
           "'>" +
-          "verify email here" +
-          "</a><div>" +
-          coach.firstname +
-          " has added you as a client!</div>"
+          "get set up" + //start your cavestep journey
+          "</a><div>"
       };
 
       transporter.sendMail(mailOptions, function(error, info) {
