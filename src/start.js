@@ -235,16 +235,16 @@ export const start = async () => {
         runUpdate: Boolean!
         removeStartArea: Boolean!
         createObjective(area: String, datetime: String, objective: String, notes: String, keys:[KeyIn]): Objective
-        updateObjective(objectiveId: String!, objective: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Boolean
+        updateObjective(objectiveId: String!, objective: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Objective
         checkKey(objectiveId: String!, index: Int, check: Boolean): Boolean
         updateObjectiveOrder(objectives: [String]): Boolean
         updateFocusOrder(objectives: [String]): Boolean
         createObjectiveLink(objectiveid: String, areaid: String): Boolean
         updateObjectiveLink(linkid: String!, notes: String, snooze: String): Boolean
         removeObjectiveLink(linkid: String!): Boolean
-        snoozeObjectiveLink(linkid: String!, snooze: String!): Boolean
+        snoozeObjectiveLink(objectiveid: String!, snooze: String!): Boolean
         saveFocusLink(area: String!, objective: String!, datetime: String!, links: [String]): Boolean
-        snoozeFocusLink(linkid: String!, snooze: String!): Boolean
+        snoozeFocusLink(objectiveid: String!, snooze: String!): Boolean
         createClient(email: String!, firstname: String!, lastname: String, startarea: String): Boolean
         verifyAccount(userid: String, code: String, password: String): User
       }
@@ -965,7 +965,16 @@ export const start = async () => {
           return args;
         },
         createClient: async (parent, args, { req }) => {
+          const user = await Users.findOne({ email: args.email });
+          if (user) {
+            throw new Error("There is already a profile for this email!");
+          }
+
           if (req.session.user) {
+            if (!args.startarea)
+              throw new Error(
+                "You need to add a coaching area for your client."
+              );
             args.profile = "client";
             args.state = "new";
             args.coaches = [req.session.user._id];
@@ -1025,11 +1034,14 @@ export const start = async () => {
             req.session.user.clients = clients;
 
             return newuser;
-          } else if (req.session.user.profile == "coach") {
+          } else if (
+            req.session.user.profile == "coach" ||
+            req.session.user.profile == "daniel"
+          ) {
             newuser.thiscoach = req.session.user;
             req.session.user = newuser;
             return newuser;
-          } else return null;
+          } else throw new Error("Profile could not be retrieved.");
         },
         signup: async (parent, args, { req }) => {
           /* await Signup.insertOne({
@@ -1280,7 +1292,7 @@ export const start = async () => {
           args.snoozedate = new Date(args.snooze);
           args.snoozedate.setHours(0, 0, 0, 0);
           await FocusLinks.updateOne(
-            { _id: ObjectId(args.linkid), userid: args.userid },
+            { objective: args.objectiveid, userid: args.userid },
             {
               $set: {
                 snooze: args.snoozedate
@@ -1294,7 +1306,7 @@ export const start = async () => {
           args.snoozedate = new Date(args.snooze);
           args.snoozedate.setHours(0, 0, 0, 0);
           await ObjectiveLinks.updateOne(
-            { _id: ObjectId(args.linkid), userid: args.userid },
+            { objectiveid: args.objectiveid, userid: args.userid },
             {
               $set: {
                 snooze: args.snoozedate
@@ -1529,9 +1541,10 @@ export const start = async () => {
           args.date = args.datetime ? new Date(args.datetime) : null;
           //args.complete = args.complete ? new Date(args.complete) : null;
           args.lastupdated = new Date();
-          await Objectives.updateOne(
+          var objective = await Objectives.findOneAndUpdate(
             { _id: ObjectId(objectiveId) },
-            { $set: args }
+            { $set: args },
+            { returnOriginal: false }
           );
           if (args.complete) {
             await ObjectiveLinks.update(
@@ -1543,7 +1556,7 @@ export const start = async () => {
             );
             removefocuslink(req, objectiveId);
           }
-          return true;
+          return objective.value;
         },
         updateNote: async (root, args, { req }) => {
           args.lastedited = new Date(args.datetime);
