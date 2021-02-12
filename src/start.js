@@ -15,12 +15,14 @@ import ms from "ms";
 var nodemailer = require("nodemailer");
 var schedule = require("node-schedule");
 
+var auth = {
+  user: "daniel@cavestep.com",
+  pass: "nfquwbjifgfjkkov"
+};
+
 var transporter = nodemailer.createTransport({
   service: "gmail",
-  auth: {
-    user: "daniel@lateralproducts.com",
-    pass: "gaxlfyfntrigianv"
-  }
+  auth
 });
 
 //import { verifier } from "google-id-token-verifier";
@@ -44,7 +46,7 @@ app.use(cors());
 
 var URLpath = `${process.env.URLpath}`;
 if (URLpath == "undefined") {
-  MONGO_URL = "https://lateralproducts.com";
+  URLpath = "https://lateralproducts.com";
   env = "prod";
   //override address if necessary
 }
@@ -113,11 +115,11 @@ export const start = async () => {
         .toArray();
 
       var mailOptions = {
-        from: "daniel@lateralproducts.com",
+        from: auth.user,
         to: user.email,
         subject: "your cavestep objectives",
         html:
-          "<head><style>a {border: 1px dotted hsla(0, 0%, 0%, 0.5);cursor: help;background-color: lightblue;text-align: center;}</style></head>" +
+          "<head><style>a {cursor: help;}</style></head>" +
           "<div>hey " +
           user.firstname +
           ", here are your objectives for today!</div>" +
@@ -145,18 +147,18 @@ export const start = async () => {
       });
     }
 
-    async function newUserEmail(client, coach) {
+    async function newClientEmail(client, coach) {
       var mailOptions = {
-        from: "daniel@lateralproducts.com",
+        from: auth.user,
         to: client.email,
         subject:
           (client.firstname ? "Hey " + client.firstname + ", " : "") +
-          "you’ve been invited to a coaching wheel!", //to cavestep🦶
+          "you’ve been invited to cavestep 🦶", //to cavestep🦶
         html:
-          "<head><style>a {border: 1px dotted hsla(0, 0%, 0%, 0.5);cursor: help;background-color: lightblue;text-align: center;}</style></head>" +
+          "<head><style>a {cursor: help;}</style></head>" +
           (coach.firstname
-            ? coach.firstname + " has invited you to a coaching wheel!"
-            : "You've been invited to a coaching wheel!") + // to cavestep🦶
+            ? coach.firstname + " has invited you to a cavestep coaching wheel!"
+            : "You've been invited to a cavestep coaching wheel 🦶") + // to cavestep🦶
           "</div><div>" +
           "click below to start your journey." + //cavestep
           "</div>" +
@@ -171,6 +173,42 @@ export const start = async () => {
           "'>" +
           "get set up" + //start your cavestep journey
           "</a><div>"
+      };
+
+      transporter.sendMail(mailOptions, function(error, info) {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log("Email sent to:" + client.email + " - " + info.response);
+        }
+      });
+    }
+
+    async function newCoachEmail(coach) {
+      var mailOptions = {
+        from: auth.user,
+        to: coach.email,
+        subject:
+          (coach.firstname ? "Hey " + coach.firstname + ", " : "") +
+          "you’ve signed up to cavestep 🦶",
+        html:
+          "<head><style>a {cursor: help;}</style></head>" +
+          "<img src='https://localhost:8000/static/cavestep-05121fbebd8ef6e5728dada4b9f21c61.png'/>" +
+          "Awesome." +
+          "<div>" +
+          "click below to start your cavestep journey." + //cavestep
+          "</div>" +
+          "<a href='" +
+          URLpath +
+          "/?page=verify&user=" +
+          coach._id +
+          "&code=" +
+          coach.code +
+          "&name=" +
+          coach.firstname +
+          "'>" +
+          "get set up" + //start your cavestep journey
+          "</a>"
       };
 
       transporter.sendMail(mailOptions, function(error, info) {
@@ -230,7 +268,7 @@ export const start = async () => {
         setUser(email: String!): User
         logout: Boolean!
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
-        signup(email: String, name: String, username: String, pwd: String, uiversion: String): Boolean!
+        signup(email: String, firstname: String, pwd: String, uiversion: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
         runUpdate: Boolean!
         removeStartArea: Boolean!
@@ -496,7 +534,7 @@ export const start = async () => {
         searchnotes: async (parent, args, { req }) => {
           const notes = (await Notes.find(
             {
-              answer: new RegExp(args.search),
+              answer: new RegExp(args.search, "i"),
               userid: getuserid(req.session),
               prompt: args.spaced ? { $not: { $eq: "" } } : ""
             },
@@ -516,26 +554,22 @@ export const start = async () => {
           return (await Areas.find({
             $or: [
               { userid: getuserid(req.session) },
-              { userid: { $in: getcoachid(req.session) } }
+              { userid: { $in: getcoachesid(req.session) }, coach: true }
             ]
           })
             .sort({ clicks: -1 })
             .toArray()).map(prepare);
         },
         users: async (parent, args, { req }) => {
-          if (req.session.user.thiscoach != null) {
-            return [req.session.user.thiscoach];
-          }
-
-          if (
-            req.session.user.profile == "coach" ||
-            req.session.user.profile == "daniel"
-          ) {
-            const clients = await Users.find({
-              coaches: getuserid(req.session)
+          if (req.session.coach) {
+            const users = await Users.find({
+              $or: [
+                { _id: ObjectId(getcoachid(req.session)) },
+                { coaches: getcoachid(req.session) }
+              ]
             }).toArray(); //.map(function(client) {return client._id;})
-            req.session.user.clients = clients;
-            return clients.map(prepare);
+
+            return users.map(prepare);
           }
 
           return (await Users.find({
@@ -550,7 +584,7 @@ export const start = async () => {
               _id: ObjectId(_id),
               $or: [
                 { userid: getuserid(req.session) },
-                { userid: { $in: getcoachid(req.session) } } //this makes the area visible to clients. Using coach:true field.
+                { userid: { $in: getcoachesid(req.session) } } //this makes the area visible to clients. Using coach:true field.
               ]
             })
           );
@@ -794,8 +828,12 @@ export const start = async () => {
                     $match: {
                       area: _id,
                       userid: {
-                        $in: req.session.user.clients
-                          ? req.session.user.clients.map(client => client._id)
+                        $in: req.session.coach
+                          ? req.session.coach.clients
+                            ? req.session.coach.clients.map(
+                                client => client._id
+                              )
+                            : []
                           : []
                       }
                     }
@@ -958,16 +996,19 @@ export const start = async () => {
           return focusflag;
         },
         updateProfile: async (parent, args, { req }) => {
-          await Users.updateOne(
+          var user = await Users.findOneAndUpdate(
             { _id: ObjectId(getuserid(req.session)) },
-            { $set: args }
+            { $set: args },
+            { returnOriginal: false }
           );
-          return args;
+          return user.value;
         },
         createClient: async (parent, args, { req }) => {
           const user = await Users.findOne({ email: args.email });
           if (user) {
-            throw new Error("There is already a profile for this email!");
+            throw new Error(
+              "There is already a cavestep profile with this email!"
+            );
           }
 
           if (req.session.user) {
@@ -980,7 +1021,12 @@ export const start = async () => {
             args.coaches = [req.session.user._id];
             args.code = bcrypt.hashSync("verifythisyo", 10);
             var insertedId = await Users.insertOne(args);
-            if (insertedId.insertedId) newUserEmail(args, req.session.user);
+            if (req.session.coach.clients) {
+              req.session.coach.clients.push(args);
+            } else {
+              req.session.coach.clients = [{ args }]; //link
+            }
+            if (insertedId.insertedId) newClientEmail(args, req.session.user);
             return true;
           }
           return false;
@@ -1022,69 +1068,54 @@ export const start = async () => {
           return true;
         },
         setUser: async (parent, { email }, { req }) => {
-          const newuser = await Users.findOne({ email: email });
+          var newuser = Object();
+          if (email === req.session.coach.email) {
+            req.session.user = req.session.coach;
+            newuser = await Users.findOne({
+              email: email
+            });
+          } else {
+            newuser = await Users.findOne({
+              email: email,
+              coaches: req.session.coach._id.toString()
+            });
+          }
 
-          //make it possible only for users who have impersonate function to impersonate another user for coaches
-          if (req.session.user.thiscoach) {
-            req.session.user = newuser;
-
-            const clients = await Users.find({
-              coaches: newuser._id.toString()
-            }).toArray();
-            req.session.user.clients = clients;
-
-            return newuser;
-          } else if (
-            req.session.user.profile == "coach" ||
-            req.session.user.profile == "daniel"
-          ) {
-            newuser.thiscoach = req.session.user;
+          if (newuser) {
             req.session.user = newuser;
             return newuser;
-          } else throw new Error("Profile could not be retrieved.");
+          }
+          throw new Error("Profile could not be retrieved.");
         },
         signup: async (parent, args, { req }) => {
-          /* await Signup.insertOne({
-            email: email,
-            name: name
-          }); */
+          const user = await Users.findOne({ email: args.email });
+          if (user) {
+            throw new Error(
+              "There is already a cavestep profile with this email!"
+            );
+          }
 
+          const date = new Date();
           await Users.insertOne({
-            email: args.username,
-            password: bcrypt.hashSync(args.pwd, 10),
+            email: args.email,
+            firstname: args.firstname,
+            code: bcrypt.hashSync(date.toString(), 10),
             uiversion: args.uiversion,
             serverversion: pjson.version,
             state: "new",
-            profile: "client"
+            profile: "coach"
           });
 
-          const newuser = await Users.findOne({ email: args.username });
+          const newuser = await Users.findOne({ email: args.email });
 
           req.session.user = {
             newuser
           };
 
+          newCoachEmail(newuser);
+
           return true;
         },
-        /* signupold: async (parent, { username, pwd, uiversion }, { req }) => {
-          const user = await Users.findOne({ email: username });
-          if (user) {
-            throw new Error("Another User with same username exists.");
-          }
-
-          const res = await Users.insertOne({
-            email: username,
-            password: bcrypt.hashSync(pwd, 10),
-            uiversion: uiversion,
-            serverversion: pjson.version
-          });
-
-          req.session.user = {
-            user
-          };
-
-          return true;
-        }, */
         login: async (parent, args, { req, ip }) => {
           const user = await Users.findOne({ email: args.username });
           //const user = data[username];
@@ -1093,6 +1124,13 @@ export const start = async () => {
             if (user.incorrecttries < 6 && user.state == "verified") {
               if (await bcrypt.compareSync(args.pwd, user.password)) {
                 req.session.user = user;
+                if (user.profile == "coach") {
+                  const clients = await Users.find({
+                    coaches: user._id.toString()
+                  }).toArray();
+                  user.clients = clients;
+                  req.session.coach = user;
+                }
                 user.serverversion = pjson.version;
 
                 await Logins.insertOne({
@@ -1186,23 +1224,17 @@ export const start = async () => {
 
             const user = await Users.findOne({ email: args.email });
             if (!user) {
-              args.profile = "client";
-              args.state = "new";
+              args.profile = "coach";
+              args.state = "verified";
               args.serverversion = pjson.version;
               args.lastip = ip;
               const user = args;
               req.session.user = user;
+              if (user.profile == "coach") req.session.coach = user;
               args.token = null; //removing the token from saving in database for security
               args.datecreated = new Date();
               await Users.insertOne(args);
               return prepare(user);
-            }
-
-            if (user.profile == "coach") {
-              const clients = await Users.find({
-                coaches: user._id.toString()
-              }).toArray();
-              user.clients = clients;
             }
 
             await Logins.insertOne({
@@ -1225,6 +1257,13 @@ export const start = async () => {
             );
             user.token = args.token;
             req.session.user = user;
+            if (user.profile == "coach") {
+              const clients = await Users.find({
+                coaches: user._id.toString()
+              }).toArray();
+              user.clients = clients;
+              req.session.coach = user;
+            }
 
             return {
               firstname: user.firstname,
@@ -1391,12 +1430,13 @@ export const start = async () => {
             serverversion: pjson.version,
             uiversion: getuiversion(req.session)
           });
-          return prepare(
-            await Areas.findOne({
-              _id: res.insertedIds[0],
-              userid: getuserid(req.session)
-            })
-          );
+
+          const area = await Areas.findOne({
+            _id: res.insertedIds[0],
+            userid: getuserid(req.session)
+          });
+
+          return prepare(area);
         },
         createRankTime: async (root, args, { req }) => {
           args.userid = getuserid(req.session);
@@ -1661,6 +1701,10 @@ export const start = async () => {
     }
 
     function getcoachid(session) {
+      if (session.coach) return session.coach._id;
+    }
+
+    function getcoachesid(session) {
       if (session.user.coaches) return session.user.coaches;
       else return ["none"];
     }
