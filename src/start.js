@@ -32,7 +32,7 @@ var pjson = require("../package.json");
 console.log("server version: " + pjson.version);
 
 var googleclientId =
-  "66261576180-30if4t1svq870fh2jpnabrklagd43l0i.apps.googleusercontent.com";
+  "200442864570-r2ro7rh3app55g83g2bqtfdkt7o398cj.apps.googleusercontent.com";
 
 const oAuth2Client = new OAuth2Client({
   clientId: googleclientId
@@ -87,7 +87,7 @@ export const start = async () => {
     //const WheelAreaLinks = db.collection("wheelarealink");
     //const Signup = db.collection("signup");
 
-    var j = schedule.scheduleJob({ hour: 8, minute: 0 }, function() {
+    var j = schedule.scheduleJob({ hour: 10, minute: 54 }, function() {
       objectivesummaryemail("daniel@schrader.consulting");
     });
 
@@ -119,23 +119,24 @@ export const start = async () => {
         to: user.email,
         subject: "your cavestep objectives",
         html:
-          "<head><style>a {cursor: help;}</style></head>" +
+          "<head><style>a {cursor: help;} .objective { margin: 3px; }</style></head>" +
           "<div>hey " +
           user.firstname +
           ", here are your objectives for today!</div>" +
           objectives
             .map(function(obj) {
               return (
-                "<a href='" +
+                "<div class='objective'><a href='" +
                 URLpath +
                 "/?objective=" +
                 obj._id +
                 "'>" +
                 obj.objective +
-                "</a>"
+                "</a></div>"
               );
             })
-            .join("")
+            .join("") +
+          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.ca939565.png'/>"
       };
 
       transporter.sendMail(mailOptions, function(error, info) {
@@ -193,11 +194,11 @@ export const start = async () => {
           "you’ve signed up to cavestep 🦶",
         html:
           "<head><style>a {cursor: help;}</style></head>" +
-          "<img src='https://localhost:8000/static/cavestep-05121fbebd8ef6e5728dada4b9f21c61.png'/>" +
-          "Awesome." +
-          "<div>" +
-          "click below to start your cavestep journey." + //cavestep
-          "</div>" +
+          "We got your request to create an account. Great to have you with us." +
+          "<br/>" +
+          "<br/>" +
+          "Click below to start your cavestep journey." + //cavestep
+          "<br/>" +
           "<a href='" +
           URLpath +
           "/?page=verify&user=" +
@@ -207,8 +208,17 @@ export const start = async () => {
           "&name=" +
           coach.firstname +
           "'>" +
-          "get set up" + //start your cavestep journey
-          "</a>"
+          "start my cavestep journey" + //start your cavestep journey
+          "</a>" +
+          "<br/>" +
+          "<br/>" +
+          "Warm regards," +
+          "<br/>" +
+          "Daniel Schrader" +
+          "<br/>" +
+          "Founder" +
+          "<br/>" +
+          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.ca939565.png'/>"
       };
 
       transporter.sendMail(mailOptions, function(error, info) {
