@@ -559,6 +559,30 @@ export const start = async () => {
             };
             const objectivelinks = await ObjectiveLinks.find(query).toArray();
 
+            return new Promise(function(resolve, reject) {
+              ObjectiveLinks.aggregate(
+                {
+                  $match: query
+                },
+                {
+                  $group: {
+                    _id: "$objectiveid",
+                    doc: { $first: "$$ROOT" }
+                  }
+                },
+                {
+                  $replaceRoot: {
+                    newRoot: "$doc"
+                  }
+                },
+
+                function(err, objectivelinks) {
+                  if (err) throw err;
+                  resolve(objectivelinks.map(prepare));
+                }
+              );
+            });
+
             return objectivelinks.map(prepare);
           } else {
             var query = Object();
