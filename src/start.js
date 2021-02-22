@@ -46,7 +46,7 @@ app.use(cors());
 
 var URLpath = `${process.env.URLpath}`;
 if (URLpath == "undefined") {
-  URLpath = "https://lateralproducts.com";
+  URLpath = "https://www.cavestep.com/app/"; //must have a slash at the end
   env = "prod";
   //override address if necessary
 }
@@ -87,8 +87,8 @@ export const start = async () => {
     //const WheelAreaLinks = db.collection("wheelarealink");
     //const Signup = db.collection("signup");
 
-    var j = schedule.scheduleJob({ hour: 10, minute: 54 }, function() {
-      objectivesummaryemail("daniel@schrader.consulting");
+    var j = schedule.scheduleJob({ hour: 7, minute: 30 }, function() {
+      objectivesummaryemail("daniel@lateralproducts.com");
     });
 
     async function objectivesummaryemail(email) {
@@ -99,7 +99,7 @@ export const start = async () => {
         $or: [{ snooze: null }, { snooze: { $lt: new Date() } }]
       })
         .sort({ orderrank: 1 })
-        .limit(100)
+        .limit(3)
         .toArray();
 
       const objectives = await Objectives.find({
@@ -117,18 +117,18 @@ export const start = async () => {
       var mailOptions = {
         from: auth.user,
         to: user.email,
-        subject: "your cavestep objectives",
+        subject: "Your Cavestep Objectives",
         html:
           "<head><style>a {cursor: help;} .objective { margin: 3px; }</style></head>" +
-          "<div>hey " +
+          "<div>Hey " +
           user.firstname +
-          ", here are your objectives for today!</div>" +
+          ", here are your top objectives for today!</div>" +
           objectives
             .map(function(obj) {
               return (
-                "<div class='objective'><a href='" +
+                "<div class='objective'>• <a href='" +
                 URLpath +
-                "/?objective=" +
+                "?objective=" +
                 obj._id +
                 "'>" +
                 obj.objective +
@@ -136,7 +136,7 @@ export const start = async () => {
               );
             })
             .join("") +
-          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.ca939565.png'/>"
+          "<br/><img width='100' src='https://www.cavestep.com/static/media/cavesteplong.ca939565.png'/>"
       };
 
       transporter.sendMail(mailOptions, function(error, info) {
@@ -154,26 +154,27 @@ export const start = async () => {
         to: client.email,
         subject:
           (client.firstname ? "Hey " + client.firstname + ", " : "") +
-          "you’ve been invited to cavestep 🦶", //to cavestep🦶
+          "you’ve been invited to Cavestep", //to Cavestep🦶
         html:
           "<head><style>a {cursor: help;}</style></head>" +
           (coach.firstname
-            ? coach.firstname + " has invited you to a cavestep coaching wheel!"
-            : "You've been invited to a cavestep coaching wheel 🦶") + // to cavestep🦶
+            ? coach.firstname + " has invited you to a Cavestep coaching wheel!"
+            : "You've been invited to a Cavestep coaching wheel.") + // to Cavestep🦶
           "</div><div>" +
           "click below to start your journey." + //cavestep
           "</div>" +
           "<a href='" +
           URLpath +
-          "/?page=verify&user=" +
+          "?page=verify&user=" +
           client._id +
           "&code=" +
           client.code +
           "&name=" +
           client.firstname +
           "'>" +
-          "get set up" + //start your cavestep journey
-          "</a><div>"
+          "get set up" + //start your Cavestep journey
+          "</a><div>" +
+          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.ca939565.png'/>"
       };
 
       transporter.sendMail(mailOptions, function(error, info) {
@@ -185,30 +186,69 @@ export const start = async () => {
       });
     }
 
+    async function newInnovatorEmail(innovator) {
+      var mailOptions = {
+        from: auth.user,
+        to: innovator.email,
+        subject:
+          (innovator.firstname ? "Hey " + innovator.firstname + ", " : "") +
+          "looks like you've signed up for Cavestep!",
+        html:
+          "<head><style>a {cursor: help;}</style></head>" +
+          "Welcome, you've signed up for a Cavestep coaching wheel." +
+          "<br/>" +
+          "Click the link here to start your journey: " + //cavestep
+          "</div>" +
+          "<a href='" +
+          URLpath +
+          "?page=verify&user=" +
+          innovator._id +
+          "&code=" +
+          innovator.code +
+          "&name=" +
+          innovator.firstname +
+          "'>" +
+          "start your journey" + //start your Cavestep journey
+          "</a><div>" +
+          "<br/>" +
+          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.ca939565.png'/>"
+      };
+
+      transporter.sendMail(mailOptions, function(error, info) {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log(
+            "Email sent to:" + innovator.email + " - " + info.response
+          );
+        }
+      });
+    }
+
     async function newCoachEmail(coach) {
       var mailOptions = {
         from: auth.user,
         to: coach.email,
         subject:
           (coach.firstname ? "Hey " + coach.firstname + ", " : "") +
-          "you’ve signed up to cavestep 🦶",
+          "you’ve signed up to Cavestep",
         html:
           "<head><style>a {cursor: help;}</style></head>" +
           "We got your request to create an account. Great to have you with us." +
           "<br/>" +
           "<br/>" +
-          "Click below to start your cavestep journey." + //cavestep
+          "Click below to start your Cavestep journey." + //cavestep
           "<br/>" +
           "<a href='" +
           URLpath +
-          "/?page=verify&user=" +
+          "?page=verify&user=" +
           coach._id +
           "&code=" +
           coach.code +
           "&name=" +
           coach.firstname +
           "'>" +
-          "start my cavestep journey" + //start your cavestep journey
+          "start my Cavestep journey" + //start your Cavestep journey
           "</a>" +
           "<br/>" +
           "<br/>" +
@@ -225,7 +265,7 @@ export const start = async () => {
         if (error) {
           console.log(error);
         } else {
-          console.log("Email sent to:" + client.email + " - " + info.response);
+          console.log("Email sent to:" + coach.email + " - " + info.response);
         }
       });
     }
@@ -245,7 +285,7 @@ export const start = async () => {
         readPomoData(area: String): PomodoroData
         readObjectivePomoData(objective: String): PomodoroData
         objectives(area: String!): [Objective]
-        objectiveLinks(area: String, objective: String): [ObjectiveLink]
+        objectiveLinks(area: String, objective: String, search: String, date: String): [ObjectiveLink]
         pomodoros(objectiveId: String): [Pomodoro]
         notes(area: String): [NoteLink]
         searchnotes(search: String, spaced: Boolean): [Note]
@@ -278,7 +318,7 @@ export const start = async () => {
         setUser(email: String!): User
         logout: Boolean!
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
-        signup(email: String, firstname: String, pwd: String, uiversion: String): Boolean!
+        signup(email: String, firstname: String, uiversion: String, account: String): Boolean!
         updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
         runUpdate: Boolean!
         removeStartArea: Boolean!
@@ -497,16 +537,41 @@ export const start = async () => {
             .toArray()).map(prepare);
         },
         objectiveLinks: async (parent, args, { req }) => {
-          var query = Object();
-          args.area ? (query.areaid = args.area) : "";
-          args.objective ? (query.objectiveid = args.objective) : "";
-          query.userid = getuserid(req.session);
-          query.complete = { $eq: null };
-          query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }];
+          if (args.search) {
+            var query = new Object();
+            query.userid = getuserid(req.session);
+            if (args.search) query.objective = new RegExp(args.search, "i");
+            if (args.date)
+              query.$or = [
+                { date: null },
+                { date: { $lte: new Date(args.date) } }
+              ];
 
-          return (await ObjectiveLinks.find(query, {
-            sort: { orderrank: 1 }
-          }).toArray()).map(prepare);
+            const objectives = await Objectives.find(query).toArray();
+
+            query = {
+              userid: getuserid(req.session),
+              objectiveid: {
+                $in: objectives.map(function(objective) {
+                  return objective._id ? objective._id.toString() : null;
+                })
+              }
+            };
+            const objectivelinks = await ObjectiveLinks.find(query).toArray();
+
+            return objectivelinks.map(prepare);
+          } else {
+            var query = Object();
+            args.area ? (query.areaid = args.area) : "";
+            args.objective ? (query.objectiveid = args.objective) : "";
+            query.userid = getuserid(req.session);
+            query.complete = { $eq: null };
+            query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }];
+
+            return (await ObjectiveLinks.find(query, {
+              sort: { orderrank: 1 }
+            }).toArray()).map(prepare);
+          }
         },
         focusLinks: async (parent, args, { req }) => {
           return (await FocusLinks.find(
@@ -1017,7 +1082,7 @@ export const start = async () => {
           const user = await Users.findOne({ email: args.email });
           if (user) {
             throw new Error(
-              "There is already a cavestep profile with this email!"
+              "There is already a Cavestep profile with this email!"
             );
           }
 
@@ -1028,7 +1093,12 @@ export const start = async () => {
               );
             args.profile = "client";
             args.state = "new";
-            args.coaches = [req.session.user._id];
+            args.coaches = [
+              env === "prod"
+                ? "6025adbc53b8b77b09d6e0a2" //add production daniel@cavestep.com profile as coach.
+                : "6025e1bc216eef4f3fda3c1f", //add production daniel@cavestep.com profile as coach.
+              req.session.user._id
+            ];
             args.code = bcrypt.hashSync("verifythisyo", 10);
             var insertedId = await Users.insertOne(args);
             if (req.session.coach.clients) {
@@ -1101,7 +1171,7 @@ export const start = async () => {
           const user = await Users.findOne({ email: args.email });
           if (user) {
             throw new Error(
-              "There is already a cavestep profile with this email!"
+              "There is already a Cavestep profile with this email!"
             );
           }
 
@@ -1113,7 +1183,12 @@ export const start = async () => {
             uiversion: args.uiversion,
             serverversion: pjson.version,
             state: "new",
-            profile: "coach"
+            profile: args.account,
+            coaches: [
+              env === "prod"
+                ? "6025adbc53b8b77b09d6e0a2" //add production daniel@cavestep.com profile as coach.
+                : "6025e1bc216eef4f3fda3c1f" //add dev daniel@cavestep.com profile as coach for testing
+            ]
           });
 
           const newuser = await Users.findOne({ email: args.email });
@@ -1122,7 +1197,8 @@ export const start = async () => {
             newuser
           };
 
-          newCoachEmail(newuser);
+          if (args.account === "coach") newCoachEmail(newuser);
+          else newInnovatorEmail(newuser);
 
           return true;
         },
