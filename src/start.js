@@ -540,6 +540,7 @@ export const start = async () => {
           if (args.search || args.date) {
             var query = new Object();
             query.userid = getuserid(req.session);
+            query.complete = { $eq: null };
             if (args.search) query.objective = new RegExp(args.search, "i");
             if (args.date)
               query.$or = [
@@ -557,7 +558,6 @@ export const start = async () => {
                 })
               }
             };
-            const objectivelinks = await ObjectiveLinks.find(query).toArray();
 
             return new Promise(function(resolve, reject) {
               ObjectiveLinks.aggregate(
@@ -582,8 +582,6 @@ export const start = async () => {
                 }
               );
             });
-
-            return objectivelinks.map(prepare);
           } else {
             var query = Object();
             args.area ? (query.areaid = args.area) : "";
