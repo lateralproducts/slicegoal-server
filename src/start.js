@@ -537,7 +537,7 @@ export const start = async () => {
             .toArray()).map(prepare);
         },
         objectiveLinks: async (parent, args, { req }) => {
-          if (args.search) {
+          if (args.search || args.date) {
             var query = new Object();
             query.userid = getuserid(req.session);
             if (args.search) query.objective = new RegExp(args.search, "i");
