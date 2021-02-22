@@ -575,6 +575,7 @@ export const start = async () => {
                     newRoot: "$doc"
                   }
                 },
+                { $sort: { date: -1 } },
 
                 function(err, objectivelinks) {
                   if (err) throw err;
