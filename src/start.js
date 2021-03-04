@@ -328,6 +328,7 @@ export const start = async () => {
         updateObjectiveOrder(objectives: [String]): Boolean
         updateFocusOrder(objectives: [String]): Boolean
         createObjectiveLink(objectiveid: String, areaid: String): Boolean
+        createNewObjectiveLink(areaname: String!, objectiveid: String!): Boolean
         updateObjectiveLink(linkid: String!, notes: String, snooze: String): Boolean
         removeObjectiveLink(linkid: String!): Boolean
         snoozeObjectiveLink(objectiveid: String!, snooze: String!): Boolean
@@ -1397,9 +1398,10 @@ export const start = async () => {
         },
 
         logout: async (parent, args, { req }) => {
-          if (req.session.user.token)
-            await oAuth2Client.revokeToken(req.session.user.token);
-          req.session.user = null;
+          if (req.session.user)
+            if (req.session.user.token)
+              await oAuth2Client.revokeToken(req.session.user.token);
+          req.session.destroy();
           return true;
         },
         savePomodoro: async (root, args, { req }) => {
@@ -1599,6 +1601,22 @@ export const start = async () => {
           args.uiversion = getuiversion(req.session);
           args.datecreated = new Date();
           const res = await NoteLinks.insert(args);
+          return res.insertedIds[1] ? true : false;
+        },
+        createNewObjectiveLink: async (root, args, { req }) => {
+          var newarea = new Object(); //create new area.
+          newarea.userid = getuserid(req.session);
+          newarea.name = args.areaname;
+          const res = await Areas.insert(newarea);
+
+          await ObjectiveLinks.insertOne({
+            //insert the link to connect note and new area.
+            objectiveid: args.objectiveid,
+            userid: getuserid(req.session),
+            areaid: res.insertedIds[0].toString(),
+            datecreated: new Date(args.datetime)
+          });
+
           return res.insertedIds[1] ? true : false;
         },
         createNewNoteLink: async (root, args, { req }) => {
@@ -2084,13 +2102,12 @@ export const start = async () => {
       endpoint: "/server",
       cors: {
         credentials: true,
+        preflightContinue: true,
         origin: [
-          "http://localhost:8000",
-          "http://qa.lateralproducts.com.au",
-          "http://staging.lateralproducts.com.au",
-          "http://strategy.lateralproducts.com.au",
-          "https://www.lateralproducts.com.au",
-          "https://www.lateralproducts.com"
+          "https://www.cavestep.com.au",
+          "https://www.lateralproducts.com",
+          "https://localhost:8000",
+          "https://localhost:3000"
         ] //your frontend url.
       }
     };
