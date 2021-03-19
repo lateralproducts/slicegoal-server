@@ -152,11 +152,10 @@ export const start = async () => {
       var mailOptions = {
         from: auth.user,
         to: client.email,
-        subject:
-          (client.firstname ? "Hey " + client.firstname + ", " : "") +
-          "you’ve been invited to Cavestep", //to Cavestep🦶
+        subject: "You’ve been invited to Cavestep", //to Cavestep🦶
         html:
           "<head><style>a {cursor: help;}</style></head>" +
+          (client.firstname ? "Hey " + client.firstname + ", " : "") +
           (coach.firstname
             ? coach.firstname + " has invited you to a Cavestep coaching wheel!"
             : "You've been invited to a Cavestep coaching wheel.") + // to Cavestep🦶
@@ -190,14 +189,18 @@ export const start = async () => {
       var mailOptions = {
         from: auth.user,
         to: innovator.email,
-        subject:
-          (innovator.firstname ? "Hey " + innovator.firstname + ", " : "") +
-          "looks like you've signed up for Cavestep!",
+        subject: "Looks like you've signed up for Cavestep!",
         html:
           "<head><style>a {cursor: help;}</style></head>" +
-          "Welcome, you've signed up for a Cavestep coaching wheel." +
+          "Hey" +
+          (innovator.firstname ? innovator.firstname : "") +
+          ", " +
+          "welcome to Cavestep!" +
           "<br/>" +
-          "Click the link here to start your journey: " + //cavestep
+          "<br/>" +
+          "You've signed up for a Life Wheel." +
+          "<br/>" +
+          "Click the link here to log in and start your journey: " + //cavestep
           "</div>" +
           "<a href='" +
           URLpath +
@@ -229,11 +232,10 @@ export const start = async () => {
       var mailOptions = {
         from: auth.user,
         to: coach.email,
-        subject:
-          (coach.firstname ? "Hey " + coach.firstname + ", " : "") +
-          "you’ve signed up to Cavestep",
+        subject: "You’ve signed up to Cavestep",
         html:
           "<head><style>a {cursor: help;}</style></head>" +
+          (coach.firstname ? "Hey " + coach.firstname + ", " : "") +
           "We got your request to create an account. Great to have you with us." +
           "<br/>" +
           "<br/>" +
