@@ -1400,10 +1400,14 @@ export const start = async () => {
         },
 
         logout: async (parent, args, { req }) => {
+          req.session.destroy();
           if (req.session.user)
             if (req.session.user.token)
-              await oAuth2Client.revokeToken(req.session.user.token);
-          req.session.destroy();
+              try {
+                await oAuth2Client.revokeToken(req.session.user.token);
+              } catch (error) {
+                console.log(error);
+              }
           return true;
         },
         savePomodoro: async (root, args, { req }) => {
