@@ -1400,7 +1400,6 @@ export const start = async () => {
         },
 
         logout: async (parent, args, { req }) => {
-          req.session.destroy();
           if (req.session.user)
             if (req.session.user.token)
               try {
@@ -1408,6 +1407,7 @@ export const start = async () => {
               } catch (error) {
                 console.log(error);
               }
+          req.session.destroy();
           return true;
         },
         savePomodoro: async (root, args, { req }) => {
