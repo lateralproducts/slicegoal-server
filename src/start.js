@@ -1166,8 +1166,8 @@ export const start = async () => {
       },
       Mutation: {
         runUpdate: async (parent, args, { req }) => {
-          //use playground http://localhost:3001/ and run mutation: ""
-          const users = await Users.find().toArray();
+          //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
+          /* const users = await Users.find().toArray();
 
           users.map(async user => {
             //create new view
@@ -1215,7 +1215,7 @@ export const start = async () => {
               };
               Profiles.insertOne(newprofile);
             }
-          });
+          }); */
 
           // runUpdate: Boolean
           /* const objectives = await Objectives.find().toArray();
@@ -2064,7 +2064,10 @@ export const start = async () => {
       //if (session.profile._id) return session.profile._id;
       else if (env === "test") {
         return "605da7eedc0c981608c40126"; //default for test??
-      } else throw new Error("Invalid Session");
+      } else {
+        getuserid(session);
+        throw new Error("Profile not found");
+      }
     }
 
     function getwheelid(session) {
@@ -2072,26 +2075,14 @@ export const start = async () => {
       //if (session.view._id) return session.view._id;
       else if (env === "test") {
         return "5d27ffef2f25635b27f0a450"; //default for test??
-      } else throw new Error("No View");
+      } else throw new Error("Wheel not found");
     }
 
     function getuserid(session) {
       if (session.user) return session.user._id.toString();
       else if (env === "test") {
         return "5d70b68aa1e6bf52b9906b8e"; //default for test??
-      } else throw new Error("No View");
-    }
-
-    function getcoachid(session) {
-      if (session.coach) return session.coach._id;
-    }
-
-    function getcoachesid(session) {
-      if (session.user) {
-        if (session.user.coaches) return session.user.coaches;
-      }
-
-      return ["none"];
+      } else throw new Error("Invalid Session");
     }
 
     function getuiversion(session) {
