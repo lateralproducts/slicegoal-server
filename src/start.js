@@ -1591,7 +1591,7 @@ export const start = async () => {
             query.wheel = view.wheel;
 
             const profile = await Profiles.findOne(
-              { query },
+              query,
               {
                 sort: { type: -1 }
               }
