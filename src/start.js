@@ -82,6 +82,9 @@ export const start = async () => {
     const Logins = db.collection("logins");
     const Clicks = db.collection("clicks");
     const Feedback = db.collection("feedback");
+    const Wheels = db.collection("wheels");
+    const Views = db.collection("views");
+    const Profiles = db.collection("profiles");
 
     //const Wheels = db.collection("wheels");
     //const WheelAreaLinks = db.collection("wheelarealink");
@@ -136,7 +139,7 @@ export const start = async () => {
               );
             })
             .join("") +
-          "<br/><img width='100' src='https://www.cavestep.com/static/media/cavesteplong.ca939565.png'/>"
+          "<br/><img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>"
       };
 
       transporter.sendMail(mailOptions, function(error, info) {
@@ -154,29 +157,76 @@ export const start = async () => {
         to: client.email,
         subject: "You’ve been invited to Cavestep", //to Cavestep🦶
         html:
-          "<head><style>a {cursor: help;}</style></head>" +
+          "<head><style>a {cursor: help;}</style></head><div>" +
           (client.firstname ? "Hey " + client.firstname + ", " : "") +
+          "<br/>" +
           (coach.firstname
             ? coach.firstname + " has invited you to a Cavestep coaching wheel!"
             : "You've been invited to a Cavestep coaching wheel.") + // to Cavestep🦶
-          "</div><div>" +
-          "click below to start your journey." + //cavestep
-          "</div>" +
-          "<a href='" +
+          "<br/>" +
+          "Click here to start your journey: <a href='" +
           URLpath +
           "?page=verify&user=" +
           client._id +
           "&code=" +
           client.code +
-          "&name=" +
-          client.firstname +
           "'>" +
           "get set up" + //start your Cavestep journey
-          "</a><div>" +
-          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.ca939565.png'/>"
+          "</a>" + //cavestep
+          "<br/>" +
+          "<br/>" +
+          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>" +
+          "</div>"
       };
 
       transporter.sendMail(mailOptions, function(error, info) {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log("Email sent to:" + client.email + " - " + info.response);
+        }
+      });
+
+      var mailConfirmation = {
+        from: auth.user,
+        to: "daniel@cavestep.com",
+        subject: "New User!", //to Cavestep🦶
+        html:
+          "<head><style>a {cursor: help;}</style></head><div>" +
+          "name: " +
+          client.firstname +
+          " " +
+          client.lastname +
+          "<br/>" +
+          "email: " +
+          client.email +
+          "<br/>" +
+          "<br/>" +
+          "coach: " +
+          coach.firstname +
+          " " +
+          coach.lastname +
+          "<br/>" +
+          "email: " +
+          coach.email +
+          "<br/>" +
+          "<br/>" +
+          "verify link: " + //cavestep
+          URLpath +
+          "?page=verify&user=" +
+          client._id +
+          "&code=" +
+          client.code +
+          "'>" +
+          "get set up" + //start your Cavestep journey
+          "</a>" + //cavestep
+          "<br/>" +
+          "<br/>" +
+          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>" +
+          "</div>"
+      };
+
+      transporter.sendMail(mailConfirmation, function(error, info) {
         if (error) {
           console.log(error);
         } else {
@@ -208,13 +258,11 @@ export const start = async () => {
           innovator._id +
           "&code=" +
           innovator.code +
-          "&name=" +
-          innovator.firstname +
           "'>" +
           "start your journey" + //start your Cavestep journey
           "</a><div>" +
           "<br/>" +
-          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.ca939565.png'/>"
+          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>"
       };
 
       transporter.sendMail(mailOptions, function(error, info) {
@@ -247,8 +295,6 @@ export const start = async () => {
           coach._id +
           "&code=" +
           coach.code +
-          "&name=" +
-          coach.firstname +
           "'>" +
           "start my Cavestep journey" + //start your Cavestep journey
           "</a>" +
@@ -260,7 +306,7 @@ export const start = async () => {
           "<br/>" +
           "Founder" +
           "<br/>" +
-          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.ca939565.png'/>"
+          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>"
       };
 
       transporter.sendMail(mailOptions, function(error, info) {
@@ -277,7 +323,8 @@ export const start = async () => {
       type Query {
         isLoggedin: User
         areas (readdate: String): [Area]
-        users: [User]
+        views: [View]
+        profiles: [Profile]
         ranktimes(areaId: String): [RankTime]
         goaltimes(areaId: String): [GoalTime]
         area(_id: String!, navdirection: String, readdate: String): Area
@@ -297,6 +344,7 @@ export const start = async () => {
       }
 
       type Mutation {
+        setViewProfile(view: String, profile: String): Profile
         createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
         updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
         deleteArea(area: String): Area
@@ -317,7 +365,7 @@ export const start = async () => {
         submitFeedback(title: String, description: String): Boolean
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
         login(username: String!, pwd: String!, uiversion: String): User
-        setUser(email: String!): User
+        setProfile(_id: String!): Profile
         logout: Boolean!
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
         signup(email: String, firstname: String, uiversion: String, account: String): Boolean!
@@ -336,7 +384,7 @@ export const start = async () => {
         snoozeObjectiveLink(objectiveid: String!, snooze: String!): Boolean
         saveFocusLink(area: String!, objective: String!, datetime: String!, links: [String]): Boolean
         snoozeFocusLink(objectiveid: String!, snooze: String!): Boolean
-        createClient(email: String!, firstname: String!, lastname: String, startarea: String): Boolean
+        createClient(email: String!, firstname: String, lastname: String): Boolean
         verifyAccount(userid: String, code: String, password: String): User
       }
 
@@ -449,6 +497,30 @@ export const start = async () => {
         clicks: Int
       }
 
+      type View {
+        _id: String
+        type: String
+        wheel: Wheel
+        name: String
+      }
+
+      type Wheel {
+        _id: String
+        name: String
+        definition: String
+        profile: String
+        startarea: Area
+        profiles: [Profile]
+      }
+
+      type Profile {
+        _id: String
+        name: String
+        user: User
+        wheel: Wheel
+        type: String
+      }
+
       type Area {
         _id: String
         name: String
@@ -471,8 +543,9 @@ export const start = async () => {
         startarea: String
         area: Area
         serverversion: String
-        state: String
         profile: String
+        views: [View]
+        defaultview: View
       }
 
       type RankTime {
@@ -528,11 +601,17 @@ export const start = async () => {
             throw new Error("User not logged in");
           }
         },
+        views: async (parent, args, { req }) => {
+          var query = new Object();
+          query.user = getuserid(req.session);
+          if (args.default) query._id = ObjectId(args.defaultview); //if asking for default profile only return the default.
+          return (await Views.find(query).toArray()).map(prepare);
+        },
         objectives: async (parent, args, { req }) => {
           return (await Objectives.find(
             {
               area: args.area,
-              userid: getuserid(req.session),
+              userid: getprofileid(req.session),
               complete: { $eq: null }
             } //update sort at some stage.
           )
@@ -542,7 +621,7 @@ export const start = async () => {
         objectiveLinks: async (parent, args, { req }) => {
           if (args.search || args.date) {
             var query = new Object();
-            query.userid = getuserid(req.session);
+            query.userid = getprofileid(req.session);
             query.complete = { $eq: null };
             if (args.search) query.objective = new RegExp(args.search, "i");
             if (args.date)
@@ -554,7 +633,7 @@ export const start = async () => {
             const objectives = await Objectives.find(query).toArray();
 
             query = {
-              userid: getuserid(req.session),
+              userid: getprofileid(req.session),
               objectiveid: {
                 $in: objectives.map(function(objective) {
                   return objective._id ? objective._id.toString() : null;
@@ -590,7 +669,7 @@ export const start = async () => {
             var query = Object();
             args.area ? (query.areaid = args.area) : "";
             args.objective ? (query.objectiveid = args.objective) : "";
-            query.userid = getuserid(req.session);
+            query.userid = getprofileid(req.session);
             query.complete = { $eq: null };
             query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }];
 
@@ -602,7 +681,7 @@ export const start = async () => {
         focusLinks: async (parent, args, { req }) => {
           return (await FocusLinks.find(
             {
-              userid: getuserid(req.session),
+              userid: getprofileid(req.session),
               $or: [{ snooze: null }, { snooze: { $lt: new Date() } }],
               links: args.area
             } //update sort at some stage.
@@ -614,7 +693,7 @@ export const start = async () => {
         focusLink: async (parent, args, { req }) => {
           return await FocusLinks.findOne(
             {
-              userid: getuserid(req.session),
+              userid: getprofileid(req.session),
               _id: ObjectId(args.focuslink)
             },
             { sort: { date: -1 } } //update sort at some stage.
@@ -624,7 +703,7 @@ export const start = async () => {
           const notelinks = (await NoteLinks.find(
             {
               area: args.area,
-              userid: getuserid(req.session),
+              userid: getprofileid(req.session),
               $or: [{ nextdate: null }, { nextdate: { $lte: new Date() } }]
             },
             { sort: { datecreated: -1 } } //return reverse chron. Last note created at top of list.
@@ -636,7 +715,7 @@ export const start = async () => {
           const notes = (await Notes.find(
             {
               answer: new RegExp(args.search, "i"),
-              userid: getuserid(req.session),
+              userid: getprofileid(req.session),
               prompt: args.spaced ? { $not: { $eq: "" } } : ""
             },
             { sort: { datecreated: -1 } } //return reverse chron. Last note created at top of list.
@@ -647,34 +726,30 @@ export const start = async () => {
         noteLinks: async (parent, args, { req }) => {
           const notelinks = (await NoteLinks.find({
             noteid: args.noteid,
-            userid: getuserid(req.session)
+            userid: getprofileid(req.session)
           }).toArray()).map(prepare);
           return notelinks;
         },
         areas: async (parent, args, { req }) => {
           return (await Areas.find({
-            $or: [
-              { userid: getuserid(req.session) },
-              { userid: { $in: getcoachesid(req.session) }, coach: true }
-            ]
+            $or: [{ userid: getwheelid(req.session) }, { userid: "global" }]
           })
             .sort({ clicks: -1 })
             .toArray()).map(prepare);
         },
-        users: async (parent, args, { req }) => {
-          if (req.session.coach) {
-            const users = await Users.find({
-              $or: [
-                { _id: ObjectId(getcoachid(req.session)) },
-                { coaches: getcoachid(req.session) }
-              ]
-            }).toArray(); //.map(function(client) {return client._id;})
-
-            return users.map(prepare);
+        profiles: async (parent, args, { req }) => {
+          if (req.session.view.type === "coach") {
+            const profiles = await Profiles.find({
+              wheel: getwheelid(req.session)
+            })
+              .sort({ type: -1, name: 1 })
+              .toArray(); //.map(function(client) {return client._id;})
+            return profiles.map(prepare);
           }
 
-          return (await Users.find({
-            userid: getuserid(req.session)
+          return (await Profiles.find({
+            wheel: getwheelid(req.session),
+            user: getuserid(req.session)
           }).toArray()).map(prepare);
         },
         area: async (root, { _id, navdirection }, { req }) => {
@@ -682,31 +757,31 @@ export const start = async () => {
 
           return prepare(
             await Areas.findOne({
-              _id: ObjectId(_id),
-              $or: [
-                { userid: getuserid(req.session) },
+              _id: ObjectId(_id)
+              /* $or: [
+                { userid: getwheelid(req.session) },
                 { userid: { $in: getcoachesid(req.session) } } //this makes the area visible to clients. Using coach:true field.
-              ]
+              ] */
             })
           );
         },
         ranktimes: async (root, { areaId }, { req }) => {
           return (await RankTimes.find({
             areaId: areaId,
-            userid: getuserid(req.session)
+            userid: getprofileid(req.session)
           })
             .sort({ date: -1 })
             .toArray()).map(prepare);
         },
         arealinks: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
           return (await AreaLinks.find({
             rootarea: { $not: { $eq: null } },
-            area: args.area
+            area: args.area,
+            userid: getwheelid(session)
           }).toArray()).map(prepare);
         },
         goaltimes: async (root, { _id }, { req }) => {
-          return (await GoalTimes.find({ userid: getuserid(req.session) })
+          return (await GoalTimes.find({ userid: getprofileid(req.session) })
             .sort({ date: -1 })
             .toArray()).map(prepare);
         },
@@ -714,7 +789,7 @@ export const start = async () => {
           //if coach, return average of coachees.
           return prepare(
             await RankTimes.findOne(
-              { areaId: areaId, userid: getuserid(req.session) },
+              { areaId: areaId, userid: getprofileid(req.session) },
               { sort: { date: -1 } }
             )
           );
@@ -722,7 +797,7 @@ export const start = async () => {
         lastgoaltime: async (root, { areaId }, { req }) => {
           return prepare(
             await GoalTimes.findOne(
-              { areaId: areaId, userid: getuserid(req.session) },
+              { areaId: areaId, userid: getprofileid(req.session) },
               { sort: { date: -1 } }
             )
           );
@@ -731,7 +806,7 @@ export const start = async () => {
           return (await Pomodoros.find(
             {
               objective: objectiveId,
-              userid: getuserid(req.session)
+              userid: getprofileid(req.session)
             },
             { sort: { date: -1 } }
           ).toArray()).map(prepare);
@@ -809,41 +884,80 @@ export const start = async () => {
         }
       },
       User: {
-        area: async ({ startarea }, parent, { req }) => {
+        area: async ({ startarea }, args, { req }) => {
           return startarea
             ? prepare(await Areas.findOne({ _id: ObjectId(startarea) }))
             : null;
+        },
+        views: async (parent, args, { req }) => {
+          var query = new Object();
+          query.user = getuserid(req.session); //need to return BSON as string.
+          return (await Views.find(query).toArray()).map(prepare);
         }
       },
       Note: {
-        spaced: async ({ _id }, parent, { req }) => {
+        spaced: async ({ _id }, args, { req }) => {
           var spaced = await Spaced.findOne({
             noteid: _id,
-            userid: getuserid(req.session)
+            userid: getprofileid(req.session)
           });
           return spaced;
         }
       },
-      AreaLink: {
-        linkedarea: async (args, parent, { req }) => {
+      Wheel: {
+        profiles: async (parent, args, { req }) => {
+          var query = new Object();
+          query.wheel = parent._id;
+          if (parent.view.type !== "coach") query.user = getuserid(req.session);
+          //if (args.default) query._id = ObjectId(parent.view.defaultprofile); //if asking for default profile only return the default.
+          return (await Profiles.find(query)
+            .sort({ type: -1, name: 1 })
+            .toArray()).map(prepare);
+        },
+        startarea: async (parent, args, { req }) => {
+          var query = new Object();
+          query._id = ObjectId(parent.startarea);
+          return await Areas.findOne(query);
+        }
+      },
+      View: {
+        user: async (view, args, { req }) => {
           return prepare(
-            args.rootarea
+            await Users.findOne({
+              _id: ObjectId(view.user)
+            })
+          );
+        }
+      },
+      Profile: {
+        wheel: async (parent, args, { req }) => {
+          return prepare(
+            await Wheels.findOne({
+              _id: ObjectId(parent.wheel)
+            })
+          );
+        }
+      },
+      AreaLink: {
+        linkedarea: async (parent, args, { req }) => {
+          return prepare(
+            parent.rootarea
               ? await Areas.findOne({
-                  _id: ObjectId(args.rootarea)
+                  _id: ObjectId(parent.rootarea)
                 })
-              : { _id: ObjectId(args.area), name: null }
+              : { _id: ObjectId(parent.area), name: null }
           );
         }
       },
       NoteLink: {
-        area: async (args, parent, { req }) => {
+        area: async (parent, args, { req }) => {
           return prepare(
             await Areas.findOne({
-              _id: ObjectId(args.area)
+              _id: ObjectId(parent.area)
             })
           );
         },
-        note: async ({ noteid }, parent, { req }) => {
+        note: async ({ noteid }, args, { req }) => {
           return prepare(
             await Notes.findOne({
               _id: ObjectId(noteid)
@@ -852,14 +966,14 @@ export const start = async () => {
         }
       },
       ObjectiveLink: {
-        area: async ({ areaid }, parent, { req }) => {
+        area: async ({ areaid }, args, { req }) => {
           return prepare(
             await Areas.findOne({
               _id: ObjectId(areaid)
             })
           );
         },
-        objective: async ({ objectiveid }, parent, { req }) => {
+        objective: async ({ objectiveid }, args, { req }) => {
           return prepare(
             await Objectives.findOne({
               _id: ObjectId(objectiveid)
@@ -869,14 +983,14 @@ export const start = async () => {
         }
       },
       Focus: {
-        area: async ({ area }, parent, { req }) => {
+        area: async ({ area }, args, { req }) => {
           return prepare(
             await Areas.findOne({
               _id: ObjectId(area)
             })
           );
         },
-        objective: async ({ objective }, parent, { req }) => {
+        objective: async ({ objective }, args, { req }) => {
           return prepare(
             await Objectives.findOne({
               _id: ObjectId(objective)
@@ -884,8 +998,17 @@ export const start = async () => {
           );
         }
       },
+      View: {
+        wheel: async (obj, args, context, info) => {
+          var wheel = await Wheels.findOne({
+            _id: ObjectId(obj.wheel)
+          });
+          wheel.view = obj;
+          return prepare(wheel);
+        }
+      },
       Area: {
-        clicks: async ({ _id }, parent, { req }) => {
+        clicks: async ({ _id }, args, { req }) => {
           return new Promise(function(resolve, reject) {
             Clicks.aggregate(
               {
@@ -907,9 +1030,9 @@ export const start = async () => {
             );
           });
         },
-        areas: async ({ _id }, parent, { req }) => {
-          const args = { rootarea: _id, userid: getuserid(req.session) };
-          const arealinks = await AreaLinks.distinct("area", args);
+        areas: async ({ _id }, args, { req }) => {
+          const query = { rootarea: _id, userid: getwheelid(req.session) };
+          const arealinks = await AreaLinks.distinct("area", query);
 
           return (await Areas.find({
             _id: {
@@ -919,23 +1042,25 @@ export const start = async () => {
             }
           }).toArray()).map(prepare);
         },
-        rank: async ({ _id, coach }, parent, { req }) => {
-          if (req.session.user)
-            if ((req.session.user.profile === "coach") & (coach === true)) {
+        rank: async ({ _id, coach }, args, { req }) => {
+          if (req.session.profile)
+            if (req.session.profile.type === "team") {
+              //was previously using "coach" in area to decide to aggregate rank
+              const profiles = await Profiles.find({
+                wheel: req.session.profile.wheel
+              }).toArray();
+
               return new Promise(function(resolve, reject) {
                 //returning the average of the area for coaching
                 RankTimes.aggregate(
                   {
                     $match: {
                       area: _id,
+                      //userid: req.session.profile.wheel
                       userid: {
-                        $in: req.session.coach
-                          ? req.session.coach.clients
-                            ? req.session.coach.clients.map(
-                                client => client._id
-                              )
-                            : []
-                          : []
+                        $in: profiles.map(profile => {
+                          return profile._id.toString();
+                        })
                       }
                     }
                   },
@@ -961,7 +1086,7 @@ export const start = async () => {
                       data[0]
                         ? {
                             rank: parseInt(data[0].rank),
-                            note: "coaching team average"
+                            note: "team average"
                           }
                         : null
                     );
@@ -970,33 +1095,30 @@ export const start = async () => {
               });
             } else {
               const rank = await RankTimes.findOne(
-                { area: _id, userid: getuserid(req.session) },
+                { area: _id, userid: getprofileid(req.session) },
                 { sort: { date: -1 } }
               );
               return rank ? prepare(rank) : null;
             }
         },
-        goal: async ({ _id }, parent, { req }) => {
+        goal: async ({ _id }, args, { req }) => {
           const goal = await GoalTimes.findOne(
-            { area: _id, userid: getuserid(req.session) },
+            { area: _id, userid: getprofileid(req.session) },
             { sort: { date: -1 } }
           );
           return goal ? prepare(goal) : null;
         },
-        time: async ({ _id }, parent, { req }, query) => {
-          if (parent || item) {
+        time: async ({ _id }, args, { req }, query) => {
+          if (args || item) {
           }
           return new Promise(function(resolve, reject) {
+            var currentDate = new Date();
             Pomodoros.aggregate(
               {
                 $match: {
-                  userid: getuserid(req.session),
+                  userid: getprofileid(req.session),
                   date: {
-                    $gte: new Date(
-                      query.variableValues.readdate
-                        ? query.variableValues.readdate
-                        : null
-                    )
+                    $gte: currentDate.setDate(currentDate.getDate() - 7)
                   },
                   $or: [
                     {
@@ -1044,6 +1166,57 @@ export const start = async () => {
       },
       Mutation: {
         runUpdate: async (parent, args, { req }) => {
+          //use playground http://localhost:3001/ and run mutation: ""
+          const users = await Users.find().toArray();
+
+          users.map(async user => {
+            //create new view
+            if (user.startarea) {
+              var newwheel = {
+                _id: user._id,
+                user: user._id.toString(),
+                email: user.email,
+                startarea: user.startarea,
+                name: "my wheel"
+              };
+              var wheel = await Wheels.insertOne(newwheel);
+
+              var newview = {
+                _id: user._id,
+                user: user._id.toString(),
+                email: user.email,
+                wheel: wheel.insertedId.toString(),
+                name: "my view",
+                type:
+                  user.profile === "client"
+                    ? "team"
+                    : user.profile === "daniel"
+                    ? "innovator"
+                    : "coach"
+              };
+              Views.insertOne(newview);
+
+              //create new profile
+              var newprofile = {
+                _id: user._id,
+                user: user._id.toString(),
+                email: user.email,
+                name:
+                  user.profile === "coach"
+                    ? "Team Overview"
+                    : user.firstname + " " + user.lastname,
+                type:
+                  user.profile === "client"
+                    ? "member"
+                    : user.profile === "daniel"
+                    ? "innovator"
+                    : "team",
+                wheel: wheel.insertedId.toString()
+              };
+              Profiles.insertOne(newprofile);
+            }
+          });
+
           // runUpdate: Boolean
           /* const objectives = await Objectives.find().toArray();
 
@@ -1068,9 +1241,30 @@ export const start = async () => {
 
           return true;
         },
+        setViewProfile: async (parent, args, { req }) => {
+          //set wheel, view, and profile to the context.
+
+          const view = await Views.findOne({
+            _id: ObjectId(args.view),
+            user: getuserid(req.session) //check that this user own's the view. If not, return error.
+          });
+
+          var query = new Object();
+          query._id = ObjectId(args.profile);
+          if (view.type === "team") query.user = getuserid(req.session); //access allowed to all profiles for coach.
+
+          const profile = await Profiles.findOne(query);
+
+          if (!profile) throw new Error("View Profile combination not found");
+
+          req.session.view = view;
+          req.session.profile = profile;
+
+          return prepare(profile); //need to return the view, area.
+        },
         removeStartArea: async (parent, args, { req }) => {
           await Users.updateOne(
-            { _id: ObjectId(getuserid(req.session)) },
+            { _id: ObjectId(getprofileid(req.session)) },
             { $set: { startarea: null } }
           );
 
@@ -1098,44 +1292,49 @@ export const start = async () => {
         },
         updateProfile: async (parent, args, { req }) => {
           var user = await Users.findOneAndUpdate(
-            { _id: ObjectId(getuserid(req.session)) },
+            { _id: ObjectId(getuserid(req.session)) }, //update this
             { $set: args },
             { returnOriginal: false }
           );
           return user.value;
         },
         createClient: async (parent, args, { req }) => {
-          const user = await Users.findOne({ email: args.email });
+          var user = await Users.findOne({ email: args.email });
+          var userid;
           if (user) {
-            throw new Error(
-              "There is already a Cavestep profile with this email!"
-            );
+            userid = user._id.toString();
+          } else {
+            //args.profile = "client"; //this belongs on the view now
+            args.state = "new";
+            args.code = bcrypt.hashSync("verifythisyo", 10);
+            args.created = new Date();
+
+            var newuser = await Users.insertOne(args); //create record to return id
+            args._id = newuser.insertedId.toString(); //use args to pass new user id for email link
+            newClientEmail(args, req.session.user);
+
+            userid = newuser.insertedId.toString(); //pass id for creating view and profiles
           }
 
-          if (req.session.user) {
-            if (!args.startarea)
-              throw new Error(
-                "You need to add a coaching area for your client."
-              );
-            args.profile = "client";
-            args.state = "new";
-            args.coaches = [
-              env === "prod"
-                ? "6025adbc53b8b77b09d6e0a2" //add production daniel@cavestep.com profile as coach.
-                : "6025e1bc216eef4f3fda3c1f", //add production daniel@cavestep.com profile as coach.
-              req.session.user._id
-            ];
-            args.code = bcrypt.hashSync("verifythisyo", 10);
-            var insertedId = await Users.insertOne(args);
-            if (req.session.coach.clients) {
-              req.session.coach.clients.push(args);
-            } else {
-              req.session.coach.clients = [{ args }]; //link
-            }
-            if (insertedId.insertedId) newClientEmail(args, req.session.user);
-            return true;
-          }
-          return false;
+          //create new view
+          var newview = {
+            user: userid,
+            wheel: req.session.view.wheel,
+            name: req.session.view.name,
+            type: "team"
+          };
+          Views.insertOne(newview);
+
+          //create new profile
+          var newprofile = {
+            user: userid,
+            wheel: req.session.view.wheel,
+            name: args.firstname + " " + args.lastname,
+            type: "member"
+          };
+          Profiles.insertOne(newprofile);
+
+          return true;
         },
         verifyAccount: async (parent, args, { req }) => {
           const user = await Users.findOneAndUpdate(
@@ -1173,36 +1372,28 @@ export const start = async () => {
           });
           return true;
         },
-        setUser: async (parent, { email }, { req }) => {
-          var newuser = Object();
-          if (email === req.session.coach.email) {
-            req.session.user = req.session.coach;
-            newuser = await Users.findOne({
-              email: email
-            });
-          } else {
-            newuser = await Users.findOne({
-              email: email,
-              coaches: req.session.coach._id.toString()
-            });
-          }
+        setProfile: async (parent, { _id }, { req }) => {
+          const profile = await Profiles.findOne({
+            _id: ObjectId(_id),
+            wheel: req.session.view.wheel
+          });
 
-          if (newuser) {
-            req.session.user = newuser;
-            return newuser;
-          }
-          throw new Error("Profile could not be retrieved.");
+          if (!profile) throw new Error("user could not be retrieved.");
+
+          req.session.profile = profile;
+          return profile;
         },
         signup: async (parent, args, { req }) => {
           const user = await Users.findOne({ email: args.email });
           if (user) {
             throw new Error(
-              "There is already a Cavestep profile with this email!"
+              "An error has occured. If you already have a Cavestep profile with this email you can log in."
             );
           }
 
           const date = new Date();
-          await Users.insertOne({
+
+          var newuser = await Users.insertOne({
             email: args.email,
             firstname: args.firstname,
             code: bcrypt.hashSync(date.toString(), 10),
@@ -1210,18 +1401,28 @@ export const start = async () => {
             serverversion: pjson.version,
             state: "new",
             profile: args.account,
-            coaches: [
-              env === "prod"
-                ? "6025adbc53b8b77b09d6e0a2" //add production daniel@cavestep.com profile as coach.
-                : "6025e1bc216eef4f3fda3c1f" //add dev daniel@cavestep.com profile as coach for testing
-            ]
+            created: new Date()
           });
 
-          const newuser = await Users.findOne({ email: args.email });
+          userid = newuser.insertedId.toString();
 
-          req.session.user = {
-            newuser
+          //create new view
+          var newview = {
+            user: userid,
+            wheel: req.session.view.wheel,
+            name: req.session.view.name,
+            type: "team"
           };
+          Views.insertOne(newview);
+
+          //create new profile
+          var newprofile = {
+            user: userid,
+            wheel: req.session.view.wheel,
+            name: args.firstname + " " + args.lastname,
+            type: "member"
+          };
+          Profiles.insertOne(newprofile);
 
           if (args.account === "coach") newCoachEmail(newuser);
           else newInnovatorEmail(newuser);
@@ -1235,15 +1436,24 @@ export const start = async () => {
           if (user) {
             if (user.incorrecttries < 6 && user.state == "verified") {
               if (await bcrypt.compareSync(args.pwd, user.password)) {
-                req.session.user = user;
-                if (user.profile == "coach") {
-                  const clients = await Users.find({
-                    coaches: user._id.toString()
-                  }).toArray();
-                  user.clients = clients;
-                  req.session.coach = user;
-                }
+                const view = await Views.findOne({
+                  user: user._id.toString()
+                });
+
+                const profile = await Profiles.findOne(
+                  {
+                    user: view.type === "coach" ? null : user._id.toString(),
+                    wheel: view.wheel
+                  },
+                  {
+                    sort: { type: -1 }
+                  }
+                );
+
                 user.serverversion = pjson.version;
+                req.session.user = user;
+                req.session.view = view;
+                req.session.profile = profile;
 
                 await Logins.insertOne({
                   email: args.username,
@@ -1323,7 +1533,8 @@ export const start = async () => {
             uiversion: args.uiversion,
             serverversion: pjson.version,
             state: "new",
-            profile: "client"
+            profile: "client",
+            created: new Date()
           });
 
           throw new Error("Email not registered");
@@ -1336,7 +1547,7 @@ export const start = async () => {
 
             const user = await Users.findOne({ email: args.email });
             if (!user) {
-              args.profile = "coach";
+              args.profile = ""; //can't just be coach. need to fix this.
               args.state = "verified";
               args.serverversion = pjson.version;
               args.lastip = ip;
@@ -1344,7 +1555,7 @@ export const start = async () => {
               req.session.user = user;
               if (user.profile == "coach") req.session.coach = user;
               args.token = null; //removing the token from saving in database for security
-              args.datecreated = new Date();
+              args.created = new Date();
               await Users.insertOne(args);
               return prepare(user);
             }
@@ -1363,12 +1574,31 @@ export const start = async () => {
                 $set: {
                   uiversion: args.uiversion,
                   googleid: args.googleid,
-                  lastip: getuserIpAddress(req)
+                  lastip: getuserIpAddress(req),
+                  lastlogin: new Date()
                 }
               }
             );
+
+            const view = await Views.findOne({
+              user: user._id.toString()
+            });
+
+            const profile = await Profiles.findOne(
+              {
+                user: view.type === "coach" ? null : user._id.toString(),
+                wheel: view.wheel
+              },
+              {
+                sort: { type: -1 }
+              }
+            );
+
             user.token = args.token;
             req.session.user = user;
+            req.session.view = view;
+            req.session.profile = profile;
+
             if (user.profile == "coach") {
               const clients = await Users.find({
                 coaches: user._id.toString()
@@ -1411,7 +1641,7 @@ export const start = async () => {
           return true;
         },
         savePomodoro: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.date = new Date(args.datetime);
@@ -1421,21 +1651,21 @@ export const start = async () => {
         saveFocusLink: async (root, args, { req }) => {
           var focuslink = await FocusLinks.findOne(
             {
-              userid: getuserid(req.session),
+              userid: getprofileid(req.session),
               objective: args.objective
             },
             { sort: { date: -1 } } //update sort at some stage.
           );
 
           if (focuslink) {
-            args.userid = getuserid(req.session);
+            args.userid = getprofileid(req.session);
             await FocusLinks.deleteOne({
               _id: focuslink._id,
               userid: args.userid
             });
             return true;
           } else {
-            args.userid = getuserid(req.session);
+            args.userid = getprofileid(req.session);
             args.serverversion = pjson.version;
             args.uiversion = getuiversion(req.session);
             args.date = new Date(args.datetime);
@@ -1444,7 +1674,7 @@ export const start = async () => {
           }
         },
         snoozeFocusLink: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           args.snoozedate = new Date(args.snooze);
           args.snoozedate.setHours(0, 0, 0, 0);
           await FocusLinks.updateOne(
@@ -1458,7 +1688,7 @@ export const start = async () => {
           return true;
         },
         snoozeObjectiveLink: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           args.snoozedate = new Date(args.snooze);
           args.snoozedate.setHours(0, 0, 0, 0);
           await ObjectiveLinks.updateOne(
@@ -1481,7 +1711,7 @@ export const start = async () => {
         },
         updateArea: async (root, args, { req }) => {
           await Areas.updateOne(
-            { _id: ObjectId(args.area), userid: getuserid(req.session) },
+            { _id: ObjectId(args.area), userid: getprofileid(req.session) },
             { $set: args }
           );
           args._id = args.area;
@@ -1489,26 +1719,26 @@ export const start = async () => {
         },
         deleteAreaLink: async (root, { rootarea, area }, { req }) => {
           const res = await AreaLinks.deleteMany(
-            { rootarea: rootarea, area: area, userid: getuserid(req.session) },
+            { rootarea: rootarea, area: area, userid: getwheelid(req.session) },
             { $set: { arealink: null } }
           );
           return res;
         },
         createAreaLink: async (root, args, { req }) => {
-          // args.userid = getuserid(req.session);
+          // args.userid = getwheelid(req.session);
           // args.serverversion = pjson.version;
           // args.uiversion = getuiversion(req.session);
           await AreaLinks.insertOne({
             rootarea: args.rootarea,
             area: args.area,
-            userid: getuserid(req.session),
+            userid: getwheelid(req.session),
             created: new Date()
           });
 
           return true;
         },
         createArea: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getwheelid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.created = new Date();
@@ -1519,19 +1749,19 @@ export const start = async () => {
             rootarea: args.rootarea,
             area: res.insertedIds[0].toString(),
             areaname: args.name,
-            userid: getuserid(req.session),
+            userid: getwheelid(req.session),
             serverversion: pjson.version,
             uiversion: getuiversion(req.session)
           });
           return prepare(
             await Areas.findOne({
               _id: res.insertedIds[0],
-              userid: getuserid(req.session)
+              userid: getwheelid(req.session)
             })
           );
         },
         createCoachArea: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getwheelid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.created = new Date();
@@ -1543,20 +1773,20 @@ export const start = async () => {
             rootarea: args.rootarea,
             area: res.insertedIds[0].toString(),
             areaname: args.name,
-            userid: getuserid(req.session),
+            userid: getwheelid(req.session),
             serverversion: pjson.version,
             uiversion: getuiversion(req.session)
           });
 
           const area = await Areas.findOne({
             _id: res.insertedIds[0],
-            userid: getuserid(req.session)
+            userid: getwheelid(req.session)
           });
 
           return prepare(area);
         },
         createRankTime: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           args.date = new Date(args.datetime);
           const res = await RankTimes.insert(args);
           return {
@@ -1565,7 +1795,7 @@ export const start = async () => {
           };
         },
         createGoalTime: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.date = new Date(args.datetime);
@@ -1577,7 +1807,7 @@ export const start = async () => {
           };
         },
         createObjective: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.date = args.datetime ? new Date(args.datetime) : null;
@@ -1589,7 +1819,7 @@ export const start = async () => {
           };
         },
         createNote: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.datecreated = new Date(args.datetime);
@@ -1602,7 +1832,7 @@ export const start = async () => {
           };
         },
         createNoteLink: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.datecreated = new Date();
@@ -1611,14 +1841,14 @@ export const start = async () => {
         },
         createNewObjectiveLink: async (root, args, { req }) => {
           var newarea = new Object(); //create new area.
-          newarea.userid = getuserid(req.session);
+          newarea.userid = getprofileid(req.session);
           newarea.name = args.areaname;
           const res = await Areas.insert(newarea);
 
           await ObjectiveLinks.insertOne({
             //insert the link to connect note and new area.
             objectiveid: args.objectiveid,
-            userid: getuserid(req.session),
+            userid: getprofileid(req.session),
             areaid: res.insertedIds[0].toString(),
             datecreated: new Date(args.datetime)
           });
@@ -1627,21 +1857,21 @@ export const start = async () => {
         },
         createNewNoteLink: async (root, args, { req }) => {
           var newarea = new Object(); //create new area.
-          newarea.userid = getuserid(req.session);
+          newarea.userid = getprofileid(req.session);
           newarea.name = args.areaname;
           const res = await Areas.insert(newarea);
 
           await NoteLinks.insertOne({
             //insert the link to connect note and new area.
             noteid: args.noteid,
-            userid: getuserid(req.session),
+            userid: getprofileid(req.session),
             area: res.insertedIds[0].toString(),
             datecreated: new Date(args.datetime)
           });
           return res.insertedIds[1] ? true : false;
         },
         removeNoteLink: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           NoteLinks.deleteOne(
             {
               _id: ObjectId(args.linkid),
@@ -1655,7 +1885,10 @@ export const start = async () => {
         },
         checkKey: async (root, args, { req }) => {
           await Objectives.updateOne(
-            { _id: ObjectId(args.objectiveId), userid: getuserid(req.session) },
+            {
+              _id: ObjectId(args.objectiveId),
+              userid: getprofileid(req.session)
+            },
             {
               $set: {
                 [`keys.${args.index}.checked`]: args.check,
@@ -1666,7 +1899,7 @@ export const start = async () => {
           return true;
         },
         updateNoteLink: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           NoteLinks.updateOne(
             { _id: ObjectId(args.linkid) },
             { $set: { notes: args.notes } },
@@ -1677,7 +1910,7 @@ export const start = async () => {
           return true;
         },
         updateObjectiveLink: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           ObjectiveLinks.updateOne(
             { _id: ObjectId(args.linkid) },
             { $set: { notes: args.notes } },
@@ -1688,7 +1921,7 @@ export const start = async () => {
           return true;
         },
         createObjectiveLink: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.datecreated = new Date(args.datetime);
@@ -1696,7 +1929,7 @@ export const start = async () => {
           return res.insertedIds[1] ? true : false;
         },
         removeObjectiveLink: async (root, args, { req }) => {
-          args.userid = getuserid(req.session);
+          args.userid = getprofileid(req.session);
           ObjectiveLinks.deleteOne(
             {
               _id: ObjectId(args.linkid),
@@ -1750,7 +1983,7 @@ export const start = async () => {
           delete args.noteId;
           const spaced = await Spaced.findOne({
             noteid: noteId,
-            userid: getuserid(req.session)
+            userid: getprofileid(req.session)
           });
           if (spaced.fib1) {
             args.fib1 = spaced.fib0 + spaced.fib1;
@@ -1764,7 +1997,7 @@ export const start = async () => {
           args.datenext = nextdate;
 
           NoteLinks.update(
-            { noteid: noteId, userid: getuserid(req.session) },
+            { noteid: noteId, userid: getprofileid(req.session) },
             {
               $set: { nextdate: nextdate }
             },
@@ -1772,7 +2005,7 @@ export const start = async () => {
           );
 
           Spaced.update(
-            { noteid: noteId, userid: getuserid(req.session) },
+            { noteid: noteId, userid: getprofileid(req.session) },
             {
               $set: args
             }
@@ -1791,11 +2024,11 @@ export const start = async () => {
 
           const spaced = await Spaced.findOne({
             noteid: noteId,
-            userid: getuserid(req.session)
+            userid: getprofileid(req.session)
           });
 
           await NoteLinks.update(
-            { noteid: noteId, userid: getuserid(req.session) },
+            { noteid: noteId, userid: getprofileid(req.session) },
             {
               $set: { nextdate: nextdate }
             },
@@ -1805,7 +2038,7 @@ export const start = async () => {
           args.markedno = spaced.markedno ? spaced.markedno + 1 : 1;
 
           await Spaced.update(
-            { noteid: noteId, userid: getuserid(req.session) },
+            { noteid: noteId, userid: getprofileid(req.session) },
             {
               $set: args
             }
@@ -1815,7 +2048,7 @@ export const start = async () => {
         deleteArea: async (root, { rootarea, area }, { req }) => {
           var message = "";
           AreaLinks.deleteOne(
-            { rootarea: rootarea, area: area, userid: getuserid(req.session) },
+            { rootarea: rootarea, area: area, userid: getwheelid(req.session) },
             function(err, obj) {
               if (err) throw err;
               message = obj.deletedCount + " area(s) deleted";
@@ -1826,11 +2059,27 @@ export const start = async () => {
       }
     };
 
-    function getuserid(session) {
-      if (session.user) return session.user._id;
+    function getprofileid(session) {
+      if (session.profile) return session.profile._id.toString();
+      //if (session.profile._id) return session.profile._id;
       else if (env === "test") {
-        return "5d70b68aa1e6bf52b9906b8e";
+        return "605da7eedc0c981608c40126"; //default for test??
       } else throw new Error("Invalid Session");
+    }
+
+    function getwheelid(session) {
+      if (session.view) return session.view.wheel;
+      //if (session.view._id) return session.view._id;
+      else if (env === "test") {
+        return "5d27ffef2f25635b27f0a450"; //default for test??
+      } else throw new Error("No View");
+    }
+
+    function getuserid(session) {
+      if (session.user) return session.user._id.toString();
+      else if (env === "test") {
+        return "5d70b68aa1e6bf52b9906b8e"; //default for test??
+      } else throw new Error("No View");
     }
 
     function getcoachid(session) {
@@ -1838,8 +2087,11 @@ export const start = async () => {
     }
 
     function getcoachesid(session) {
-      if (session.user.coaches) return session.user.coaches;
-      else return ["none"];
+      if (session.user) {
+        if (session.user.coaches) return session.user.coaches;
+      }
+
+      return ["none"];
     }
 
     function getuiversion(session) {
@@ -1868,14 +2120,14 @@ export const start = async () => {
       try {
         if (navdirection == "forward") {
           Clicks.insertOne({
-            userid: getuserid(req.session),
+            userid: getprofileid(req.session),
             date: new Date(),
             areaid: _id
           });
 
           Areas.updateOne(
             {
-              userid: getuserid(req.session),
+              userid: getprofileid(req.session),
               _id: ObjectId(_id)
             },
             { $inc: { clicks: 1 }, $set: { lastclicked: new Date() } }
@@ -1914,7 +2166,7 @@ export const start = async () => {
             if (!areaid) {
               var area = {
                 name: link.name,
-                userid: getuserid(req.session),
+                userid: getprofileid(req.session),
                 serverversion: pjson.version,
                 uiversion: getuiversion(req.session),
                 created: new Date()
@@ -1940,7 +2192,7 @@ export const start = async () => {
     async function removefocuslink(req, objectiveid) {
       await FocusLinks.deleteOne({
         objective: objectiveid,
-        userid: getuserid(req.session)
+        userid: getprofileid(req.session)
       });
 
       return true;
