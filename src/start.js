@@ -1251,7 +1251,7 @@ export const start = async () => {
 
           var query = new Object();
           query._id = ObjectId(args.profile);
-          if (view.type === "team") query.user = getuserid(req.session); //access allowed to all profiles for coach.
+          if (view.type !== "coach") query.user = getuserid(req.session); //access allowed to all profiles for coach.
 
           const profile = await Profiles.findOne(query);
 
@@ -1587,20 +1587,12 @@ export const start = async () => {
 
             var query = new Object();
 
-            //if (view.type !== "coach") query.user = user._id.toString();
+            if (view.type !== "coach") query.user = user._id.toString();
             query.wheel = view.wheel;
 
-            const profile = await Profiles.findOne(
-              query,
-              {
-                sort: { type: -1 }
-              }
-            );
-
-            console.log(user);
-            console.log(view);
-            console.log(query);
-            console.log(profile);
+            const profile = await Profiles.findOne(query, {
+              sort: { type: -1 }
+            });
 
             user.token = args.token;
             req.session.user = user;
@@ -2074,7 +2066,7 @@ export const start = async () => {
         return "605da7eedc0c981608c40126"; //default for test??
       } else {
         getuserid(session);
-        return null; //throw new Error("Profile not found");
+        throw new Error("Profile not found");
       }
     }
 
