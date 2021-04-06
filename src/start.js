@@ -1597,9 +1597,9 @@ export const start = async () => {
               }
             );
 
-            console.log(user)
-            console.log(view)
-            console.log(profile)
+            console.log(user);
+            console.log(view);
+            console.log(profile);
 
             user.token = args.token;
             req.session.user = user;
@@ -2073,7 +2073,7 @@ export const start = async () => {
         return "605da7eedc0c981608c40126"; //default for test??
       } else {
         getuserid(session);
-        throw new Error("Profile not found");
+        return null; //throw new Error("Profile not found");
       }
     }
 
