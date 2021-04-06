@@ -1587,7 +1587,7 @@ export const start = async () => {
 
             var query = new Object();
 
-            if (view.type !== "coach") query.user = user._id.toString();
+            //if (view.type !== "coach") query.user = user._id.toString();
             query.wheel = view.wheel;
 
             const profile = await Profiles.findOne(
@@ -1596,6 +1596,10 @@ export const start = async () => {
                 sort: { type: -1 }
               }
             );
+
+            console.log(user)
+            console.log(view)
+            console.log(profile)
 
             user.token = args.token;
             req.session.user = user;
