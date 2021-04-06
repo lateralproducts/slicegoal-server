@@ -1599,6 +1599,7 @@ export const start = async () => {
 
             console.log(user);
             console.log(view);
+            console.log(query);
             console.log(profile);
 
             user.token = args.token;
