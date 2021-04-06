@@ -1167,7 +1167,7 @@ export const start = async () => {
       Mutation: {
         runUpdate: async (parent, args, { req }) => {
           //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
-          /* const users = await Users.find().toArray();
+          const users = await Users.find().toArray();
 
           users.map(async user => {
             //create new view
@@ -1215,7 +1215,7 @@ export const start = async () => {
               };
               Profiles.insertOne(newprofile);
             }
-          }); */
+          });
 
           // runUpdate: Boolean
           /* const objectives = await Objectives.find().toArray();
@@ -1440,11 +1440,12 @@ export const start = async () => {
                   user: user._id.toString()
                 });
 
+                var query = new Object();
+                if (view.type !== "coach") query.user = user._id.toString();
+                query.wheel = view.wheel;
+
                 const profile = await Profiles.findOne(
-                  {
-                    user: view.type === "coach" ? null : user._id.toString(),
-                    wheel: view.wheel
-                  },
+                  { query },
                   {
                     sort: { type: -1 }
                   }
@@ -1584,11 +1585,13 @@ export const start = async () => {
               user: user._id.toString()
             });
 
+            var query = new Object();
+
+            if (view.type !== "coach") query.user = user._id.toString();
+            query.wheel = view.wheel;
+
             const profile = await Profiles.findOne(
-              {
-                user: view.type === "coach" ? null : user._id.toString(),
-                wheel: view.wheel
-              },
+              { query },
               {
                 sort: { type: -1 }
               }
