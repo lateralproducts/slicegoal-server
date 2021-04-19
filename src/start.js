@@ -1729,7 +1729,7 @@ export const start = async () => {
         },
         updateArea: async (root, args, { req }) => {
           await Areas.updateOne(
-            { _id: ObjectId(args.area), userid: getprofileid(req.session) },
+            { _id: ObjectId(args.area), userid: getwheelid(req.session) },
             { $set: args }
           );
           args._id = args.area;
