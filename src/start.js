@@ -151,7 +151,7 @@ export const start = async () => {
       });
     }
 
-    async function newClientEmail(client, coach) {
+    async function newClientEmail(client, coach, viewname) {
       var mailOptions = {
         from: auth.user,
         to: client.email,
@@ -211,15 +211,16 @@ export const start = async () => {
           coach.email +
           "<br/>" +
           "<br/>" +
+          "view name: " +
+          viewname +
+          "<br/>" +
+          "<br/>" +
           "verify link: " + //cavestep
           URLpath +
           "?page=verify&user=" +
           client._id +
           "&code=" +
           client.code +
-          "'>" +
-          "get set up" + //start your Cavestep journey
-          "</a>" + //cavestep
           "<br/>" +
           "<br/>" +
           "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>" +
@@ -242,7 +243,7 @@ export const start = async () => {
         subject: "Looks like you've signed up for Cavestep!",
         html:
           "<head><style>a {cursor: help;}</style></head>" +
-          "Hey" +
+          "Hey " +
           (innovator.firstname ? innovator.firstname : "") +
           ", " +
           "welcome to Cavestep!" +
@@ -284,7 +285,7 @@ export const start = async () => {
         html:
           "<head><style>a {cursor: help;}</style></head>" +
           (coach.firstname ? "Hey " + coach.firstname + ", " : "") +
-          "We got your request to create an account. Great to have you with us." +
+          "we got your request to create an account. Great to have you with us." +
           "<br/>" +
           "<br/>" +
           "Click below to start your Cavestep journey." + //cavestep
@@ -1311,7 +1312,7 @@ export const start = async () => {
 
             var newuser = await Users.insertOne(args); //create record to return id
             args._id = newuser.insertedId.toString(); //use args to pass new user id for email link
-            newClientEmail(args, req.session.user);
+            newClientEmail(args, req.session.user, req.session.view.name);
 
             userid = newuser.insertedId.toString(); //pass id for creating view and profiles
           }
@@ -1329,7 +1330,7 @@ export const start = async () => {
           var newprofile = {
             user: userid,
             wheel: req.session.view.wheel,
-            name: args.firstname + " " + args.lastname,
+            name: args.firstname + args.lastname ? " " + args.lastname : "",
             type: "member"
           };
           Profiles.insertOne(newprofile);
@@ -1393,7 +1394,7 @@ export const start = async () => {
 
           const date = new Date();
 
-          var newuser = await Users.insertOne({
+          var newuser = {
             email: args.email,
             firstname: args.firstname,
             code: bcrypt.hashSync(date.toString(), 10),
@@ -1402,25 +1403,44 @@ export const start = async () => {
             state: "new",
             profile: args.account,
             created: new Date()
-          });
+          };
 
-          userid = newuser.insertedId.toString();
+          var userid = (await Users.insertOne(newuser)).insertedId.toString();
+
+          var startareaid = (await Areas.insertOne({
+            name: "Coaching Wheel"
+          })).insertedId.toString();
+
+          var wheelid =
+            args.account === "coach"
+              ? (await Wheels.insertOne({
+                  name: args.email + "'s new coach wheel",
+                  startarea: startareaid
+                })).insertedId.toString() //new wheel (templates??)
+              : env === "test"
+              ? "6025e1bc216eef4f3fda3c1f"
+              : "607cbc0b49e8769358992564"; //req.session.view.wheel,
 
           //create new view
           var newview = {
             user: userid,
-            wheel: req.session.view.wheel,
-            name: req.session.view.name,
-            type: "team"
+            wheel: wheelid, //req.session.view.wheel,
+            name: "Wheel of Life", //req.session.view.name,
+            type: args.account === "coach" ? "coach" : "team"
           };
           Views.insertOne(newview);
 
           //create new profile
           var newprofile = {
             user: userid,
-            wheel: req.session.view.wheel,
-            name: args.firstname + " " + args.lastname,
-            type: "member"
+            wheel: wheelid,
+            name:
+              args.account === "coach"
+                ? "Team Overview"
+                : args.firstname + args.lastname
+                ? " " + args.lastname
+                : "",
+            type: args.account === "coach" ? "team" : "member"
           };
           Profiles.insertOne(newprofile);
 
@@ -1434,7 +1454,10 @@ export const start = async () => {
           //const user = data[username];
 
           if (user) {
-            if (user.incorrecttries < 6 && user.state == "verified") {
+            if (
+              (user.incorrecttries < 6 || user.incorrecttries === undefined) &&
+              user.state == "verified"
+            ) {
               if (await bcrypt.compareSync(args.pwd, user.password)) {
                 const view = await Views.findOne({
                   user: user._id.toString()
