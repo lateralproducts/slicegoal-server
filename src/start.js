@@ -1330,7 +1330,7 @@ export const start = async () => {
           var newprofile = {
             user: userid,
             wheel: req.session.view.wheel,
-            name: args.firstname + args.lastname ? " " + args.lastname : "",
+            name: args.firstname + (args.lastname ? " " + args.lastname : ""),
             type: "member"
           };
           Profiles.insertOne(newprofile);
@@ -1437,9 +1437,7 @@ export const start = async () => {
             name:
               args.account === "coach"
                 ? "Team Overview"
-                : args.firstname + args.lastname
-                ? " " + args.lastname
-                : "",
+                : args.firstname + (args.lastname ? " " + args.lastname : ""),
             type: args.account === "coach" ? "team" : "member"
           };
           Profiles.insertOne(newprofile);
