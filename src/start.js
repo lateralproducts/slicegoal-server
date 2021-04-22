@@ -12,18 +12,16 @@ import session from "express-session";
 import bcrypt from "bcryptjs";
 import ms from "ms";
 
-var nodemailer = require("nodemailer");
-var schedule = require("node-schedule");
+import { Queries } from "./schema/queries";
+import { Mutations } from "./schema/mutations";
+import { Schema } from "./schema/schema";
 
-var auth = {
-  user: "daniel@cavestep.com",
-  pass: "nfquwbjifgfjkkov"
-};
-
-var transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth
-});
+import {
+  newClientEmail,
+  newInnovatorEmail,
+  newCoachEmail,
+  objectivesummaryemail
+} from "./emails";
 
 //import { verifier } from "google-id-token-verifier";
 const { OAuth2Client } = require("google-auth-library");
@@ -42,14 +40,9 @@ const app = express();
 
 var env = "test";
 
-app.use(cors());
+var schedule = require("node-schedule");
 
-var URLpath = `${process.env.URLpath}`;
-if (URLpath == "undefined") {
-  URLpath = "https://www.cavestep.com/app/"; //must have a slash at the end
-  env = "prod";
-  //override address if necessary
-}
+app.use(cors());
 
 /* const homePath = "/graphiql";
 const URL = "http://localhost";
@@ -85,16 +78,13 @@ export const start = async () => {
     const Wheels = db.collection("wheels");
     const Views = db.collection("views");
     const Profiles = db.collection("profiles");
-
-    //const Wheels = db.collection("wheels");
-    //const WheelAreaLinks = db.collection("wheelarealink");
     //const Signup = db.collection("signup");
 
-    var j = schedule.scheduleJob({ hour: 7, minute: 30 }, function() {
-      objectivesummaryemail("daniel@lateralproducts.com");
+    var j = schedule.scheduleJob({ hour: 15, minute: 21 }, function() {
+      objectivesummary("daniel@lateralproducts.com");
     });
 
-    async function objectivesummaryemail(email) {
+    async function objectivesummary(email) {
       const user = await Users.findOne({ email: email });
 
       const links = await FocusLinks.find({
@@ -117,463 +107,8 @@ export const start = async () => {
         .limit(100)
         .toArray();
 
-      var mailOptions = {
-        from: auth.user,
-        to: user.email,
-        subject: "Your Cavestep Objectives",
-        html:
-          "<head><style>a {cursor: help;} .objective { margin: 3px; }</style></head>" +
-          "<div>Hey " +
-          user.firstname +
-          ", here are your top objectives for today!</div>" +
-          objectives
-            .map(function(obj) {
-              return (
-                "<div class='objective'>• <a href='" +
-                URLpath +
-                "?objective=" +
-                obj._id +
-                "'>" +
-                obj.objective +
-                "</a></div>"
-              );
-            })
-            .join("") +
-          "<br/><img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>"
-      };
-
-      transporter.sendMail(mailOptions, function(error, info) {
-        if (error) {
-          console.log(error);
-        } else {
-          console.log("Email sent: " + info.response);
-        }
-      });
+      objectivesummaryemail(user, links, objectives);
     }
-
-    async function newClientEmail(client, coach, viewname) {
-      var mailOptions = {
-        from: auth.user,
-        to: client.email,
-        subject: "You’ve been invited to Cavestep", //to Cavestep🦶
-        html:
-          "<head><style>a {cursor: help;}</style></head><div>" +
-          (client.firstname ? "Hey " + client.firstname + ", " : "") +
-          "<br/>" +
-          (coach.firstname
-            ? coach.firstname + " has invited you to a Cavestep coaching wheel!"
-            : "You've been invited to a Cavestep coaching wheel.") + // to Cavestep🦶
-          "<br/>" +
-          "Click here to start your journey: <a href='" +
-          URLpath +
-          "?page=verify&user=" +
-          client._id +
-          "&code=" +
-          client.code +
-          "'>" +
-          "get set up" + //start your Cavestep journey
-          "</a>" + //cavestep
-          "<br/>" +
-          "<br/>" +
-          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>" +
-          "</div>"
-      };
-
-      transporter.sendMail(mailOptions, function(error, info) {
-        if (error) {
-          console.log(error);
-        } else {
-          console.log("Email sent to:" + client.email + " - " + info.response);
-        }
-      });
-
-      var mailConfirmation = {
-        from: auth.user,
-        to: "daniel@cavestep.com",
-        subject: "New User!", //to Cavestep🦶
-        html:
-          "<head><style>a {cursor: help;}</style></head><div>" +
-          "name: " +
-          client.firstname +
-          " " +
-          client.lastname +
-          "<br/>" +
-          "email: " +
-          client.email +
-          "<br/>" +
-          "<br/>" +
-          "coach: " +
-          coach.firstname +
-          " " +
-          coach.lastname +
-          "<br/>" +
-          "email: " +
-          coach.email +
-          "<br/>" +
-          "<br/>" +
-          "view name: " +
-          viewname +
-          "<br/>" +
-          "<br/>" +
-          "verify link: " + //cavestep
-          URLpath +
-          "?page=verify&user=" +
-          client._id +
-          "&code=" +
-          client.code +
-          "<br/>" +
-          "<br/>" +
-          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>" +
-          "</div>"
-      };
-
-      transporter.sendMail(mailConfirmation, function(error, info) {
-        if (error) {
-          console.log(error);
-        } else {
-          console.log("Email sent to:" + client.email + " - " + info.response);
-        }
-      });
-    }
-
-    async function newInnovatorEmail(innovator) {
-      var mailOptions = {
-        from: auth.user,
-        to: innovator.email,
-        subject: "Looks like you've signed up for Cavestep!",
-        html:
-          "<head><style>a {cursor: help;}</style></head>" +
-          "Hey " +
-          (innovator.firstname ? innovator.firstname : "") +
-          ", " +
-          "welcome to Cavestep!" +
-          "<br/>" +
-          "<br/>" +
-          "You've signed up for a Life Wheel." +
-          "<br/>" +
-          "Click the link here to log in and start your journey: " + //cavestep
-          "</div>" +
-          "<a href='" +
-          URLpath +
-          "?page=verify&user=" +
-          innovator._id +
-          "&code=" +
-          innovator.code +
-          "'>" +
-          "start your journey" + //start your Cavestep journey
-          "</a><div>" +
-          "<br/>" +
-          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>"
-      };
-
-      transporter.sendMail(mailOptions, function(error, info) {
-        if (error) {
-          console.log(error);
-        } else {
-          console.log(
-            "Email sent to:" + innovator.email + " - " + info.response
-          );
-        }
-      });
-    }
-
-    async function newCoachEmail(coach) {
-      var mailOptions = {
-        from: auth.user,
-        to: coach.email,
-        subject: "You’ve signed up to Cavestep",
-        html:
-          "<head><style>a {cursor: help;}</style></head>" +
-          (coach.firstname ? "Hey " + coach.firstname + ", " : "") +
-          "we got your request to create an account. Great to have you with us." +
-          "<br/>" +
-          "<br/>" +
-          "Click below to start your Cavestep journey." + //cavestep
-          "<br/>" +
-          "<a href='" +
-          URLpath +
-          "?page=verify&user=" +
-          coach._id +
-          "&code=" +
-          coach.code +
-          "'>" +
-          "start my Cavestep journey" + //start your Cavestep journey
-          "</a>" +
-          "<br/>" +
-          "<br/>" +
-          "Warm regards," +
-          "<br/>" +
-          "Daniel Schrader" +
-          "<br/>" +
-          "Founder" +
-          "<br/>" +
-          "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>"
-      };
-
-      transporter.sendMail(mailOptions, function(error, info) {
-        if (error) {
-          console.log(error);
-        } else {
-          console.log("Email sent to:" + coach.email + " - " + info.response);
-        }
-      });
-    }
-
-    const typeDefs = [
-      `
-      type Query {
-        isLoggedin: User
-        areas (readdate: String): [Area]
-        views: [View]
-        profiles: [Profile]
-        ranktimes(areaId: String): [RankTime]
-        goaltimes(areaId: String): [GoalTime]
-        area(_id: String!, navdirection: String, readdate: String): Area
-        lastranktime(areaId: String): RankTime
-        lastgoaltime(areaId: String): GoalTime
-        arealinks(area: String): [AreaLink]
-        readPomoData(area: String): PomodoroData
-        readObjectivePomoData(objective: String): PomodoroData
-        objectives(area: String!): [Objective]
-        objectiveLinks(area: String, objective: String, search: String, date: String): [ObjectiveLink]
-        pomodoros(objectiveId: String): [Pomodoro]
-        notes(area: String): [NoteLink]
-        searchnotes(search: String, spaced: Boolean): [Note]
-        noteLinks(noteid: String): [NoteLink]
-        focusLinks(limit: Int, area: String): [Focus]
-        focusLink(focuslink: String): Focus
-      }
-
-      type Mutation {
-        setView(viewid: String): View
-        createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
-        updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
-        deleteArea(area: String): Area
-        createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
-        deleteAreaLink(rootarea: String, area: String): Area
-        createCoachArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
-        createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
-        createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
-        createNote(area: String, datetime: String, prompt: String, answer: String, linknote: String, arealinks: [AreaLinkIn]): Spaced
-        updateNote(noteid: String, datetime: String, prompt: String, answer: String): Spaced 
-        createNoteLink(noteid: String, area: String): Boolean
-        updateNoteLink(linkid: String, notes: String): Boolean
-        removeNoteLink(linkid: String): Boolean
-        createNewNoteLink(areaname: String!, noteid: String!): Boolean
-        markSpacedYes(noteId: String, datetime: String): Boolean
-        markSpacedNo(noteId: String, datetime: String): Boolean
-        savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
-        submitFeedback(title: String, description: String): Boolean
-        toggleFocusFlag(rootarea: String!, area: String!): Boolean
-        login(username: String!, pwd: String!, uiversion: String): User
-        setProfile(profileid: String!): Profile
-        logout: Boolean!
-        googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
-        signup(email: String, firstname: String, uiversion: String, account: String): Boolean!
-        updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
-        runUpdate: Boolean!
-        removeStartArea: Boolean!
-        createObjective(area: String, datetime: String, objective: String, notes: String, keys:[KeyIn]): Objective
-        updateObjective(objectiveId: String!, objective: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Objective
-        checkKey(objectiveId: String!, index: Int, check: Boolean): Boolean
-        updateObjectiveOrder(objectives: [String]): Boolean
-        updateFocusOrder(objectives: [String]): Boolean
-        createObjectiveLink(objectiveid: String, areaid: String): Boolean
-        createNewObjectiveLink(areaname: String!, objectiveid: String!): Boolean
-        updateObjectiveLink(linkid: String!, notes: String, snooze: String): Boolean
-        removeObjectiveLink(linkid: String!): Boolean
-        snoozeObjectiveLink(objectiveid: String!, snooze: String!): Boolean
-        saveFocusLink(area: String!, objective: String!, datetime: String!, links: [String]): Boolean
-        snoozeFocusLink(objectiveid: String!, snooze: String!): Boolean
-        createClient(email: String!, firstname: String, lastname: String): Boolean
-        verifyAccount(userid: String, code: String, password: String): User
-      }
-
-      type AreaLink {
-        _id: String
-        rootarea: String
-        area: String
-        focus: Boolean
-        linkedarea: Area
-      }
-
-      type Objective {
-        _id: String
-        objective: String
-        notes: String
-        area: String
-        datetime: String
-        complete: String
-        date: String
-        keys: [Key]
-      }
-
-      input KeyIn {
-        title: String
-        checked: Boolean
-      }
-
-      input AreaLinkIn {
-        area: AreaId
-        name: String
-        notes: String
-        _id: String
-      }
-
-      input AreaId {
-        _id: String
-      }
-
-      type Key {
-        title: String
-        checked: Boolean
-      }
-
-      type ObjectiveLink {
-        _id: String
-        objectiveid: String
-        areaid: String
-        notes: String
-        area: Area
-        objective: Objective
-      }
-
-      type Focus {
-        _id: String
-        area: Area
-        objective: Objective
-        links: [String]
-      }
-
-      type Note {
-        _id: String
-        area: String
-        prompt: String
-        answer: String
-        spaced: Spaced
-        notelink: String
-      }
-
-      type NoteLink {
-        _id: String
-        noteid: String
-        areaid: String
-        area: Area
-        note: Note
-        notes: String 
-      }
-
-      type Spaced {
-        _id: String
-        noteid: String
-        note: Note
-        area: String
-        datetimecreated: Float
-        datetimelast: Float
-        fib0: String
-        fib1: String
-        datenext: String
-      }
-
-      type Pomodoro {
-        _id: String
-        area: String
-        links: String
-        objective: String
-        notes: String
-        datetime: String
-        minutes: Int
-        date: String
-      }
-
-      type PomodoroData {
-        _id: String
-        count: Int
-        records: Int
-        direct: Int
-        countdirect: Int
-      }
-
-      type ClickData {
-        clicks: Int
-      }
-
-      type View {
-        _id: String
-        type: String
-        wheel: Wheel
-        name: String
-      }
-
-      type Wheel {
-        _id: String
-        name: String
-        definition: String
-        profile: String
-        startarea: Area
-        profiles: [Profile]
-      }
-
-      type Profile {
-        _id: String
-        name: String
-        user: User
-        wheel: Wheel
-        type: String
-      }
-
-      type Area {
-        _id: String
-        name: String
-        rank: RankTime
-        goal: GoalTime
-        definition: String
-        focus: Boolean
-        vision: String
-        notes: String
-        areas: [Area]
-        time(readdate: String): PomodoroData
-        clicks: ClickData
-        coach: Boolean
-      }
-
-      type User {
-        _id: String
-        firstname: String
-        email: String
-        startarea: String
-        area: Area
-        serverversion: String
-        profile: String
-        views: [View]
-        defaultview: View
-      }
-
-      type RankTime {
-        _id: String
-        areaId: String
-        rank: Int
-        datetime: String
-        note: String
-        date: Float
-      }
-
-      type GoalTime {
-        _id: String
-        areaId: String
-        goal: Int
-        datetime: String
-        note: String
-        date: Float
-        goaldate: String
-      }
-      
-      schema {
-        query: Query
-        mutation: Mutation
-      }
-    `
-    ];
 
     const resolvers = {
       Query: {
@@ -1427,7 +962,7 @@ export const start = async () => {
               ? "6025e1bc216eef4f3fda3c1f"
               : "607cbc0b49e8769358992564"; //req.session.view.wheel,
 
-          Areas.UpdateOne(
+          Areas.updateOne(
             { _id: ObjectId(startareaid) },
             {
               $set: {
@@ -2409,7 +1944,7 @@ export const start = async () => {
 
     // server
     const server = new GraphQLServer({
-      typeDefs,
+      typeDefs: [Queries, Mutations, Schema],
       resolvers,
       context
     });
