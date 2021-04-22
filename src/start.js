@@ -313,7 +313,7 @@ export const start = async () => {
           return (await AreaLinks.find({
             rootarea: { $not: { $eq: null } },
             area: args.area,
-            userid: getwheelid(session)
+            userid: getwheelid(req.session)
           }).toArray()).map(prepare);
         },
         goaltimes: async (root, { _id }, { req }) => {
