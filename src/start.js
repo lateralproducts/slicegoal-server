@@ -800,6 +800,11 @@ export const start = async () => {
           req.session.view = view;
           req.session.profile = profile;
 
+          console.log("set view to:");
+          console.log(view);
+          console.log("set profile to:");
+          console.log(profile);
+
           return prepare(view); //need to return the view, area.
         },
         removeStartArea: async (parent, args, { req }) => {
