@@ -6,6 +6,8 @@ var auth = {
   pass: "nfquwbjifgfjkkov"
 };
 
+var env = "test";
+
 var URLpath = `${process.env.URLpath}`;
 if (URLpath == "undefined") {
   URLpath = "https://www.cavestep.com/app/"; //must have a slash at the end
