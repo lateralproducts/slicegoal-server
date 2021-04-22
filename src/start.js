@@ -1668,14 +1668,18 @@ export const start = async () => {
     async function createobjective(newobjective) {
       try {
         Objectives.insertOne(newobjective).then(result => {
-          var objectivelink = new Object();
-          objectivelink.objectiveid = result.insertedId.toString();
-          objectivelink.userid = newobjective.userid;
-          objectivelink.areaid = newobjective.area;
-          objectivelink.datetime = newobjective.datetime;
-          objectivelink.date = new Date(newobjective.datetime);
-          objectivelink.datecreated = new Date();
-          ObjectiveLinks.insert(objectivelink);
+          if (newobjective.arealinks)
+            newobjective.arealinks.map(async link => {
+              var areaid = link.area._id;
+              var objectivelink = new Object();
+              objectivelink.objectiveid = result.insertedId.toString();
+              objectivelink.userid = newobjective.userid;
+              objectivelink.areaid = areaid;
+              objectivelink.datetime = newobjective.datetime;
+              objectivelink.date = new Date(newobjective.datetime);
+              objectivelink.datecreated = new Date();
+              ObjectiveLinks.insert(objectivelink);
+            });
         });
       } catch (error) {
         console.log(error);
@@ -1717,14 +1721,6 @@ export const start = async () => {
         if (newnote.prompt) nextdate.setDate(nextdate.getDate() + 1);
         note.datenext = nextdate;
         Spaced.insert(note);
-
-        var notelink = new Object();
-        notelink.noteid = result.insertedId.toString();
-        notelink.userid = newnote.userid;
-        notelink.area = newnote.area;
-        notelink.notes = newnote.linknote;
-        notelink.datecreated = new Date();
-        NoteLinks.insert(notelink);
 
         if (newnote.arealinks)
           newnote.arealinks.map(async link => {

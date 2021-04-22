@@ -8,7 +8,7 @@ export const Mutations = `
       createCoachArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
       createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
       createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
-      createNote(area: String, datetime: String, prompt: String, answer: String, linknote: String, arealinks: [AreaLinkIn]): Spaced
+      createNote(datetime: String, prompt: String, answer: String, arealinks: [AreaLinkIn]): Spaced
       updateNote(noteid: String, datetime: String, prompt: String, answer: String): Spaced 
       createNoteLink(noteid: String, area: String): Boolean
       updateNoteLink(linkid: String, notes: String): Boolean
@@ -28,7 +28,7 @@ export const Mutations = `
       updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
       runUpdate: Boolean!
       removeStartArea: Boolean!
-      createObjective(area: String, datetime: String, objective: String, notes: String, keys:[KeyIn]): Objective
+      createObjective(datetime: String, objective: String, notes: String, keys:[KeyIn], arealinks: [AreaLinkIn]): Objective
       updateObjective(objectiveId: String!, objective: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Objective
       checkKey(objectiveId: String!, index: Int, check: Boolean): Boolean
       updateObjectiveOrder(objectives: [String]): Boolean
