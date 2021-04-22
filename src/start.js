@@ -345,7 +345,7 @@ export const start = async () => {
       }
 
       type Mutation {
-        setViewProfile(view: String, profile: String): Profile
+        setView(viewid: String): View
         createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
         updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
         deleteArea(area: String): Area
@@ -366,7 +366,7 @@ export const start = async () => {
         submitFeedback(title: String, description: String): Boolean
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
         login(username: String!, pwd: String!, uiversion: String): User
-        setProfile(_id: String!): Profile
+        setProfile(profileid: String!): Profile
         logout: Boolean!
         googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
         signup(email: String, firstname: String, uiversion: String, account: String): Boolean!
@@ -1010,11 +1010,15 @@ export const start = async () => {
       },
       Area: {
         clicks: async ({ _id }, args, { req }) => {
+          var currentDate = new Date();
           return new Promise(function(resolve, reject) {
             Clicks.aggregate(
               {
                 $match: {
-                  areaid: _id
+                  areaid: _id,
+                  date: {
+                    $gte: currentDate.setDate(currentDate.getDate() - 7)
+                  }
                 }
               },
               {
@@ -1242,16 +1246,16 @@ export const start = async () => {
 
           return true;
         },
-        setViewProfile: async (parent, args, { req }) => {
+        setView: async (parent, { viewid }, { req }) => {
           //set wheel, view, and profile to the context.
 
           const view = await Views.findOne({
-            _id: ObjectId(args.view),
+            _id: ObjectId(viewid),
             user: getuserid(req.session) //check that this user own's the view. If not, return error.
           });
 
           var query = new Object();
-          query._id = ObjectId(args.profile);
+          query.wheel = view.wheel;
           if (view.type === "team") query.user = getuserid(req.session); //access allowed to all profiles for coach.
 
           const profile = await Profiles.findOne(query);
@@ -1261,7 +1265,7 @@ export const start = async () => {
           req.session.view = view;
           req.session.profile = profile;
 
-          return prepare(profile); //need to return the view, area.
+          return prepare(view); //need to return the view, area.
         },
         removeStartArea: async (parent, args, { req }) => {
           await Users.updateOne(
@@ -1307,7 +1311,7 @@ export const start = async () => {
           } else {
             //args.profile = "client"; //this belongs on the view now
             args.state = "new";
-            args.code = bcrypt.hashSync("verifythisyo", 10);
+            args.code = bcrypt.hashSync("verifythisyo", 7);
             args.created = new Date();
 
             var newuser = await Users.insertOne(args); //create record to return id
@@ -1373,9 +1377,9 @@ export const start = async () => {
           });
           return true;
         },
-        setProfile: async (parent, { _id }, { req }) => {
+        setProfile: async (parent, { profileid }, { req }) => {
           const profile = await Profiles.findOne({
-            _id: ObjectId(_id),
+            _id: ObjectId(profileid),
             wheel: req.session.view.wheel
           });
 
@@ -1397,18 +1401,20 @@ export const start = async () => {
           var newuser = {
             email: args.email,
             firstname: args.firstname,
-            code: bcrypt.hashSync(date.toString(), 10),
+            code: bcrypt.hashSync(date.toString(), 7),
             uiversion: args.uiversion,
             serverversion: pjson.version,
             state: "new",
             profile: args.account,
-            created: new Date()
+            created: new Date(),
+            createdip: getuserIpAddress(req)
           };
 
           var userid = (await Users.insertOne(newuser)).insertedId.toString();
 
           var startareaid = (await Areas.insertOne({
-            name: "Coaching Wheel"
+            name: args.firstname + "'s Coaching Wheel",
+            created: new Date()
           })).insertedId.toString();
 
           var wheelid =
@@ -1421,11 +1427,25 @@ export const start = async () => {
               ? "6025e1bc216eef4f3fda3c1f"
               : "607cbc0b49e8769358992564"; //req.session.view.wheel,
 
+          Areas.UpdateOne(
+            { _id: ObjectId(startareaid) },
+            {
+              $set: {
+                userid: wheelid,
+                email: args.email
+              }
+            }
+          );
+
           //create new view
           var newview = {
             user: userid,
+            email: args.email,
             wheel: wheelid, //req.session.view.wheel,
-            name: "Wheel of Life", //req.session.view.name,
+            name:
+              args.account === "coach"
+                ? args.firstname + "'s Coaching"
+                : "Wheel of Life", //req.session.view.name,
             type: args.account === "coach" ? "coach" : "team"
           };
           Views.insertOne(newview);
@@ -1434,6 +1454,7 @@ export const start = async () => {
           var newprofile = {
             user: userid,
             wheel: wheelid,
+            email: args.email,
             name:
               args.account === "coach"
                 ? "Team Overview"
