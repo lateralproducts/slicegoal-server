@@ -546,13 +546,14 @@ export const start = async () => {
       Area: {
         clicks: async ({ _id }, args, { req }) => {
           var currentDate = new Date();
+          currentDate.setDate(currentDate.getDate() - 7); //currently reading one week's trailing data.
           return new Promise(function(resolve, reject) {
             Clicks.aggregate(
               {
                 $match: {
                   areaid: _id,
                   date: {
-                    $gte: currentDate.setDate(currentDate.getDate() - 7)
+                    $gte: currentDate
                   }
                 }
               },
@@ -653,12 +654,13 @@ export const start = async () => {
           }
           return new Promise(function(resolve, reject) {
             var currentDate = new Date();
+            currentDate.setDate(currentDate.getDate() - 7); //currently reading one week's trailing data.
             Pomodoros.aggregate(
               {
                 $match: {
                   userid: getprofileid(req.session),
                   date: {
-                    $gte: currentDate.setDate(currentDate.getDate() - 7)
+                    $gte: currentDate
                   },
                   $or: [
                     {
