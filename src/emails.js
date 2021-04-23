@@ -62,10 +62,10 @@ export async function objectivesummaryemail(user, links, objectives) {
 }
 
 export async function newClientEmail(client, coach, viewname) {
-  from = auth.user;
-  to = client.email;
-  subject = "You’ve been invited to Cavestep"; //to Cavestep🦶
-  email =
+  var from = auth.user;
+  var to = client.email;
+  var subject = "You’ve been invited to Cavestep"; //to Cavestep🦶
+  var email =
     "<head><style>a {cursor: help;}</style></head><div>" +
     (client.firstname ? "Hey " + client.firstname + ", " : "") +
     "<br/>" +
@@ -144,10 +144,10 @@ export async function newInnovatorEmail(innovator) {
 }
 
 export async function newCoachEmail(coach) {
-  from = auth.user;
-  to = coach.email;
-  subject = "You’ve signed up to Cavestep";
-  email =
+  var from = auth.user;
+  var to = coach.email;
+  var subject = "You’ve signed up to Cavestep";
+  var email =
     "<head><style>a {cursor: help;}</style></head>" +
     (coach.firstname ? "Hey " + coach.firstname + ", " : "") +
     "we got your request to create an account. Great to have you with us." +
