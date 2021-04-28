@@ -80,6 +80,7 @@ deploy:
   script:
     - echo "Deploying to Production..."
     - rsync -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
+    - rsync -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
     - ssh -T ec2-user@13.211.38.119 -v "cd /home/ec2-user/strategyserver/ && sudo yarn build && pm2 restart index"
     - echo "new version placed on server and started"
   only:

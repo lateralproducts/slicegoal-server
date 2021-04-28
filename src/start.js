@@ -802,10 +802,10 @@ export const start = async () => {
           req.session.view = view;
           req.session.profile = profile;
 
-          console.log("set view to:");
+          /*           console.log("set view to:");
           console.log(view);
           console.log("set profile to:");
-          console.log(profile);
+          console.log(profile); */
 
           return prepare(view); //need to return the view, area.
         },
@@ -930,135 +930,16 @@ export const start = async () => {
           req.session.profile = profile;
           return profile;
         },
-        signup: async (parent, args, { req }) => {
-          const user = await Users.findOne({ email: args.email });
-          if (user) {
-            throw new Error(
-              "An error has occured. If you already have a Cavestep profile with this email you can log in."
-            );
-          }
 
-          const date = new Date();
-
-          var newuser = {
-            email: args.email,
-            firstname: args.firstname,
-            code: bcrypt.hashSync(date.toString(), 7),
-            uiversion: args.uiversion,
-            serverversion: pjson.version,
-            state: "new",
-            profile: args.account,
-            created: new Date(),
-            createdip: getuserIpAddress(req)
-          };
-
-          var userid = (await Users.insertOne(newuser)).insertedId.toString();
-
-          var startareaid = (await Areas.insertOne({
-            name: args.firstname + "'s Coaching Wheel",
-            created: new Date()
-          })).insertedId.toString();
-
-          var wheelid =
-            args.account === "coach"
-              ? (await Wheels.insertOne({
-                  name: args.email + "'s new coach wheel",
-                  startarea: startareaid
-                })).insertedId.toString() //new wheel (templates??)
-              : env === "test"
-              ? "6025e1bc216eef4f3fda3c1f"
-              : "607cbc0b49e8769358992564"; //req.session.view.wheel,
-
-          Areas.updateOne(
-            { _id: ObjectId(startareaid) },
-            {
-              $set: {
-                userid: wheelid,
-                email: args.email
-              }
-            }
-          );
-
-          //create new view
-          var newview = {
-            user: userid,
-            email: args.email,
-            wheel: wheelid, //req.session.view.wheel,
-            name:
-              args.account === "coach"
-                ? args.firstname + "'s Coaching"
-                : "Wheel of Life", //req.session.view.name,
-            type: args.account === "coach" ? "coach" : "team"
-          };
-          Views.insertOne(newview);
-
-          //create new profile
-          var newprofile = {
-            user: userid,
-            wheel: wheelid,
-            email: args.email,
-            name:
-              args.account === "coach"
-                ? "Team Overview"
-                : args.firstname + (args.lastname ? " " + args.lastname : ""),
-            type: args.account === "coach" ? "team" : "member"
-          };
-          Profiles.insertOne(newprofile);
-
-          if (args.account === "coach") newCoachEmail(newuser);
-          else newInnovatorEmail(newuser);
-
-          return true;
-        },
         login: async (parent, args, { req, ip }) => {
           const user = await Users.findOne({ email: args.username });
           //const user = data[username];
 
           if (user) {
-            if (
-              (user.incorrecttries < 6 || user.incorrecttries === undefined) &&
-              user.state == "verified"
-            ) {
-              if (await bcrypt.compareSync(args.pwd, user.password)) {
-                const view = await Views.findOne({
-                  user: user._id.toString()
-                });
-
-                var query = new Object();
-                if (view.type !== "coach") query.user = user._id.toString();
-                query.wheel = view.wheel;
-
-                const profile = await Profiles.findOne(query, {
-                  sort: { type: -1 }
-                });
-
-                user.serverversion = pjson.version;
-                req.session.user = user;
-                req.session.view = view;
-                req.session.profile = profile;
-
-                await Logins.insertOne({
-                  email: args.username,
-                  lastip: getuserIpAddress(req),
-                  result: "success",
-                  type: "username login",
-                  lastlogin: new Date()
-                });
-
-                await Users.updateOne(
-                  { _id: ObjectId(user._id) },
-                  {
-                    $set: {
-                      uiversion: args.uiversion,
-                      lastip: getuserIpAddress(req),
-                      lastlogin: new Date()
-                    }
-                  }
-                );
-
-                return prepare(user);
-              }
-
+            if (await bcrypt.compareSync(args.pwd, user.password)) {
+              var loggedinuser = await login(user, args, req);
+              return prepare(loggedinuser);
+            } else {
               await Users.updateOne(
                 { _id: ObjectId(user._id) },
                 {
@@ -1079,26 +960,6 @@ export const start = async () => {
 
               throw new Error("Incorrect password.");
             }
-
-            await Logins.insertOne({
-              email: args.username,
-              lastip: getuserIpAddress(req),
-              result: "failed",
-              type: "username login",
-              lastlogin: new Date()
-            });
-
-            await Users.updateOne(
-              { _id: ObjectId(user._id) },
-              {
-                $set: {
-                  incorrecttries:
-                    (user.incorrecttries ? user.incorrecttries : 0) + 1
-                }
-              }
-            );
-
-            throw new Error("Login Failed.");
           }
 
           await Logins.insertOne({
@@ -1118,28 +979,69 @@ export const start = async () => {
             profile: "client",
             created: new Date()
           });
-
           throw new Error("Email not registered");
         },
+
+        setSignUpContext: async (parent, { account }, { req }) => {
+          req.session.signupcontext = account;
+          return true;
+        },
+
+        signup: async (parent, args, { req }) => {
+          const user = await Users.findOne({ email: args.email });
+          if (user) {
+            throw new Error(
+              "If you already have a Cavestep profile with this email you can log in."
+            );
+          }
+
+          const date = new Date();
+
+          var newuser = {
+            email: args.email,
+            firstname: args.firstname,
+            code: bcrypt.hashSync(date.toString(), 7),
+            uiversion: args.uiversion,
+            serverversion: pjson.version,
+            state: "new",
+            profile: args.account,
+            created: new Date(),
+            createdip: getuserIpAddress(req)
+          };
+          var emailuser = await signup(newuser, args, req);
+
+          if (args.account === "coach") newCoachEmail(emailuser);
+          else newInnovatorEmail(emailuser);
+
+          return true;
+        },
+
         googleLogin: async (parent, args, { req, ip }) => {
           const tokenInfo = await oAuth2Client.getTokenInfo(args.token);
 
           if ((tokenInfo.email = args.email)) {
             //check token authentication...
 
-            const user = await Users.findOne({ email: args.email });
+            var user = await Users.findOne({ email: args.email });
             if (!user) {
+              //sign up new google user.
               args.profile = ""; //can't just be coach. need to fix this.
               args.state = "verified";
               args.serverversion = pjson.version;
-              args.lastip = ip;
-              const user = args;
-              req.session.user = user;
-              if (user.profile == "coach") req.session.coach = user;
-              args.token = null; //removing the token from saving in database for security
+              args.lastip = getuserIpAddress(req);
+              //req.session.user = user;
+              //args.token = null; //removing the token from saving in database for security
               args.created = new Date();
-              await Users.insertOne(args);
-              return prepare(user);
+              user = args;
+              var newuser = await signup(user, args, req);
+
+              if (newuser) {
+                return prepare(await login(newuser, args, req));
+              }
+
+              return newuser;
+            } else {
+              return user;
             }
 
             await Logins.insertOne({
@@ -1691,6 +1593,129 @@ export const start = async () => {
       } catch (error) {
         console.log(error);
       }
+    }
+
+    async function login(user, args, req) {
+      if (
+        (user.incorrecttries < 6 || user.incorrecttries === undefined) &&
+        user.state == "verified"
+      ) {
+        const view = await Views.findOne({
+          user: user._id.toString()
+        });
+
+        var query = new Object();
+        if (view.type !== "coach") query.user = user._id.toString();
+        query.wheel = view.wheel;
+
+        const profile = await Profiles.findOne(query, {
+          sort: { type: -1 }
+        });
+
+        user.serverversion = pjson.version;
+        req.session.user = user;
+        req.session.view = view;
+        req.session.profile = profile;
+
+        await Logins.insertOne({
+          email: args.username,
+          lastip: getuserIpAddress(req),
+          result: "success",
+          type: "username login",
+          lastlogin: new Date()
+        });
+
+        await Users.updateOne(
+          { _id: ObjectId(user._id) },
+          {
+            $set: {
+              uiversion: args.uiversion,
+              lastip: getuserIpAddress(req),
+              lastlogin: new Date()
+            }
+          }
+        );
+
+        return user;
+      }
+
+      await Logins.insertOne({
+        email: args.username,
+        lastip: getuserIpAddress(req),
+        result: "failed",
+        type: "username login",
+        lastlogin: new Date()
+      });
+
+      await Users.updateOne(
+        { _id: ObjectId(user._id) },
+        {
+          $set: {
+            incorrecttries: (user.incorrecttries ? user.incorrecttries : 0) + 1
+          }
+        }
+      );
+
+      throw new Error("Login Failed.");
+    }
+
+    async function signup(newuser, args, req) {
+      newuser.lastip = getuserIpAddress(req);
+
+      var userid = (await Users.insertOne(newuser)).insertedId.toString();
+
+      var startareaid = (await Areas.insertOne({
+        name: args.firstname + "'s Coaching Wheel",
+        created: new Date()
+      })).insertedId.toString();
+
+      var wheelid =
+        args.account === "coach"
+          ? (await Wheels.insertOne({
+              name: args.email + "'s new coach wheel",
+              startarea: startareaid
+            })).insertedId.toString() //new wheel (templates??)
+          : env === "test"
+          ? "6025e1bc216eef4f3fda3c1f"
+          : "607cbc0b49e8769358992564"; //req.session.view.wheel,
+
+      Areas.updateOne(
+        { _id: ObjectId(startareaid) },
+        {
+          $set: {
+            userid: wheelid,
+            email: args.email
+          }
+        }
+      );
+
+      //create new view
+      var newview = {
+        user: userid,
+        email: args.email,
+        wheel: wheelid, //req.session.view.wheel,
+        name:
+          args.account === "coach"
+            ? args.firstname + "'s Coaching"
+            : "Wheel of Life", //req.session.view.name,
+        type: args.account === "coach" ? "coach" : "team"
+      };
+      Views.insertOne(newview);
+
+      //create new profile
+      var newprofile = {
+        user: userid,
+        wheel: wheelid,
+        email: args.email,
+        name:
+          args.account === "coach"
+            ? "Team Overview"
+            : args.firstname + (args.lastname ? " " + args.lastname : ""),
+        type: args.account === "coach" ? "team" : "member"
+      };
+      Profiles.insertOne(newprofile);
+
+      return newuser;
     }
 
     async function logareaclick(_id, navdirection, req) {

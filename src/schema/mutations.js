@@ -1,5 +1,10 @@
 export const Mutations = `
     type Mutation {
+      login(username: String!, pwd: String!, uiversion: String): User
+      signup(email: String, firstname: String, uiversion: String, account: String): Boolean!
+      googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
+      googleSignup(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
+      logout: Boolean!
       createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
       updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
       deleteArea(area: String): Area
@@ -19,12 +24,9 @@ export const Mutations = `
       savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
       submitFeedback(title: String, description: String): Boolean
       toggleFocusFlag(rootarea: String!, area: String!): Boolean
-      login(username: String!, pwd: String!, uiversion: String): User
+      setSignUpContext(account: String): Boolean
       setView(viewid: String): View
       setProfile(profileid: String!): Profile
-      logout: Boolean!
-      googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
-      signup(email: String, firstname: String, uiversion: String, account: String): Boolean!
       updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
       runUpdate: Boolean!
       removeStartArea: Boolean!
