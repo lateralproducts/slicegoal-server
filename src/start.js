@@ -1161,7 +1161,7 @@ export const start = async () => {
           args.userid = getprofileid(req.session);
           args.snoozedate = new Date(args.snooze);
           args.snoozedate.setHours(0, 0, 0, 0);
-          await FocusLinks.update(
+          await FocusLinks.updateMany(
             { objective: args.objectiveid, userid: args.userid },
             {
               $set: {
@@ -1175,7 +1175,7 @@ export const start = async () => {
           args.userid = getprofileid(req.session);
           args.snoozedate = new Date(args.snooze);
           args.snoozedate.setHours(0, 0, 0, 0);
-          await ObjectiveLinks.update(
+          await ObjectiveLinks.updateMany(
             { objectiveid: args.objectiveid, userid: args.userid },
             {
               $set: {
