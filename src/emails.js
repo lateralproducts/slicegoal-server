@@ -67,7 +67,7 @@ export async function newClientEmail(client, coach, viewname) {
   var subject = "You’ve been invited to Cavestep"; //to Cavestep🦶
   var email =
     "<head><style>a {cursor: help;}</style></head><div>" +
-    (client.firstname ? "Hey " + client.firstname + ", " : "") +
+    (client.firstname ? "Hey" + client.firstname + ", " : "") +
     "<br/>" +
     (coach.firstname
       ? coach.firstname + " has invited you to a Cavestep coaching wheel!"
@@ -134,7 +134,7 @@ export async function newInnovatorEmail(innovator) {
   var to = innovator.email;
   var subject = "Looks like you've signed up for Cavestep!";
   var email = Mustache.render(newinnovator, {
-    name: innovator.firstname ? innovator.firstname : "",
+    name: innovator.firstname ? " " + innovator.firstname : "",
     URLpath: URLpath,
     innovatorid: innovator._id,
     innovatorcode: innovator.code

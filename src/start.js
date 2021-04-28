@@ -746,7 +746,7 @@ export const start = async () => {
                 name:
                   user.profile === "coach"
                     ? "Team Overview"
-                    : user.firstname + " " + user.lastname,
+                    : getname(user.firstname, user.lastname, user.email),
                 type:
                   user.profile === "client"
                     ? "member"
@@ -876,7 +876,7 @@ export const start = async () => {
           var newprofile = {
             user: userid,
             wheel: req.session.view.wheel,
-            name: args.firstname + (args.lastname ? " " + args.lastname : ""),
+            name: getname(args.firstname, args.lastname, args.email),
             type: "member"
           };
           Profiles.insertOne(newprofile);
@@ -1161,7 +1161,7 @@ export const start = async () => {
           args.userid = getprofileid(req.session);
           args.snoozedate = new Date(args.snooze);
           args.snoozedate.setHours(0, 0, 0, 0);
-          await FocusLinks.updateOne(
+          await FocusLinks.update(
             { objective: args.objectiveid, userid: args.userid },
             {
               $set: {
@@ -1175,7 +1175,7 @@ export const start = async () => {
           args.userid = getprofileid(req.session);
           args.snoozedate = new Date(args.snooze);
           args.snoozedate.setHours(0, 0, 0, 0);
-          await ObjectiveLinks.updateOne(
+          await ObjectiveLinks.update(
             { objectiveid: args.objectiveid, userid: args.userid },
             {
               $set: {
@@ -1543,6 +1543,10 @@ export const start = async () => {
       }
     };
 
+    function getname(firstname, lastname, email) {
+      return firstname ? firstname + (lastname ? " " + lastname : "") : email;
+    }
+
     function getprofileid(session) {
       if (session.profile) return session.profile._id.toString();
       //if (session.profile._id) return session.profile._id;
@@ -1666,7 +1670,9 @@ export const start = async () => {
       var userid = (await Users.insertOne(newuser)).insertedId.toString();
 
       var startareaid = (await Areas.insertOne({
-        name: args.firstname + "'s Coaching Wheel",
+        name:
+          getname(args.firstname, args.lastname, args.email) +
+          "'s Coaching Wheel",
         created: new Date()
       })).insertedId.toString();
 
@@ -1697,7 +1703,7 @@ export const start = async () => {
         wheel: wheelid, //req.session.view.wheel,
         name:
           args.account === "coach"
-            ? args.firstname + "'s Coaching"
+            ? getname(user.firstname, user.lastname, user.email) + "'s Coaching"
             : "Wheel of Life", //req.session.view.name,
         type: args.account === "coach" ? "coach" : "team"
       };
@@ -1711,7 +1717,7 @@ export const start = async () => {
         name:
           args.account === "coach"
             ? "Team Overview"
-            : args.firstname + (args.lastname ? " " + args.lastname : ""),
+            : getname(args.firstname, args.lastname, args.email),
         type: args.account === "coach" ? "team" : "member"
       };
       Profiles.insertOne(newprofile);
