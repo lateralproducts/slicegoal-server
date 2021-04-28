@@ -1036,12 +1036,13 @@ export const start = async () => {
               var newuser = await signup(user, args, req);
 
               if (newuser) {
-                return prepare(await login(newuser, args, req));
+                var returnuser = await login(newuser, args, req);
+                return prepare(returnuser);
               }
 
               return newuser;
             } else {
-              return user;
+              return await login(user, args, req);
             }
 
             await Logins.insertOne({
