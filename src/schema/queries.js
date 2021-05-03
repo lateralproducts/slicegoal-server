@@ -20,5 +20,6 @@ export const Queries = `
       noteLinks(noteid: String): [NoteLink]
       focusLinks(limit: Int, area: String): [Focus]
       focusLink(focuslink: String): Focus
+      wheels:[Wheel]
     }
 `;

@@ -18,7 +18,7 @@ import { Schema } from "./schema/schema";
 
 import {
   newClientEmail,
-  newInnovatorEmail,
+  newpersonalEmail,
   newCoachEmail,
   objectivesummaryemail
 } from "./emails";
@@ -142,6 +142,9 @@ export const start = async () => {
           query.user = getuserid(req.session);
           if (args.default) query._id = ObjectId(args.defaultview); //if asking for default profile only return the default.
           return (await Views.find(query).toArray()).map(prepare);
+        },
+        wheels: async (parent, args, { req }) => {
+          return (await Wheels.find({ global: true }).toArray()).map(prepare);
         },
         objectives: async (parent, args, { req }) => {
           return (await Objectives.find(
@@ -267,16 +270,18 @@ export const start = async () => {
           return notelinks;
         },
         areas: async (parent, args, { req }) => {
-          return (await Areas.find({
-            $or: [{ userid: getwheelid(req.session) }, { userid: "global" }]
+          var areas = (await Areas.find({
+            $or: [{ userid: getwheelid(req.session) }] //, { userid: "global" } if we want to use global.
           })
             .sort({ clicks: -1 })
             .toArray()).map(prepare);
+
+          return areas.map(prepare);
         },
         profiles: async (parent, args, { req }) => {
           if (req.session.view.type === "coach") {
             const profiles = await Profiles.find({
-              wheel: getwheelid(req.session)
+              wheel: getwheelid(req.session) //return all profiles on wheel
             })
               .sort({ type: -1, name: 1 })
               .toArray(); //.map(function(client) {return client._id;})
@@ -285,21 +290,28 @@ export const start = async () => {
 
           return (await Profiles.find({
             wheel: getwheelid(req.session),
-            user: getuserid(req.session)
-          }).toArray()).map(prepare);
+            $or: [
+              { user: getuserid(req.session) },
+              { type: "team" },
+              { type: "average" }
+            ] //return both personal profile and team wheels
+          })
+            .sort({ type: -1, name: 1 })
+            .toArray()).map(prepare);
         },
-        area: async (root, { _id, navdirection }, { req }) => {
+        area: async (root, { _id, navdirection, global }, { req }) => {
           logareaclick(_id, navdirection, req);
 
-          return prepare(
-            await Areas.findOne({
-              _id: ObjectId(_id)
-              /* $or: [
-                { userid: getwheelid(req.session) },
-                { userid: { $in: getcoachesid(req.session) } } //this makes the area visible to clients. Using coach:true field.
-              ] */
-            })
-          );
+          var area = await Areas.findOne({
+            _id: ObjectId(_id),
+            $or: [
+              { userid: getwheelid(req.session) }
+              //{ userid: "global" }
+              //{ userid: { $in: getcoachesid(req.session) } } //this makes the area visible to clients. Using coach:true field.
+            ]
+          });
+
+          return prepare(area);
         },
         ranktimes: async (root, { areaId }, { req }) => {
           return (await RankTimes.find({
@@ -552,6 +564,7 @@ export const start = async () => {
               {
                 $match: {
                   areaid: _id,
+                  userid: getuserid(req.session),
                   date: {
                     $gte: currentDate
                   }
@@ -572,7 +585,10 @@ export const start = async () => {
           });
         },
         areas: async ({ _id }, args, { req }) => {
-          const query = { rootarea: _id, userid: getwheelid(req.session) };
+          const query = {
+            rootarea: _id,
+            $or: [{ userid: getwheelid(req.session) }, { userid: "global" }] //use this global flag to return global wheels for templates.
+          };
           const arealinks = await AreaLinks.distinct("area", query);
 
           return (await Areas.find({
@@ -585,7 +601,7 @@ export const start = async () => {
         },
         rank: async ({ _id, coach }, args, { req }) => {
           if (req.session.profile)
-            if (req.session.profile.type === "team") {
+            if (req.session.profile.type === "average") {
               //was previously using "coach" in area to decide to aggregate rank
               const profiles = await Profiles.find({
                 wheel: req.session.profile.wheel
@@ -733,7 +749,7 @@ export const start = async () => {
                   user.profile === "client"
                     ? "team"
                     : user.profile === "daniel"
-                    ? "innovator"
+                    ? "personal"
                     : "coach"
               };
               Views.insertOne(newview);
@@ -745,14 +761,14 @@ export const start = async () => {
                 email: user.email,
                 name:
                   user.profile === "coach"
-                    ? "Team Overview"
+                    ? "Team Ranking"
                     : getname(user.firstname, user.lastname, user.email),
                 type:
                   user.profile === "client"
                     ? "member"
                     : user.profile === "daniel"
-                    ? "innovator"
-                    : "team",
+                    ? "personal"
+                    : "member",
                 wheel: wheel.insertedId.toString()
               };
               Profiles.insertOne(newprofile);
@@ -809,6 +825,25 @@ export const start = async () => {
 
           return prepare(view); //need to return the view, area.
         },
+
+        createNewWheel: async (
+          parent,
+          { viewtype, templatewheel },
+          { req }
+        ) => {
+          //set wheel, view, and profile to the context.
+          var { newview, newprofile } = await createWheel(
+            req.session.user,
+            req.session.user._id.toString(),
+            viewtype,
+            templatewheel
+          );
+          req.session.view = newview;
+          req.session.profile = newprofile;
+
+          return prepare(newview); //need to return the view, area.
+        },
+
         removeStartArea: async (parent, args, { req }) => {
           await Users.updateOne(
             { _id: ObjectId(getprofileid(req.session)) },
@@ -970,7 +1005,7 @@ export const start = async () => {
             lastlogin: new Date()
           });
 
-          await Users.insertOne({
+          /*           await Users.insertOne({
             email: args.username,
             password: bcrypt.hashSync(args.pwd, 10),
             uiversion: args.uiversion,
@@ -978,12 +1013,18 @@ export const start = async () => {
             state: "new",
             profile: "client",
             created: new Date()
-          });
+          }); */
           throw new Error("Email not registered");
         },
 
         setSignUpContext: async (parent, { account }, { req }) => {
           req.session.signupcontext = account;
+          return true;
+        },
+
+        copyWheel: async (parent, { wheelid, userid, viewtype }, { req }) => {
+          var user = await Users.findOne({ _id: ObjectId(userid) });
+          createWheel(user, userid, viewtype, wheelid);
           return true;
         },
 
@@ -1011,7 +1052,7 @@ export const start = async () => {
           var emailuser = await signup(newuser, args, req);
 
           if (args.account === "coach") newCoachEmail(emailuser);
-          else newInnovatorEmail(emailuser);
+          else newpersonalEmail(emailuser);
 
           return true;
         },
@@ -1029,76 +1070,16 @@ export const start = async () => {
               args.state = "verified";
               args.serverversion = pjson.version;
               args.lastip = getuserIpAddress(req);
+              args.type = "personal";
               //req.session.user = user;
               //args.token = null; //removing the token from saving in database for security
               args.created = new Date();
               user = args;
-              var newuser = await signup(user, args, req);
-
-              if (newuser) {
-                var returnuser = await login(newuser, args, req);
-                return prepare(returnuser);
-              }
-
-              return newuser;
+              var newuser = await signup(user, args, req); //automatically sign up google login.
+              return await login(newuser, args, req);
             } else {
               return await login(user, args, req);
             }
-
-            await Logins.insertOne({
-              email: args.email,
-              lastip: getuserIpAddress(req),
-              result: "success",
-              type: "google login",
-              lastlogin: new Date()
-            });
-
-            await Users.updateOne(
-              { _id: ObjectId(user._id) },
-              {
-                $set: {
-                  uiversion: args.uiversion,
-                  googleid: args.googleid,
-                  lastip: getuserIpAddress(req),
-                  lastlogin: new Date()
-                }
-              }
-            );
-
-            const view = await Views.findOne({
-              user: user._id.toString()
-            });
-
-            var query = new Object();
-
-            //if (view.type !== "coach") query.user = user._id.toString();
-            query.wheel = view.wheel;
-
-            const profile = await Profiles.findOne(query, {
-              sort: { type: -1 }
-            });
-
-            user.token = args.token;
-            req.session.user = user;
-            req.session.view = view;
-            req.session.profile = profile;
-
-            if (user.profile == "coach") {
-              const clients = await Users.find({
-                coaches: user._id.toString()
-              }).toArray();
-              user.clients = clients;
-              req.session.coach = user;
-            }
-
-            return {
-              firstname: user.firstname,
-              startarea: user.startarea,
-              state: user.state,
-              profile: user.profile,
-              email: user.email,
-              serverversion: pjson.version
-            };
           }
           await Logins.insertOne({
             email: args.email,
@@ -1550,9 +1531,9 @@ export const start = async () => {
     function getprofileid(session) {
       if (session.profile) return session.profile._id.toString();
       //if (session.profile._id) return session.profile._id;
-      else if (env === "test") {
+      /* else if (env === "test") {
         return "605da7eedc0c981608c40126"; //default for test??
-      } else {
+      } */ else {
         getuserid(session);
         throw new Error("Profile not found");
         //return null; //
@@ -1562,16 +1543,18 @@ export const start = async () => {
     function getwheelid(session) {
       if (session.view) return session.view.wheel;
       //if (session.view._id) return session.view._id;
-      else if (env === "test") {
+      /* else if (env === "test") {
         return "5d27ffef2f25635b27f0a450"; //default for test??
-      } else throw new Error("Wheel not found");
+      } */ else
+        throw new Error("Wheel not found");
     }
 
     function getuserid(session) {
       if (session.user) return session.user._id.toString();
-      else if (env === "test") {
+      /* else if (env === "test") {
         return "5d70b68aa1e6bf52b9906b8e"; //default for test??
-      } else throw new Error("Invalid Session");
+      } */ else
+        throw new Error("Invalid Session");
     }
 
     function getuiversion(session) {
@@ -1605,22 +1588,27 @@ export const start = async () => {
         (user.incorrecttries < 6 || user.incorrecttries === undefined) &&
         user.state == "verified"
       ) {
+        user.serverversion = pjson.version;
+        req.session.user = user;
+
         const view = await Views.findOne({
           user: user._id.toString()
         });
 
-        var query = new Object();
-        if (view.type !== "coach") query.user = user._id.toString();
-        query.wheel = view.wheel;
+        if (view) {
+          req.session.view = view;
+          var query = new Object();
 
-        const profile = await Profiles.findOne(query, {
-          sort: { type: -1 }
-        });
+          if (view.type !== "coach") query.user = user._id.toString();
+          query.wheel = view.wheel;
+          const profile = await Profiles.findOne(query, {
+            sort: { type: -1 }
+          });
 
-        user.serverversion = pjson.version;
-        req.session.user = user;
-        req.session.view = view;
-        req.session.profile = profile;
+          if (profile) req.session.profile = profile;
+        } else {
+          createWheel(user, user._id.toString(), "personal");
+        }
 
         await Logins.insertOne({
           email: args.username,
@@ -1666,46 +1654,58 @@ export const start = async () => {
 
     async function signup(newuser, args, req) {
       newuser.lastip = getuserIpAddress(req);
-
       var userid = (await Users.insertOne(newuser)).insertedId.toString();
+      await createWheel(newuser, userid, newuser.type);
 
-      var startareaid = (await Areas.insertOne({
-        name:
-          getname(args.firstname, args.lastname, args.email) +
-          "'s Coaching Wheel",
-        created: new Date()
-      })).insertedId.toString();
+      return newuser;
+    }
 
-      var wheelid =
-        args.account === "coach"
-          ? (await Wheels.insertOne({
-              name: args.email + "'s new coach wheel",
-              startarea: startareaid
-            })).insertedId.toString() //new wheel (templates??)
-          : env === "test"
-          ? "6025e1bc216eef4f3fda3c1f"
-          : "607cbc0b49e8769358992564"; //req.session.view.wheel,
+    async function createWheel(user, userid, viewtype, wheel) {
+      var wheelid;
 
-      Areas.updateOne(
-        { _id: ObjectId(startareaid) },
-        {
-          $set: {
-            userid: wheelid,
-            email: args.email
-          }
-        }
-      );
+      switch (viewtype) {
+        case "coach": //currently not copying wheel for coach. Just creating a blank wheel.
+          var startareaid = (await Areas.insertOne({
+            name: "Coaching Wheel",
+            email: user.email,
+            created: new Date()
+          })).insertedId.toString();
+
+          wheelid = (await Wheels.insertOne({
+            name: user.email + "'s new coach wheel",
+            startarea: startareaid
+          })).insertedId.toString();
+
+          Areas.updateOne(
+            { _id: ObjectId(startareaid) },
+            {
+              $set: {
+                userid: wheelid
+              }
+            }
+          );
+          break;
+        case "personal":
+        default:
+          //use wheel here to copy the global wheel for the new wheel
+          if (!wheel)
+            wheel =
+              env === "test"
+                ? "6025e1bc216eef4f3fda3c1f"
+                : "607cbc0b49e8769358992564"; //req.session.view.wheel,
+          wheelid = await copywheel(wheel, userid);
+      }
 
       //create new view
       var newview = {
         user: userid,
-        email: args.email,
+        email: user.email,
         wheel: wheelid, //req.session.view.wheel,
         name:
-          args.account === "coach"
-            ? getname(user.firstname, user.lastname, user.email) + "'s Coaching"
+          viewtype === "coach"
+            ? getname(user.firstname, "", user.email) + "'s Coaching"
             : "Wheel of Life", //req.session.view.name,
-        type: args.account === "coach" ? "coach" : "team"
+        type: viewtype
       };
       Views.insertOne(newview);
 
@@ -1713,16 +1713,70 @@ export const start = async () => {
       var newprofile = {
         user: userid,
         wheel: wheelid,
-        email: args.email,
+        email: user.email,
         name:
-          args.account === "coach"
-            ? "Team Overview"
-            : getname(args.firstname, args.lastname, args.email),
-        type: args.account === "coach" ? "team" : "member"
+          viewtype === "coach"
+            ? "Team Ranking"
+            : getname(user.firstname, user.lastname, user.email),
+        type: viewtype === "coach" ? "team" : viewtype
       };
       Profiles.insertOne(newprofile);
 
-      return newuser;
+      return { newview, newprofile };
+    }
+
+    async function copywheel(wheelid, userid) {
+      //wheel - global
+      var newwheel = await Wheels.findOne({
+        _id: ObjectId(wheelid)
+      });
+      newwheel.copy = wheelid;
+      newwheel.user = userid;
+      delete newwheel._id;
+      var newwheelid = (await Wheels.insertOne(newwheel)).insertedId.toString();
+      //areas - global
+      var newareas = await Areas.find({ userid: wheelid }).toArray();
+      newareas.map(area => {
+        area.user = userid;
+        area.userid = newwheelid;
+        area.copywheel = wheelid;
+        area.copyarea = area._id.toString();
+        delete area._id;
+        return area;
+      });
+
+      await Areas.insertMany(newareas);
+      var newstartareaid = (await Areas.findOne({
+        user: userid,
+        copyarea: newwheel.startarea,
+        userid: newwheelid //this is the id used for returning wheels
+      }))._id.toString();
+
+      Wheels.updateOne(
+        { _id: ObjectId(newwheelid) },
+        { $set: { startarea: newstartareaid } }
+      );
+      //arealinks - global
+      var newarealinks = await AreaLinks.find({
+        userid: wheelid
+      }).toArray();
+      newarealinks.map(arealink => {
+        arealink.user = userid; //this is just copied as a reference for ease
+        arealink.userid = newwheelid; //this is the id used for returning arealinks
+        arealink.rootarea = newareas
+          .find(o => o.copyarea === arealink.rootarea)
+          ._id.toString();
+        arealink.area = newareas
+          .find(o => o.copyarea === arealink.area)
+          ._id.toString();
+        arealink.copywheel = wheelid;
+        arealink.copylink = arealink._id.toString();
+        delete arealink._id;
+        return arealink;
+      });
+      AreaLinks.insertMany(newarealinks);
+      //return wheel
+      return newwheelid;
     }
 
     async function logareaclick(_id, navdirection, req) {

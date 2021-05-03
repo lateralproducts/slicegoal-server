@@ -28,7 +28,6 @@ export const Mutations = `
       setView(viewid: String): View
       setProfile(profileid: String!): Profile
       updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
-      runUpdate: Boolean!
       removeStartArea: Boolean!
       createObjective(datetime: String, objective: String, notes: String, keys:[KeyIn], arealinks: [AreaLinkIn]): Objective
       updateObjective(objectiveId: String!, objective: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Objective
@@ -44,5 +43,8 @@ export const Mutations = `
       snoozeFocusLink(objectiveid: String!, snooze: String!): Boolean
       createClient(email: String!, firstname: String, lastname: String): Boolean
       verifyAccount(userid: String, code: String, password: String): User
+      createNewWheel(viewtype: String, templatewheel: String): View 
+      copyWheel(wheelid: String, userid: String, viewtype: String): Boolean
+      runUpdate: Boolean
     }
 `;

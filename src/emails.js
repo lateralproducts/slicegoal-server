@@ -22,8 +22,8 @@ var transporter = nodemailer.createTransport({
 
 var Mustache = require("mustache");
 
-var newinnovator = fs
-  .readFileSync(__dirname + "/emailtemplates/newinnovator.html")
+var newpersonal = fs
+  .readFileSync(__dirname + "/emailtemplates/newpersonal.html")
   .toString();
 
 export async function objectivesummaryemail(user, links, objectives) {
@@ -129,15 +129,15 @@ export async function newClientEmail(client, coach, viewname) {
   sendEmail(from, to, subject, email);
 }
 
-export async function newInnovatorEmail(innovator) {
+export async function newpersonalEmail(personal) {
   var from = auth.user;
-  var to = innovator.email;
+  var to = personal.email;
   var subject = "Looks like you've signed up for Cavestep!";
-  var email = Mustache.render(newinnovator, {
-    name: innovator.firstname ? " " + innovator.firstname : "",
+  var email = Mustache.render(newpersonal, {
+    name: personal.firstname ? " " + personal.firstname : "", //using space in front here to manage formatting.
     URLpath: URLpath,
-    innovatorid: innovator._id,
-    innovatorcode: innovator.code
+    personalid: personal._id,
+    personalcode: personal.code
   });
 
   sendEmail(from, to, subject, email);
