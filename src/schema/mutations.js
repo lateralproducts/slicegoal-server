@@ -44,7 +44,7 @@ export const Mutations = `
       createClient(email: String!, firstname: String, lastname: String): Boolean
       verifyAccount(userid: String, code: String, password: String): User
       createNewWheel(viewtype: String, templatewheel: String): View 
-      copyWheel(wheelid: String, userid: String, viewtype: String): Boolean
-      runUpdate: Boolean
+      copyWheel(wheelid: String!, viewtype: String!): Boolean
+      runUpdate101: Boolean
     }
 `;

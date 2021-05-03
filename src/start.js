@@ -723,9 +723,9 @@ export const start = async () => {
         }
       },
       Mutation: {
-        runUpdate: async (parent, args, { req }) => {
+        runUpdate101: async (parent, args, { req }) => {
           //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
-          const users = await Users.find().toArray();
+          /* const users = await Users.find().toArray();
 
           users.map(async user => {
             //create new view
@@ -773,7 +773,7 @@ export const start = async () => {
               };
               Profiles.insertOne(newprofile);
             }
-          });
+          }); */
 
           // runUpdate: Boolean
           /* const objectives = await Objectives.find().toArray();
@@ -1022,9 +1022,11 @@ export const start = async () => {
           return true;
         },
 
-        copyWheel: async (parent, { wheelid, userid, viewtype }, { req }) => {
-          var user = await Users.findOne({ _id: ObjectId(userid) });
-          createWheel(user, userid, viewtype, wheelid);
+        copyWheel: async (parent, { wheelid, viewtype }, { req }) => {
+          var user = await Users.findOne({
+            _id: ObjectId(getuserid(req.session))
+          });
+          if (user) createWheel(user, user._id.toString(), viewtype, wheelid);
           return true;
         },
 
@@ -1733,6 +1735,7 @@ export const start = async () => {
       newwheel.copy = wheelid;
       newwheel.user = userid;
       delete newwheel._id;
+      delete newwheel.global;
       var newwheelid = (await Wheels.insertOne(newwheel)).insertedId.toString();
       //areas - global
       var newareas = await Areas.find({ userid: wheelid }).toArray();
