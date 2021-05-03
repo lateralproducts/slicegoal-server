@@ -1664,6 +1664,7 @@ export const start = async () => {
 
     async function createWheel(user, userid, viewtype, wheel) {
       var wheelid;
+      if (!viewtype) viewtype = "personal"; //check personal here. Need to fix onboarding for all user types.
 
       switch (viewtype) {
         case "coach": //currently not copying wheel for coach. Just creating a blank wheel.
@@ -1687,8 +1688,10 @@ export const start = async () => {
             }
           );
           break;
+        case "client":
         case "personal":
         default:
+          viewtype = "personal";
           //use wheel here to copy the global wheel for the new wheel
           if (!wheel)
             wheel =
@@ -1720,7 +1723,7 @@ export const start = async () => {
           viewtype === "coach"
             ? "Team Ranking"
             : getname(user.firstname, user.lastname, user.email),
-        type: viewtype === "coach" ? "team" : viewtype
+        type: viewtype === "coach" ? "team" : viewtype //create the first team profile.
       };
       Profiles.insertOne(newprofile);
 
@@ -1728,6 +1731,7 @@ export const start = async () => {
     }
 
     async function copywheel(wheelid, userid) {
+      //only using userid as a tag to keep track of the copy.
       //wheel - global
       var newwheel = await Wheels.findOne({
         _id: ObjectId(wheelid)
