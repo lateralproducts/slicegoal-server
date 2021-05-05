@@ -881,7 +881,7 @@ export const start = async () => {
           return user.value;
         },
         createClient: async (parent, args, { req }) => {
-          var user = await Users.findOne({ email: args.email });
+          var user = await Users.findOne({ email: args.email.toLowerCase() });
           var userid;
           if (user) {
             userid = user._id.toString();
@@ -903,7 +903,8 @@ export const start = async () => {
             user: userid,
             wheel: req.session.view.wheel,
             name: req.session.view.name,
-            type: "team"
+            type: "team",
+            created: new Date()
           };
           Views.insertOne(newview);
 
@@ -912,7 +913,8 @@ export const start = async () => {
             user: userid,
             wheel: req.session.view.wheel,
             name: getname(args.firstname, args.lastname, args.email),
-            type: "member"
+            type: "member",
+            created: new Date()
           };
           Profiles.insertOne(newprofile);
 
@@ -1031,7 +1033,7 @@ export const start = async () => {
         },
 
         signup: async (parent, args, { req }) => {
-          const user = await Users.findOne({ email: args.email });
+          const user = await Users.findOne({ email: args.email.toLowerCase() });
           if (user) {
             throw new Error(
               "If you already have a Cavestep profile with this email you can log in."
@@ -1041,7 +1043,7 @@ export const start = async () => {
           const date = new Date();
 
           var newuser = {
-            email: args.email,
+            email: args.email.toLowerCase(),
             firstname: args.firstname,
             code: bcrypt.hashSync(date.toString(), 7),
             uiversion: args.uiversion,
@@ -1065,7 +1067,7 @@ export const start = async () => {
           if ((tokenInfo.email = args.email)) {
             //check token authentication...
 
-            var user = await Users.findOne({ email: args.email });
+            var user = await Users.findOne({ email: args.email.toLowerCase() });
             if (!user) {
               //sign up new google user.
               args.profile = ""; //can't just be coach. need to fix this.
@@ -1706,6 +1708,7 @@ export const start = async () => {
         user: userid,
         email: user.email,
         wheel: wheelid, //req.session.view.wheel,
+        created: new Date(),
         name:
           viewtype === "coach"
             ? getname(user.firstname, "", user.email) + "'s Coaching"
@@ -1719,9 +1722,10 @@ export const start = async () => {
         user: userid,
         wheel: wheelid,
         email: user.email,
+        created: new Date(),
         name:
           viewtype === "coach"
-            ? "Team Ranking"
+            ? "Team Profile"
             : getname(user.firstname, user.lastname, user.email),
         type: viewtype === "coach" ? "team" : viewtype //create the first team profile.
       };
@@ -1738,6 +1742,7 @@ export const start = async () => {
       });
       newwheel.copy = wheelid;
       newwheel.user = userid;
+      newwheel.created = new Date();
       delete newwheel._id;
       delete newwheel.global;
       var newwheelid = (await Wheels.insertOne(newwheel)).insertedId.toString();
@@ -1748,6 +1753,7 @@ export const start = async () => {
         area.userid = newwheelid;
         area.copywheel = wheelid;
         area.copyarea = area._id.toString();
+        area.created = new Date();
         delete area._id;
         return area;
       });
@@ -1778,6 +1784,7 @@ export const start = async () => {
           ._id.toString();
         arealink.copywheel = wheelid;
         arealink.copylink = arealink._id.toString();
+        arealink.created = new Date();
         delete arealink._id;
         return arealink;
       });
@@ -1790,7 +1797,7 @@ export const start = async () => {
       try {
         if (navdirection == "forward") {
           Clicks.insertOne({
-            userid: getprofileid(req.session),
+            userid: getuserid(req.session),
             date: new Date(),
             areaid: _id
           });
