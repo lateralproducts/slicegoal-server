@@ -969,7 +969,9 @@ export const start = async () => {
         },
 
         login: async (parent, args, { req, ip }) => {
-          const user = await Users.findOne({ email: args.username });
+          const user = await Users.findOne({
+            email: args.username.toLowerCase()
+          });
           //const user = data[username];
 
           if (user) {
