@@ -975,6 +975,9 @@ export const start = async () => {
           //const user = data[username];
 
           if (user) {
+            if(!user.password)
+              throw new Error("Account has not been verified.")
+
             if (await bcrypt.compareSync(args.pwd, user.password)) {
               var loggedinuser = await login(user, args, req);
               return prepare(loggedinuser);
@@ -1052,7 +1055,7 @@ export const start = async () => {
             serverversion: pjson.version,
             state: "new",
             profile: args.account,
-            created: new Date(),
+            created: date,
             createdip: getuserIpAddress(req)
           };
           var emailuser = await signup(newuser, args, req);
@@ -1661,14 +1664,13 @@ export const start = async () => {
     async function signup(newuser, args, req) {
       newuser.lastip = getuserIpAddress(req);
       var userid = (await Users.insertOne(newuser)).insertedId.toString();
-      await createWheel(newuser, userid, newuser.type);
+      await createWheel(newuser, userid, args.account);
 
       return newuser;
     }
 
     async function createWheel(user, userid, viewtype, wheel) {
       var wheelid;
-      if (!viewtype) viewtype = "personal"; //check personal here. Need to fix onboarding for all user types.
 
       switch (viewtype) {
         case "coach": //currently not copying wheel for coach. Just creating a blank wheel.
@@ -1693,7 +1695,6 @@ export const start = async () => {
           );
           break;
         case "client":
-        case "personal":
         default:
           viewtype = "personal";
           //use wheel here to copy the global wheel for the new wheel
