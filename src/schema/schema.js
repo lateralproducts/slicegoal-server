@@ -157,6 +157,7 @@ export const Schema = `
       profile: String
       views: [View]
       defaultview: View
+      url: String
     }
 
     type RankTime {

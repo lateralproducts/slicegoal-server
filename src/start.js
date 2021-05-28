@@ -113,6 +113,7 @@ export const start = async () => {
     const resolvers = {
       Query: {
         isLoggedin: async (root, args, { req, ip }) => {
+          if (!req.session.url) req.session.url = args.url; //set the URL string to send back once logged in to load state. rerank. mostly for google auth.
           if (req.session.user) {
             const user = await Users.findOne({
               _id: ObjectId(getuserid(req.session))
@@ -975,8 +976,8 @@ export const start = async () => {
           //const user = data[username];
 
           if (user) {
-            if(!user.password)
-              throw new Error("Account has not been verified.")
+            if (!user.password)
+              throw new Error("Account has not been verified.");
 
             if (await bcrypt.compareSync(args.pwd, user.password)) {
               var loggedinuser = await login(user, args, req);
@@ -1068,7 +1069,6 @@ export const start = async () => {
 
         googleLogin: async (parent, args, { req, ip }) => {
           const tokenInfo = await oAuth2Client.getTokenInfo(args.token);
-
           if ((tokenInfo.email = args.email)) {
             //check token authentication...
 
@@ -1111,6 +1111,7 @@ export const start = async () => {
               } catch (error) {
                 console.log(error);
               }
+          delete req.session.user;
           req.session.destroy();
           return true;
         },
@@ -1637,7 +1638,7 @@ export const start = async () => {
             }
           }
         );
-
+        user.url = req.session.url;
         return user;
       }
 
