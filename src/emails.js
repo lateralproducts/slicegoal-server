@@ -26,6 +26,10 @@ var newpersonal = fs
   .readFileSync(__dirname + "/emailtemplates/newpersonal.html")
   .toString();
 
+var feedbackTemplate = fs
+  .readFileSync(__dirname + "/emailtemplates/feedback.html")
+  .toString();
+
 export async function objectivesummaryemail(user, links, objectives) {
   var mailOptions = {
     from: auth.user,
@@ -190,4 +194,16 @@ async function sendEmail(from, to, subject, email) {
       console.log("Email to:" + to + " - " + info.response);
     }
   });
+}
+
+export async function feedbackEmail(user, feedback){
+    var from=user.email
+    var to=`${process.env.FEEDBACK_EMAIL}` //update this
+    var subject=`Feedback from ${user.firstname}`
+    var email = Mustache.render(feedbackTemplate, {
+      from: ` ${user.firstname} (${user.email})`,
+      time: new Date(),
+      feedback: feedback
+    })
+    sendEmail(from, to, subject, email)
 }
