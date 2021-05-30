@@ -17,10 +17,11 @@ import { Mutations } from "./schema/mutations";
 import { Schema } from "./schema/schema";
 
 import {
-  newClientEmail,
-  newpersonalEmail,
-  newCoachEmail,
-  objectivesummaryemail
+  emailNewClient,
+  emailNewPersonal,
+  emailNewCoach,
+  emailObjectiveNudge,
+  emailRerankNudge
 } from "./emails";
 
 //import { verifier } from "google-id-token-verifier";
@@ -78,10 +79,17 @@ export const start = async () => {
     const Wheels = db.collection("wheels");
     const Views = db.collection("views");
     const Profiles = db.collection("profiles");
+    const Emails = db.collection("emails");
     //const Signup = db.collection("signup");
 
-    var j = schedule.scheduleJob({ hour: 15, minute: 21 }, function() {
+    //start of schedules - would be great to place these somewhere else for modularity if possible?
+
+    schedule.scheduleJob({ hour: 14, minute: 53 }, function() {
       objectivesummary("daniel@lateralproducts.com");
+    });
+
+    schedule.scheduleJob({ day: 7, hour: 3, minute: 50 }, function() {
+      ranknudge("daniel@lateralproducts.com");
     });
 
     async function objectivesummary(email) {
@@ -107,8 +115,65 @@ export const start = async () => {
         .limit(100)
         .toArray();
 
-      objectivesummaryemail(user, links, objectives);
+      emailObjectiveNudge(user, links, objectives);
     }
+
+    async function ranknudge(email) {
+      var olduserranks = await new Promise(function(resolve, reject) {
+        var twoweeksago = new Date();
+        twoweeksago.setDate(twoweeksago.getDate() - 14);
+
+        RankTimes.aggregate(
+          //group by user (profile) and see which haven't had a rank for over two weeeks.
+          {
+            $group: {
+              _id: "$userid", //profiles
+              user: { $first: "$userid" }, //profiles
+              lastrank: { $max: "$date" }
+            }
+          },
+          {
+            $match: { lastrank: { $lte: twoweeksago } }
+          },
+
+          function(err, userrankss) {
+            if (err) throw err;
+            resolve(userrankss.map(prepare));
+          }
+        );
+      });
+
+      console.log(olduserranks);
+
+      const profiles = await Profiles.find({
+        _id: {
+          $in: olduserranks.map(function(userrank) {
+            return userrank._id ? ObjectId(userrank._id) : null;
+          })
+        }
+      }).toArray();
+
+      console.log(profiles);
+
+      const sendtousers = await Profiles.find({
+        _id: {
+          $in: profiles.map(function(profile) {
+            return profile.user ? ObjectId(profile.user) : null;
+          })
+        }
+      }).toArray();
+
+      sendtousers.map(function(user) {
+        Emails.insertOne({
+          email: user.email,
+          type: "rerank",
+          triggered: new Date()
+        });
+        //emailRerankNudge(user);
+      });
+    }
+
+    //end of schedules
 
     const resolvers = {
       Query: {
@@ -894,7 +959,7 @@ export const start = async () => {
 
             var newuser = await Users.insertOne(args); //create record to return id
             args._id = newuser.insertedId.toString(); //use args to pass new user id for email link
-            newClientEmail(args, req.session.user, req.session.view.name);
+            emailNewClient(args, req.session.user, req.session.view.name);
 
             userid = newuser.insertedId.toString(); //pass id for creating view and profiles
           }
@@ -1061,8 +1126,8 @@ export const start = async () => {
           };
           var emailuser = await signup(newuser, args, req);
 
-          if (args.account === "coach") newCoachEmail(emailuser);
-          else newpersonalEmail(emailuser);
+          if (args.account === "coach") emailNewCoach(emailuser);
+          else emailNewPersonal(emailuser);
 
           return true;
         },

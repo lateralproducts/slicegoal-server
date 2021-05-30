@@ -26,7 +26,11 @@ var newpersonal = fs
   .readFileSync(__dirname + "/emailtemplates/newpersonal.html")
   .toString();
 
-export async function objectivesummaryemail(user, links, objectives) {
+var rerank = fs
+  .readFileSync(__dirname + "/emailtemplates/rerank.html")
+  .toString();
+
+export async function emailObjectiveNudge(user, links, objectives) {
   var mailOptions = {
     from: auth.user,
     to: user.email,
@@ -61,7 +65,7 @@ export async function objectivesummaryemail(user, links, objectives) {
   });
 }
 
-export async function newClientEmail(client, coach, viewname) {
+export async function emailNewClient(client, coach, viewname) {
   var from = auth.user;
   var to = client.email;
   var subject = "You’ve been invited to Cavestep"; //to Cavestep🦶
@@ -129,7 +133,7 @@ export async function newClientEmail(client, coach, viewname) {
   sendEmail(from, to, subject, email);
 }
 
-export async function newpersonalEmail(personal) {
+export async function emailNewPersonal(personal) {
   var from = auth.user;
   var to = personal.email;
   var subject = "Looks like you've signed up for Cavestep!";
@@ -143,7 +147,19 @@ export async function newpersonalEmail(personal) {
   sendEmail(from, to, subject, email);
 }
 
-export async function newCoachEmail(coach) {
+export async function emailRerankNudge(personal) {
+  var from = auth.user;
+  var to = personal.email;
+  var subject = "🦶 Cavestep • What are your ranks now?";
+  var email = Mustache.render(rerank, {
+    name: personal.firstname ? " " + personal.firstname : "", //using space in front here to manage formatting.
+    URLpath: URLpath
+  });
+
+  sendEmail(from, to, subject, email);
+}
+
+export async function emailNewCoach(coach) {
   var from = auth.user;
   var to = coach.email;
   var subject = "You’ve signed up to Cavestep";
