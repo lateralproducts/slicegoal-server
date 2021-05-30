@@ -88,7 +88,7 @@ export const start = async () => {
       objectivesummary("daniel@lateralproducts.com");
     });
 
-    schedule.scheduleJob({ day: 7, hour: 2, minute: 6 }, function() {
+    schedule.scheduleJob({ day: 7, hour: 4, minute: 12 }, function() {
       ranknudge("daniel@lateralproducts.com");
     });
 
