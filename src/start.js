@@ -85,14 +85,14 @@ export const start = async () => {
     //start of schedules - would be great to place these somewhere else for modularity if possible?
 
     schedule.scheduleJob({ hour: 14, minute: 53 }, function() {
-      objectivesummary("daniel@lateralproducts.com");
+      objectivenudge("daniel@lateralproducts.com");
     });
 
-    schedule.scheduleJob({ day: 7, hour: 4, minute: 26 }, function() {
+    schedule.scheduleJob({ day: 7, hour: 8, minute: 0 }, function() {
       ranknudge("daniel@lateralproducts.com");
     });
 
-    async function objectivesummary(email) {
+    async function objectivenudge(email) {
       const user = await Users.findOne({ email: email });
 
       const links = await FocusLinks.find({
@@ -143,8 +143,6 @@ export const start = async () => {
         );
       });
 
-      console.log(olduserranks);
-
       const profiles = await Profiles.find({
         _id: {
           $nin: olduserranks.map(function(userrank) {
@@ -152,8 +150,6 @@ export const start = async () => {
           })
         }
       }).toArray();
-
-      console.log(profiles);
 
       const sendtousers = await Users.find({
         _id: {
@@ -163,14 +159,12 @@ export const start = async () => {
         }
       }).toArray();
 
-      sendtousers.map(function(user) {
-        Emails.insertOne({
-          //record that email was sent.
-          email: user.email,
-          type: "rerank",
-          triggered: new Date()
-        });
-        //emailRerankNudge(user);
+      sendtousers.map(async (user, count) => {
+        //needs to be async because waiting for response from email client...
+        await new Promise(resolve => setTimeout(resolve, count * 5000)); //delay 5 seconds per index, because gmail blocks using as transactional email client
+        //will need/want to update email client to AWS SES or another scaled email service.
+        //var emailresponse = await emailRerankNudge(user);
+        Emails.insertOne(user);
       });
     }
 
@@ -884,11 +878,6 @@ export const start = async () => {
 
           req.session.view = view;
           req.session.profile = profile;
-
-          /*           console.log("set view to:");
-          console.log(view);
-          console.log("set profile to:");
-          console.log(profile); */
 
           return prepare(view); //need to return the view, area.
         },

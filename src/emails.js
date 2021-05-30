@@ -147,16 +147,16 @@ export async function emailNewPersonal(personal) {
   sendEmail(from, to, subject, email);
 }
 
-export async function emailRerankNudge(personal) {
+export async function emailRerankNudge(user) {
   var from = auth.user;
-  var to = personal.email;
-  var subject = "🦶 Cavestep • What are your ranks now?";
+  var to = user.email;
+  var subject = "🦶 Cavestep • Time to rank your wheel";
   var email = Mustache.render(rerank, {
-    name: personal.firstname ? " " + personal.firstname : "", //using space in front here to manage formatting.
+    name: user.firstname ? " " + user.firstname : "", //using space in front here to manage formatting.
     URLpath: URLpath
   });
 
-  sendEmail(from, to, subject, email);
+  return await sendEmail(from, to, subject, email);
 }
 
 export async function emailNewCoach(coach) {
@@ -199,11 +199,15 @@ async function sendEmail(from, to, subject, email) {
     subject: subject,
     html: email
   };
-  transporter.sendMail(mailOptions, function(error, info) {
-    if (error) {
-      console.log(error);
-    } else {
-      console.log("Email to:" + to + " - " + info.response);
-    }
+  return await new Promise(function(resolve, reject) {
+    transporter.sendMail(mailOptions, function(error, info) {
+      if (error) {
+        mailOptions.error = error;
+      } else {
+        mailOptions.response = info.response;
+      }
+      resolve(mailOptions);
+    });
   });
+  //save email in db when possible.
 }
