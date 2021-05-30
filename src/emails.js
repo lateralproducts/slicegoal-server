@@ -6,6 +6,8 @@ var auth = {
   pass: "nfquwbjifgfjkkov"
 };
 
+var sender = "Cavestep 🦶<daniel@cavestep.com>";
+
 var env = "test";
 
 var URLpath = `${process.env.URLpath}`;
@@ -32,7 +34,7 @@ var rerank = fs
 
 export async function emailObjectiveNudge(user, links, objectives) {
   var mailOptions = {
-    from: auth.user,
+    from: sender,
     to: user.email,
     subject: "Your Cavestep Objectives",
     html:
@@ -66,7 +68,7 @@ export async function emailObjectiveNudge(user, links, objectives) {
 }
 
 export async function emailNewClient(client, coach, viewname) {
-  var from = auth.user;
+  var from = sender;
   var to = client.email;
   var subject = "You’ve been invited to Cavestep"; //to Cavestep🦶
   var email =
@@ -93,7 +95,7 @@ export async function emailNewClient(client, coach, viewname) {
 
   sendEmail(from, to, subject, email);
 
-  from = auth.user;
+  from = sender;
   to = "daniel@cavestep.com";
   subject = "New User!"; //to Cavestep🦶
   email =
@@ -134,7 +136,7 @@ export async function emailNewClient(client, coach, viewname) {
 }
 
 export async function emailNewPersonal(personal) {
-  var from = auth.user;
+  var from = sender;
   var to = personal.email;
   var subject = "Looks like you've signed up for Cavestep!";
   var email = Mustache.render(newpersonal, {
@@ -148,9 +150,9 @@ export async function emailNewPersonal(personal) {
 }
 
 export async function emailRerankNudge(user) {
-  var from = auth.user;
+  var from = sender;
   var to = user.email;
-  var subject = "🦶 Cavestep • Time to rank your wheel";
+  var subject = "Time to rank your wheel";
   var email = Mustache.render(rerank, {
     name: user.firstname ? " " + user.firstname : "", //using space in front here to manage formatting.
     URLpath: URLpath
@@ -206,6 +208,7 @@ async function sendEmail(from, to, subject, email) {
       } else {
         mailOptions.response = info.response;
       }
+      mailOptions.triggered = new Date();
       resolve(mailOptions);
     });
   });

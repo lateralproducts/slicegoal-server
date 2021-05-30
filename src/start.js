@@ -89,7 +89,7 @@ export const start = async () => {
       objectivenudge("daniel@lateralproducts.com");
     });
 
-    schedule.scheduleJob({ day: 7, hour: 8, minute: 38 }, function() {
+    schedule.scheduleJob({ day: 7, hour: 10, minute: 6 }, function() {
       //set to UTC time for server
       ranknudge("daniel@lateralproducts.com");
     });
@@ -165,6 +165,7 @@ export const start = async () => {
         //needs to be async because waiting for response from email client...
         await new Promise(resolve => setTimeout(resolve, count * 5000)); //delay 5 seconds per index, because gmail blocks using as transactional email client
         //will need/want to update email client to AWS SES or another scaled email service.
+        Emails.insertOne(user);
         if (user.email === "daniel@lateralproducts.com") {
           var emailresponse = await emailRerankNudge(user);
           Emails.insertOne(emailresponse);
