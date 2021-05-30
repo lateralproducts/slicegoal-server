@@ -88,7 +88,7 @@ export const start = async () => {
       objectivesummary("daniel@lateralproducts.com");
     });
 
-    schedule.scheduleJob({ day: 7, hour: 4, minute: 12 }, function() {
+    schedule.scheduleJob({ day: 7, hour: 4, minute: 26 }, function() {
       ranknudge("daniel@lateralproducts.com");
     });
 
@@ -155,7 +155,7 @@ export const start = async () => {
 
       console.log(profiles);
 
-      const sendtousers = await Profiles.find({
+      const sendtousers = await Users.find({
         _id: {
           $in: profiles.map(function(profile) {
             return profile.user ? ObjectId(profile.user) : null;
