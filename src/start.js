@@ -89,7 +89,7 @@ export const start = async () => {
       objectivenudge("daniel@lateralproducts.com");
     });
 
-    schedule.scheduleJob({ day: 7, hour: 8, minute: 26 }, function() {
+    schedule.scheduleJob({ day: 7, hour: 8, minute: 38 }, function() {
       //set to UTC time for server
       ranknudge("daniel@lateralproducts.com");
     });
