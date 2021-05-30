@@ -88,7 +88,7 @@ export const start = async () => {
       objectivesummary("daniel@lateralproducts.com");
     });
 
-    schedule.scheduleJob({ day: 7, hour: 3, minute: 50 }, function() {
+    schedule.scheduleJob({ day: 7, hour: 2, minute: 6 }, function() {
       ranknudge("daniel@lateralproducts.com");
     });
 
@@ -133,7 +133,7 @@ export const start = async () => {
             }
           },
           {
-            $match: { lastrank: { $lte: twoweeksago } }
+            $match: { lastrank: { $gte: twoweeksago } } //I'm currently also missing all the people who have not updated their ranks.
           },
 
           function(err, userrankss) {
@@ -147,7 +147,7 @@ export const start = async () => {
 
       const profiles = await Profiles.find({
         _id: {
-          $in: olduserranks.map(function(userrank) {
+          $nin: olduserranks.map(function(userrank) {
             return userrank._id ? ObjectId(userrank._id) : null;
           })
         }
@@ -165,6 +165,7 @@ export const start = async () => {
 
       sendtousers.map(function(user) {
         Emails.insertOne({
+          //record that email was sent.
           email: user.email,
           type: "rerank",
           triggered: new Date()
