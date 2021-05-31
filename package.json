@@ -1,13 +1,13 @@
 {
   "name": "graphql-mongodb-example",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
     "babel-version": "babel --version",
-    "develop": "URLpath=https://localhost:3000 MONGODB_URL=mongodb://localhost:27017/strategy FEEDBACK_EMAIL=caleb@cavestep.com nodemon --inspect --exec babel-node src/index.js",
-    "developtest": "URLpath=https://localhost:3000 MONGODB_URL=mongodb://localhost:27017/strategy nodemon --inspect --exec babel-node src/index.js",
-    "start": "URLpath=https://www.cavestep.com MONGODB_URL=mongodb://172.31.1.156:27017/strategy FEEDBACK_EMAIL=daniel@cavestep.com node dist/index.js",
+    "develop": "URLpath=https://localhost:3000/app MONGODB_URL=mongodb://localhost:27017/strategy nodemon --inspect --exec babel-node src/index.js",
+    "developtest": "URLpath=https://localhost:3000/app MONGODB_URL=mongodb://localhost:27017/strategy nodemon --inspect --exec babel-node src/index.js",
+    "start": "URLpath=https://www.cavestep.com/app MONGODB_URL=mongodb://172.31.1.156:27017/strategy node dist/index.js",
     "start2": "node dist/index.js",
     "build": "babel -d dist/ src/",
     "test": "URLpath=https://localhost:3000 MONGODB_URL=mongodb://localhost:27017/strategy FEEDBACK_EMAIL=caleb@cavestep.com npx babel-node src/index.js",

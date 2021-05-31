@@ -1,6 +1,6 @@
 export const Queries = `
     type Query {
-      isLoggedin: User
+      isLoggedin (url: String): User
       areas (readdate: String): [Area]
       views: [View]
       profiles: [Profile]

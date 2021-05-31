@@ -17,11 +17,12 @@ import { Mutations } from "./schema/mutations";
 import { Schema } from "./schema/schema";
 
 import {
-  newClientEmail,
-  newpersonalEmail,
-  newCoachEmail,
-  objectivesummaryemail,
-  feedbackEmail
+  emailNewClient,
+  emailNewPersonal,
+  emailNewCoach,
+  emailObjectiveNudge,
+  emailRerankNudge,
+  emailFeedback
 } from "./emails";
 
 //import { verifier } from "google-id-token-verifier";
@@ -79,13 +80,22 @@ export const start = async () => {
     const Wheels = db.collection("wheels");
     const Views = db.collection("views");
     const Profiles = db.collection("profiles");
+    const Emails = db.collection("emails");
     //const Signup = db.collection("signup");
 
-    var j = schedule.scheduleJob({ hour: 15, minute: 21 }, function() {
-      objectivesummary("daniel@lateralproducts.com");
+    //start of schedules - would be great to place these somewhere else for modularity if possible?
+
+    schedule.scheduleJob({ hour: 14, minute: 53 }, function() {
+      //set to UTC time for server
+      objectivenudge("daniel@lateralproducts.com");
     });
 
-    async function objectivesummary(email) {
+    schedule.scheduleJob({ day: 7, hour: 10, minute: 25 }, function() {
+      //set to UTC time for server
+      ranknudge();
+    });
+
+    async function objectivenudge(email) {
       const user = await Users.findOne({ email: email });
 
       const links = await FocusLinks.find({
@@ -108,12 +118,66 @@ export const start = async () => {
         .limit(100)
         .toArray();
 
-      objectivesummaryemail(user, links, objectives);
+      emailObjectiveNudge(user, links, objectives);
     }
+
+    async function ranknudge() {
+      var olduserranks = await new Promise(function(resolve, reject) {
+        var twoweeksago = new Date();
+        twoweeksago.setDate(twoweeksago.getDate() - 14);
+
+        RankTimes.aggregate(
+          //group by user (profile) and see which haven't had a rank for over two weeeks.
+          {
+            $group: {
+              _id: "$userid", //profiles
+              user: { $first: "$userid" }, //profiles
+              lastrank: { $max: "$date" }
+            }
+          },
+          {
+            $match: { lastrank: { $gte: twoweeksago } } //I'm currently also missing all the people who have not updated their ranks.
+          },
+
+          function(err, userrankss) {
+            if (err) throw err;
+            resolve(userrankss.map(prepare));
+          }
+        );
+      });
+
+      const profiles = await Profiles.find({
+        _id: {
+          $nin: olduserranks.map(function(userrank) {
+            return userrank._id ? ObjectId(userrank._id) : null;
+          })
+        }
+      }).toArray();
+
+      const sendtousers = await Users.find({
+        _id: {
+          $in: profiles.map(function(profile) {
+            return profile.user ? ObjectId(profile.user) : null;
+          })
+        }
+        //state: "verified" //could add this later on to ensure that these emails are only sent to users who are verified.
+      }).toArray();
+
+      sendtousers.map(async (user, count) => {
+        //needs to be async because waiting for response from email client...
+        await new Promise(resolve => setTimeout(resolve, count * 5000)); //delay 5 seconds per index, because gmail blocks using as transactional email client
+        //will need/want to update email client to AWS SES or another scaled email service.
+        var emailresponse = await emailRerankNudge(user);
+        Emails.insertOne(emailresponse);
+      });
+    }
+
+    //end of schedules
 
     const resolvers = {
       Query: {
         isLoggedin: async (root, args, { req, ip }) => {
+          if (!req.session.url) req.session.url = args.url; //set the URL string to send back once logged in to load state. rerank. mostly for google auth.
           if (req.session.user) {
             const user = await Users.findOne({
               _id: ObjectId(getuserid(req.session))
@@ -819,11 +883,6 @@ export const start = async () => {
           req.session.view = view;
           req.session.profile = profile;
 
-          /*           console.log("set view to:");
-          console.log(view);
-          console.log("set profile to:");
-          console.log(profile); */
-
           return prepare(view); //need to return the view, area.
         },
 
@@ -894,7 +953,7 @@ export const start = async () => {
 
             var newuser = await Users.insertOne(args); //create record to return id
             args._id = newuser.insertedId.toString(); //use args to pass new user id for email link
-            newClientEmail(args, req.session.user, req.session.view.name);
+            emailNewClient(args, req.session.user, req.session.view.name);
 
             userid = newuser.insertedId.toString(); //pass id for creating view and profiles
           }
@@ -976,8 +1035,8 @@ export const start = async () => {
           //const user = data[username];
 
           if (user) {
-            if(!user.password)
-              throw new Error("Account has not been verified.")
+            if (!user.password)
+              throw new Error("Account has not been verified.");
 
             if (await bcrypt.compareSync(args.pwd, user.password)) {
               var loggedinuser = await login(user, args, req);
@@ -1061,15 +1120,14 @@ export const start = async () => {
           };
           var emailuser = await signup(newuser, args, req);
 
-          if (args.account === "coach") newCoachEmail(emailuser);
-          else newpersonalEmail(emailuser);
+          if (args.account === "coach") emailNewCoach(emailuser);
+          else emailNewPersonal(emailuser);
 
           return true;
         },
 
         googleLogin: async (parent, args, { req, ip }) => {
           const tokenInfo = await oAuth2Client.getTokenInfo(args.token);
-
           if ((tokenInfo.email = args.email)) {
             //check token authentication...
 
@@ -1112,6 +1170,7 @@ export const start = async () => {
               } catch (error) {
                 console.log(error);
               }
+          delete req.session.user;
           req.session.destroy();
           return true;
         },
@@ -1182,7 +1241,7 @@ export const start = async () => {
           args.uiversion = getuiversion(req.session);
           args.date = new Date(args.datetime);
           await Feedback.insertOne(args);
-          await feedbackEmail(req.session.user, args.description)
+          await emailFeedback(req.session.user, args.description)
           return true;
         },
         updateArea: async (root, args, { req }) => {
@@ -1639,7 +1698,7 @@ export const start = async () => {
             }
           }
         );
-
+        user.url = req.session.url;
         return user;
       }
 
