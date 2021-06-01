@@ -1,19 +1,16 @@
-# GraphQL-MongoDB-Example
+# Welcome to the Cavestep Server
 
-All the important code is in `src/start.js`.
+Cavestep is a notes, goals, and habit tracker.
+Designed to support optimal outcomes for users.
+Helping people focus on the right things at the right time for the best results.
 
-Install, build and run:
+The Cavestep Server works with the Cavestep App.
 
-```
-yarn install
-yarn run build
-yarn start
-```
+For Local Development
 
-For Local Development 
-
-You need to start Mongodb for Local development 
+You need to start Mongodb for Local development
 
 ```
-npm run startdev
+yarn develop - this starts the server with nodemon which means you can run diagnostics
+yarn start - start server without diagnostics
 ```

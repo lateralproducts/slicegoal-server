@@ -90,8 +90,9 @@ export const start = async () => {
       objectivenudge("daniel@lateralproducts.com");
     });
 
-    schedule.scheduleJob({ day: 7, hour: 10, minute: 25 }, function() {
-      //set to UTC time for server
+    schedule.scheduleJob({ dayOfWeek: 0, hour: 22, minute: 0 }, function() {
+      //nudging once a week
+      //set to UTC time for server 22 UTC = 8am Melbourne Time. dayOfWeek: 0, hour: 22, minute: 0 is 8am Monday in Melbourne
       ranknudge();
     });
 
@@ -124,7 +125,7 @@ export const start = async () => {
     async function ranknudge() {
       var olduserranks = await new Promise(function(resolve, reject) {
         var twoweeksago = new Date();
-        twoweeksago.setDate(twoweeksago.getDate() - 14);
+        twoweeksago.setDate(twoweeksago.getDate() - 6);
 
         RankTimes.aggregate(
           //group by user (profile) and see which haven't had a rank for over two weeeks.
