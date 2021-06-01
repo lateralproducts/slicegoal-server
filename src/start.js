@@ -1,5 +1,6 @@
 import { MongoClient, ObjectId } from "mongodb";
 import express from "express";
+require('dotenv-flow').config();
 //import bodyParser from "body-parser";
 //import { graphqlExpress, graphiqlExpress } from "graphql-server-express";
 //import { makeExecutableSchema } from "graphql-tools";
