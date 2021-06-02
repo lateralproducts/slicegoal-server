@@ -214,3 +214,15 @@ async function sendEmail(from, to, subject, email) {
   });
   //save email in db when possible.
 }
+
+export async function emailFeedback(user, feedback){
+    var from=user.email
+    var to=`${process.env.FEEDBACK_EMAIL}` //update this
+    var subject=`Feedback from ${user.firstname}`
+    var email = Mustache.render(feedbackTemplate, {
+      from: ` ${user.firstname} (${user.email})`,
+      time: new Date(),
+      feedback: feedback
+    })
+    sendEmail(from, to, subject, email)
+}
