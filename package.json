@@ -1,13 +1,13 @@
 {
   "name": "graphql-mongodb-example",
-  "version": "6.1.0",
+  "version": "6.2.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
     "babel-version": "babel --version",
     "develop": "NODE_ENV=development nodemon --inspect --exec babel-node src/index.js",
     "developtest": "NODE_ENV=test nodemon --inspect --exec babel-node src/index.js",
-    "start": "NODE_ENV=production node dist/index.js",
+    "start": "node dist/index.js",
     "start2": "node dist/index.js",
     "build": "babel -d dist/ src/ .env.* && cp -R src/emailtemplates dist/",
     "test": "NODE_ENV=test npx babel-node src/index.js",
