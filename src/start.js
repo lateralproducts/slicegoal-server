@@ -782,6 +782,15 @@ export const start = async () => {
       },
       Mutation: {
         runUpdate101: async (parent, args, { req }) => {
+          Areas.updateMany({}, { $rename: { userid: "wheelid" } });
+          Areas.updateMany({}, { $rename: { userid: "wheelid" } });
+          AreaLinks.updateMany({}, { $rename: { userid: "wheelid" } });
+          RankTimes.updateMany({}, { $rename: { userid: "profileid" } });
+          Notes.updateMany({}, { $rename: { userid: "profileid" } });
+          NoteLinks.updateMany({}, { $rename: { userid: "profileid" } });
+          Objectives.updateMany({}, { $rename: { userid: "profileid" } });
+          ObjectiveLinks.updateMany({}, { $rename: { userid: "profileid" } });
+
           //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
           /* const users = await Users.find().toArray();
 
