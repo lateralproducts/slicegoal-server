@@ -1,21 +1,17 @@
 const fs = require("fs");
 var nodemailer = require("nodemailer");
+require("dotenv-flow").config();
+//not 100% sure why it works loading in emails.js for environment variables.
+//environment variables not accessible here when it's loaded in start.js, but loaded here, they're available in start.js.
+//may need to revisit when breaking up into more modules.
 
 var auth = {
-  user: "daniel@cavestep.com",
-  pass: "nfquwbjifgfjkkov"
+  user: `${process.env.EMAILCLIENT_USR}`,
+  pass: `${process.env.EMAILCLIENT_PWD}`
 };
-
-var sender = "Cavestep 🦶<daniel@cavestep.com>";
-
-var env = "test";
+var sender = "Cavestep 🦶<" + auth.user + ">";
 
 var URLpath = `${process.env.URLpath}`;
-if (URLpath == "undefined") {
-  URLpath = "https://www.cavestep.com/app/"; //must have a slash at the end
-  env = "prod";
-  //override address if necessary
-}
 
 var transporter = nodemailer.createTransport({
   service: "gmail",
@@ -31,6 +27,32 @@ var newpersonal = fs
 var rerank = fs
   .readFileSync(__dirname + "/emailtemplates/rerank.html")
   .toString();
+
+var feedbackTemplate = fs
+  .readFileSync(__dirname + "/emailtemplates/feedback.html")
+  .toString();
+
+async function sendEmail(to, subject, email) {
+  var mailOptions = {
+    from: sender,
+    to: to,
+    subject: subject,
+    html: email
+  };
+  return await new Promise(function(resolve, reject) {
+    transporter.sendMail(mailOptions, function(error, info) {
+      if (error) {
+        mailOptions.error = error;
+      } else {
+        mailOptions.response = info.response;
+      }
+      mailOptions.triggered = new Date();
+      resolve(mailOptions);
+    });
+  });
+
+  //save email in db when possible.
+}
 
 export async function emailObjectiveNudge(user, links, objectives) {
   var mailOptions = {
@@ -68,7 +90,6 @@ export async function emailObjectiveNudge(user, links, objectives) {
 }
 
 export async function emailNewClient(client, coach, viewname) {
-  var from = sender;
   var to = client.email;
   var subject = "You’ve been invited to Cavestep"; //to Cavestep🦶
   var email =
@@ -93,9 +114,8 @@ export async function emailNewClient(client, coach, viewname) {
     "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>" +
     "</div>";
 
-  sendEmail(from, to, subject, email);
+  sendEmail(to, subject, email);
 
-  from = sender;
   to = "daniel@cavestep.com";
   subject = "New User!"; //to Cavestep🦶
   email =
@@ -132,11 +152,10 @@ export async function emailNewClient(client, coach, viewname) {
     "<br/>" +
     "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>" +
     "</div>";
-  sendEmail(from, to, subject, email);
+  sendEmail(to, subject, email);
 }
 
 export async function emailNewPersonal(personal) {
-  var from = sender;
   var to = personal.email;
   var subject = "Looks like you've signed up for Cavestep!";
   var email = Mustache.render(newpersonal, {
@@ -146,7 +165,7 @@ export async function emailNewPersonal(personal) {
     personalcode: personal.code
   });
 
-  sendEmail(from, to, subject, email);
+  sendEmail(to, subject, email);
 }
 
 export async function emailRerankNudge(user) {
@@ -158,11 +177,10 @@ export async function emailRerankNudge(user) {
     URLpath: URLpath
   });
 
-  return await sendEmail(from, to, subject, email);
+  return await sendEmail(to, subject, email);
 }
 
 export async function emailNewCoach(coach) {
-  var from = auth.user;
   var to = coach.email;
   var subject = "You’ve signed up to Cavestep";
   var email =
@@ -191,38 +209,16 @@ export async function emailNewCoach(coach) {
     "Founder" +
     "<br/>" +
     "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>";
-  sendEmail(from, to, subject, email);
+  sendEmail(to, subject, email);
 }
 
-async function sendEmail(from, to, subject, email) {
-  var mailOptions = {
-    from: from,
-    to: to,
-    subject: subject,
-    html: email
-  };
-  return await new Promise(function(resolve, reject) {
-    transporter.sendMail(mailOptions, function(error, info) {
-      if (error) {
-        mailOptions.error = error;
-      } else {
-        mailOptions.response = info.response;
-      }
-      mailOptions.triggered = new Date();
-      resolve(mailOptions);
-    });
+export async function emailFeedback(user, feedback) {
+  var to = `${process.env.FEEDBACK_EMAIL}`; //update this
+  var subject = `Feedback from ${user.firstname}`;
+  var email = Mustache.render(feedbackTemplate, {
+    from: ` ${user.firstname} (${user.email})`,
+    time: new Date(),
+    feedback: feedback
   });
-  //save email in db when possible.
-}
-
-export async function emailFeedback(user, feedback){
-    var from=user.email
-    var to=`${process.env.FEEDBACK_EMAIL}` //update this
-    var subject=`Feedback from ${user.firstname}`
-    var email = Mustache.render(feedbackTemplate, {
-      from: ` ${user.firstname} (${user.email})`,
-      time: new Date(),
-      feedback: feedback
-    })
-    sendEmail(from, to, subject, email)
+  return await sendEmail(to, subject, email);
 }

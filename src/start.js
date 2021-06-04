@@ -1,6 +1,5 @@
 import { MongoClient, ObjectId } from "mongodb";
 import express from "express";
-require('dotenv-flow').config();
 //import bodyParser from "body-parser";
 //import { graphqlExpress, graphiqlExpress } from "graphql-server-express";
 //import { makeExecutableSchema } from "graphql-tools";
@@ -32,8 +31,10 @@ const { OAuth2Client } = require("google-auth-library");
 var pjson = require("../package.json");
 console.log("server version: " + pjson.version);
 
-var googleclientId =
-  "200442864570-r2ro7rh3app55g83g2bqtfdkt7o398cj.apps.googleusercontent.com";
+var env = `${process.env.npm_lifecycle_event}`;
+console.log("environment: " + process.env.npm_lifecycle_event);
+
+var googleclientId = `${process.env.GOOGLE_CLIENTID}`;
 
 const oAuth2Client = new OAuth2Client({
   clientId: googleclientId
@@ -41,21 +42,11 @@ const oAuth2Client = new OAuth2Client({
 
 const app = express();
 
-var env = "test";
-
 var schedule = require("node-schedule");
 
 app.use(cors());
 
-/* const homePath = "/graphiql";
-const URL = "http://localhost";
-const PORT = 3001; */
-var MONGO_URL = `${process.env.MONGODB_URL}`; //27017
-if (MONGO_URL == "undefined") {
-  MONGO_URL = "mongodb://172.31.1.156:27017/strategy";
-  env = "prod";
-  //override address if necessary
-}
+var MONGO_URL = `${process.env.MONGODB_URL}`;
 console.log("attempting to open server: " + MONGO_URL);
 
 export const start = async () => {
@@ -67,8 +58,8 @@ export const start = async () => {
     const Areas = db.collection("areas");
     const AreaLinks = db.collection("arealinks");
     const RankTimes = db.collection("ranktimes");
-    const GoalTimes = db.collection("goaltimes"); 
-    const Pomodoros = db.collection("pomodoros"); 
+    const GoalTimes = db.collection("goaltimes");
+    const Pomodoros = db.collection("pomodoros");
     const Objectives = db.collection("objectives");
     const ObjectiveLinks = db.collection("objectivelinks");
     const Spaced = db.collection("spaced");
@@ -1242,8 +1233,13 @@ export const start = async () => {
           args.serverversion = pjson.version;
           args.uiversion = getuiversion(req.session);
           args.date = new Date(args.datetime);
+
+          var emailresponse = await emailFeedback(
+            req.session.user,
+            args.description
+          );
+          Emails.insertOne(emailresponse);
           await Feedback.insertOne(args);
-          await emailFeedback(req.session.user, args.description)
           return true;
         },
         updateArea: async (root, args, { req }) => {
@@ -1256,7 +1252,11 @@ export const start = async () => {
         },
         deleteAreaLink: async (root, { rootarea, area }, { req }) => {
           const res = await AreaLinks.deleteMany(
-            { rootarea: rootarea, area: area, wheelid: getwheelid(req.session) },
+            {
+              rootarea: rootarea,
+              area: area,
+              wheelid: getwheelid(req.session)
+            },
             { $set: { arealink: null } }
           );
           return res;
@@ -1585,7 +1585,11 @@ export const start = async () => {
         deleteArea: async (root, { rootarea, area }, { req }) => {
           var message = "";
           AreaLinks.deleteOne(
-            { rootarea: rootarea, area: area, wheelid: getwheelid(req.session) },
+            {
+              rootarea: rootarea,
+              area: area,
+              wheelid: getwheelid(req.session)
+            },
             function(err, obj) {
               if (err) throw err;
               message = obj.deletedCount + " area(s) deleted";
