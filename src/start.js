@@ -1615,31 +1615,17 @@ export const start = async () => {
 
     function getprofileid(session) {
       if (session.profile) return session.profile._id.toString();
-      //if (session.profile._id) return session.profile._id;
-      /* else if (env === "test") {
-        return "605da7eedc0c981608c40126"; //default for test??
-      } */ else {
-        getuserid(session);
-        throw new Error("Profile not found");
-        //return null; //
-      }
+      else throw new Error("Profile not found");
     }
 
     function getwheelid(session) {
       if (session.view) return session.view.wheel;
-      //if (session.view._id) return session.view._id;
-      /* else if (env === "test") {
-        return "5d27ffef2f25635b27f0a450"; //default for test??
-      } */ else
-        throw new Error("Wheel not found");
+      else throw new Error("Wheel not found");
     }
 
     function getuserid(session) {
       if (session.user) return session.user._id.toString();
-      /* else if (env === "test") {
-        return "5d70b68aa1e6bf52b9906b8e"; //default for test??
-      } */ else
-        throw new Error("Invalid Session");
+      else throw new Error("Invalid Session");
     }
 
     function getuiversion(session) {
@@ -1692,7 +1678,8 @@ export const start = async () => {
 
           if (profile) req.session.profile = profile;
         } else {
-          createWheel(user, user._id.toString(), "personal");
+          //createWheel(user, user._id.toString(), "personal");
+          //this was causing problems with google logins creating two wheels.
         }
 
         await Logins.insertOne({
@@ -1774,11 +1761,7 @@ export const start = async () => {
         default:
           viewtype = "personal";
           //use wheel here to copy the global wheel for the new wheel
-          if (!wheel)
-            wheel =
-              env === "test"
-                ? "6025e1bc216eef4f3fda3c1f"
-                : "607cbc0b49e8769358992564"; //req.session.view.wheel,
+          if (!wheel) wheel = `${process.env.COPY_WHEELOFLIFE}`;
           wheelid = await copywheel(wheel, userid);
       }
 
@@ -1819,57 +1802,64 @@ export const start = async () => {
       var newwheel = await Wheels.findOne({
         _id: ObjectId(wheelid)
       });
-      newwheel.copy = wheelid;
-      newwheel.user = userid;
-      newwheel.created = new Date();
-      delete newwheel._id;
-      delete newwheel.global;
-      var newwheelid = (await Wheels.insertOne(newwheel)).insertedId.toString();
-      //areas - global
-      var newareas = await Areas.find({ wheelid: wheelid }).toArray();
-      newareas.map(area => {
-        area.user = userid;
-        area.wheelid = newwheelid;
-        area.copywheel = wheelid;
-        area.copyarea = area._id.toString();
-        area.created = new Date();
-        delete area._id;
-        return area;
-      });
 
-      await Areas.insertMany(newareas);
-      var newstartareaid = (await Areas.findOne({
-        user: userid,
-        copyarea: newwheel.startarea,
-        wheelid: newwheelid //this is the id used for returning wheels
-      }))._id.toString();
+      if (!newwheel) {
+        throw new Error("Wheel not found to copy");
+      } else {
+        newwheel.copy = wheelid;
+        newwheel.user = userid;
+        newwheel.created = new Date();
+        delete newwheel._id;
+        delete newwheel.global;
+        var newwheelid = (await Wheels.insertOne(
+          newwheel
+        )).insertedId.toString();
+        //areas - global
+        var newareas = await Areas.find({ wheelid: wheelid }).toArray();
+        newareas.map(area => {
+          area.user = userid;
+          area.wheelid = newwheelid;
+          area.copywheel = wheelid;
+          area.copyarea = area._id.toString();
+          area.created = new Date();
+          delete area._id;
+          return area;
+        });
 
-      Wheels.updateOne(
-        { _id: ObjectId(newwheelid) },
-        { $set: { startarea: newstartareaid } }
-      );
-      //arealinks - global
-      var newarealinks = await AreaLinks.find({
-        wheelid: wheelid
-      }).toArray();
-      newarealinks.map(arealink => {
-        arealink.user = userid; //this is just copied as a reference for ease
-        arealink.wheelid = newwheelid; //this is the id used for returning arealinks
-        arealink.rootarea = newareas
-          .find(o => o.copyarea === arealink.rootarea)
-          ._id.toString();
-        arealink.area = newareas
-          .find(o => o.copyarea === arealink.area)
-          ._id.toString();
-        arealink.copywheel = wheelid;
-        arealink.copylink = arealink._id.toString();
-        arealink.created = new Date();
-        delete arealink._id;
-        return arealink;
-      });
-      AreaLinks.insertMany(newarealinks);
-      //return wheel
-      return newwheelid;
+        await Areas.insertMany(newareas);
+        var newstartareaid = (await Areas.findOne({
+          user: userid,
+          copyarea: newwheel.startarea,
+          wheelid: newwheelid //this is the id used for returning wheels
+        }))._id.toString();
+
+        Wheels.updateOne(
+          { _id: ObjectId(newwheelid) },
+          { $set: { startarea: newstartareaid } }
+        );
+        //arealinks - global
+        var newarealinks = await AreaLinks.find({
+          wheelid: wheelid
+        }).toArray();
+        newarealinks.map(arealink => {
+          arealink.user = userid; //this is just copied as a reference for ease
+          arealink.wheelid = newwheelid; //this is the id used for returning arealinks
+          arealink.rootarea = newareas
+            .find(o => o.copyarea === arealink.rootarea)
+            ._id.toString();
+          arealink.area = newareas
+            .find(o => o.copyarea === arealink.area)
+            ._id.toString();
+          arealink.copywheel = wheelid;
+          arealink.copylink = arealink._id.toString();
+          arealink.created = new Date();
+          delete arealink._id;
+          return arealink;
+        });
+        AreaLinks.insertMany(newarealinks);
+        //return wheel
+        return newwheelid;
+      }
     }
 
     async function logareaclick(_id, navdirection, req) {
