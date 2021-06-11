@@ -1,4 +1,4 @@
-import { MongoClient, ObjectId } from "mongodb";
+import { ObjectId } from "mongodb";
 import express from "express";
 //import bodyParser from "body-parser";
 //import { graphqlExpress, graphiqlExpress } from "graphql-server-express";
@@ -15,6 +15,8 @@ import ms from "ms";
 import { Queries } from "./schema/queries";
 import { Mutations } from "./schema/mutations";
 import { Schema } from "./schema/schema";
+import { typeDefs as payments } from "./payments";
+import { resolvers as paymentResolvers } from "./payments"
 
 import {
   emailNewClient,
@@ -24,6 +26,7 @@ import {
   emailRerankNudge,
   emailFeedback
 } from "./emails";
+import { merge } from "lodash";
 
 //import { verifier } from "google-id-token-verifier";
 const { OAuth2Client } = require("google-auth-library");
@@ -46,14 +49,11 @@ var schedule = require("node-schedule");
 
 app.use(cors());
 
-var MONGO_URL = `${process.env.MONGODB_URL}`;
-console.log("attempting to open server: " + MONGO_URL);
+var DbConnection = require("./database")
 
 export const start = async () => {
   try {
-    const db = await MongoClient.connect(MONGO_URL);
-
-    console.log("connected now for the dbs");
+    let db = await DbConnection.Get();
     const Users = db.collection("users");
     const Areas = db.collection("areas");
     const AreaLinks = db.collection("arealinks");
@@ -2116,8 +2116,8 @@ export const start = async () => {
 
     // server
     const server = new GraphQLServer({
-      typeDefs: [Queries, Mutations, Schema],
-      resolvers,
+      typeDefs: [Queries, Mutations, Schema, payments],
+      resolvers: merge(resolvers, paymentResolvers),
       context
     });
 
