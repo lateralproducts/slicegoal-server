@@ -27,4 +27,4 @@ var DbConnection = () => {
     }
 }
 
-module.exports = DbConnection();
+export default DbConnection();

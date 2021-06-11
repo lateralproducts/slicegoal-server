@@ -12,6 +12,7 @@ import session from "express-session";
 import bcrypt from "bcryptjs";
 import ms from "ms";
 
+import DbConnection from "./database"
 import { Queries } from "./schema/queries";
 import { Mutations } from "./schema/mutations";
 import { Schema } from "./schema/schema";
@@ -48,8 +49,6 @@ const app = express();
 var schedule = require("node-schedule");
 
 app.use(cors());
-
-var DbConnection = require("./database")
 
 export const start = async () => {
   try {
