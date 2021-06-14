@@ -589,6 +589,36 @@ export const start = async () => {
           );
         }
       },
+      Objective: {
+        time: async ({ _id }, args, { req }, query) => {
+          return new Promise(function(resolve, reject) {
+            var currentDate = new Date();
+            currentDate.setDate(currentDate.getDate() - 7); //currently reading one week's trailing data.
+            Pomodoros.aggregate(
+              {
+                $match: {
+                  userid: getprofileid(req.session),
+                  date: {
+                    $gte: currentDate
+                  },
+                  objective: _id
+                }
+              },
+              {
+                $group: {
+                  _id: { links: null }, //"$area"
+                  count: { $sum: "$minutes" }
+                }
+              },
+
+              function(err, data) {
+                if (err) throw err;
+                resolve(data[0] ? data[0] : 0);
+              }
+            );
+          });
+        }
+      },
       Focus: {
         area: async ({ area }, args, { req }) => {
           return prepare(

@@ -16,6 +16,7 @@ export const Schema = `
       complete: String
       date: String
       keys: [Key]
+      time: PomodoroData
     }
 
     input KeyIn {
