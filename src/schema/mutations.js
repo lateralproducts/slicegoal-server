@@ -34,10 +34,9 @@ export const Mutations = `
       checkKey(objectiveId: String!, index: Int, check: Boolean): Boolean
       updateObjectiveOrder(objectives: [String]): Boolean
       updateFocusOrder(objectives: [String]): Boolean
-      createObjectiveLink(objectiveid: String, areaid: String): Boolean
-      createNewObjectiveLink(areaname: String!, objectiveid: String!): Boolean
-      updateObjectiveLink(linkid: String!, notes: String, snooze: String): Boolean
+      createObjectiveLink(objectiveid: String, areaid: String, areaname: String): String
       removeObjectiveLink(linkid: String!): Boolean
+      updateObjectiveLink(linkid: String!, notes: String, snooze: String): Boolean
       snoozeObjectiveLink(objectiveid: String!, snooze: String!): Boolean
       saveFocusLink(area: String!, objective: String!, datetime: String!, links: [String]): Boolean
       snoozeFocusLink(objectiveid: String!, snooze: String!): Boolean

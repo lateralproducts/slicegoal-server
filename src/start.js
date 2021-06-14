@@ -134,7 +134,8 @@ export const start = async () => {
 
           function(err, userrankss) {
             if (err) throw err;
-            resolve(userrankss.map(prepare));
+            if (userrankss) resolve(userrankss.map(prepare));
+            else resolve(null);
           }
         );
       });
@@ -1358,7 +1359,7 @@ export const start = async () => {
           args.uiversion = getuiversion(req.session);
           args.date = args.datetime ? new Date(args.datetime) : null;
           args.datecreated = new Date();
-          createobjective(args);
+          createobjective(args, req);
           return {
             _id: 1,
             message: "new objective created"
@@ -1385,22 +1386,7 @@ export const start = async () => {
           const res = await NoteLinks.insert(args);
           return res.insertedIds[1] ? true : false;
         },
-        createNewObjectiveLink: async (root, args, { req }) => {
-          var newarea = new Object(); //create new area.
-          newarea.wheelid = getprofileid(req.session);
-          newarea.name = args.areaname;
-          const res = await Areas.insert(newarea);
 
-          await ObjectiveLinks.insertOne({
-            //insert the link to connect note and new area.
-            objectiveid: args.objectiveid,
-            profileid: getprofileid(req.session),
-            areaid: res.insertedIds[0].toString(),
-            datecreated: new Date(args.datetime)
-          });
-
-          return res.insertedIds[1] ? true : false;
-        },
         createNewNoteLink: async (root, args, { req }) => {
           var newarea = new Object(); //create new area.
           newarea.wheelid = getprofileid(req.session);
@@ -1467,12 +1453,25 @@ export const start = async () => {
           return true;
         },
         createObjectiveLink: async (root, args, { req }) => {
-          args.profileid = getprofileid(req.session);
-          args.serverversion = pjson.version;
-          args.uiversion = getuiversion(req.session);
-          args.datecreated = new Date(args.datetime);
-          const res = await ObjectiveLinks.insert(args);
-          return res.insertedIds[1] ? true : false;
+          var areaid;
+          if (args.areaname) {
+            var newarea = new Object(); //create new area.
+            newarea.wheelid = getprofileid(req.session);
+            newarea.name = args.areaname;
+            const inserted = await Areas.insertOne(newarea); //only creating new area if "areaname is added"
+            areaid = inserted.insertedId.toString();
+          } else {
+            areaid = args.areaid;
+          }
+
+          const link = await ObjectiveLinks.insertOne({
+            //insert the link to connect note and new area.
+            objectiveid: args.objectiveid,
+            profileid: getprofileid(req.session),
+            areaid: areaid,
+            datecreated: new Date()
+          });
+          return link.insertedId.toString();
         },
         removeObjectiveLink: async (root, args, { req }) => {
           args.profileid = getprofileid(req.session);
@@ -1631,27 +1630,6 @@ export const start = async () => {
     function getuiversion(session) {
       if (session.user) return session.user.uiversion;
       else return "test";
-    }
-
-    async function createobjective(newobjective) {
-      try {
-        Objectives.insertOne(newobjective).then(result => {
-          if (newobjective.arealinks)
-            newobjective.arealinks.map(async link => {
-              var areaid = link.area._id;
-              var objectivelink = new Object();
-              objectivelink.objectiveid = result.insertedId.toString();
-              objectivelink.profileid = newobjective.profileid;
-              objectivelink.areaid = areaid;
-              objectivelink.datetime = newobjective.datetime;
-              objectivelink.date = new Date(newobjective.datetime);
-              objectivelink.datecreated = new Date();
-              ObjectiveLinks.insert(objectivelink);
-            });
-        });
-      } catch (error) {
-        console.log(error);
-      }
     }
 
     async function login(user, args, req) {
@@ -1922,6 +1900,41 @@ export const start = async () => {
             notelink.datecreated = new Date();
             NoteLinks.insert(notelink);
           });
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    async function createobjective(newobjective, req) {
+      try {
+        Objectives.insertOne(newobjective).then(result => {
+          if (newobjective.arealinks)
+            newobjective.arealinks.map(async link => {
+              var areaid = link.area._id;
+
+              if (!areaid) {
+                var area = {
+                  name: link.name,
+                  wheelid: getprofileid(req.session),
+                  serverversion: pjson.version,
+                  uiversion: getuiversion(req.session),
+                  created: new Date()
+                };
+
+                const res = await Areas.insert(area);
+                areaid = res.insertedIds[0].toString();
+              }
+
+              var objectivelink = new Object();
+              objectivelink.objectiveid = result.insertedId.toString();
+              objectivelink.profileid = newobjective.profileid;
+              objectivelink.areaid = areaid;
+              objectivelink.datetime = newobjective.datetime;
+              objectivelink.date = new Date(newobjective.datetime);
+              objectivelink.datecreated = new Date();
+              ObjectiveLinks.insert(objectivelink);
+            });
+        });
       } catch (error) {
         console.log(error);
       }

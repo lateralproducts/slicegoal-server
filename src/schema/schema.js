@@ -164,9 +164,8 @@ export const Schema = `
       _id: String
       areaId: String
       rank: Int
-      datetime: String
       note: String
-      date: Float
+      date: String
     }
 
     type GoalTime {
