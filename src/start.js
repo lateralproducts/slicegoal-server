@@ -1479,7 +1479,7 @@ export const start = async () => {
         },
         createObjectiveLink: async (root, args, { req }) => {
           var areaid;
-          if (args.areaname) {
+          if (!args.areaid) {
             var newarea = new Object(); //create new area.
             newarea.wheelid = getprofileid(req.session);
             newarea.name = args.areaname;
@@ -1639,12 +1639,18 @@ export const start = async () => {
 
     function getprofileid(session) {
       if (session.profile) return session.profile._id.toString();
-      else throw new Error("Profile not found");
+      else {
+        if (!session.user) throw new Error("Invalid Session");
+        else throw new Error("Profile not found");
+      }
     }
 
     function getwheelid(session) {
       if (session.view) return session.view.wheel;
-      else throw new Error("Wheel not found");
+      else {
+        if (!session.user) throw new Error("Invalid Session");
+        else throw new Error("Wheel not found");
+      }
     }
 
     function getuserid(session) {
