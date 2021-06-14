@@ -592,15 +592,10 @@ export const start = async () => {
       Objective: {
         time: async ({ _id }, args, { req }, query) => {
           return new Promise(function(resolve, reject) {
-            var currentDate = new Date();
-            currentDate.setDate(currentDate.getDate() - 7); //currently reading one week's trailing data.
             Pomodoros.aggregate(
               {
                 $match: {
                   userid: getprofileid(req.session),
-                  date: {
-                    $gte: currentDate
-                  },
                   objective: _id
                 }
               },
