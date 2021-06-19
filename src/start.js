@@ -52,7 +52,7 @@ app.use(cors());
 
 export const start = async () => {
   try {
-    let db = await DbConnection.Get();
+    const db = await DbConnection.Get();
     const Users = db.collection("users");
     const Areas = db.collection("areas");
     const AreaLinks = db.collection("arealinks");
