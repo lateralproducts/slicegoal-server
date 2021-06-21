@@ -179,6 +179,7 @@ export const start = async () => {
 
             await Logins.insertOne({
               email: req.session.user.email,
+              url: args.url,
               lastip: getuserIpAddress(req),
               result: "success",
               type: "loggedin refresh",
@@ -187,7 +188,8 @@ export const start = async () => {
             return prepare(user);
           } else {
             await Logins.insertOne({
-              request: args,
+              email: "session removed",
+              url: args.url,
               lastip: getuserIpAddress(req),
               result: "failed",
               type: "loggedin refresh",
@@ -1081,7 +1083,7 @@ export const start = async () => {
               );
 
               await Logins.insertOne({
-                email: args.username,
+                email: user.email,
                 lastip: getuserIpAddress(req),
                 result: "failed",
                 type: "username login",
@@ -1692,7 +1694,7 @@ export const start = async () => {
         }
 
         await Logins.insertOne({
-          email: args.username,
+          email: user.email,
           lastip: getuserIpAddress(req),
           result: "success",
           type: "username login",
