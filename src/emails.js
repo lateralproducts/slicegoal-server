@@ -1,6 +1,6 @@
+require("dotenv-flow").config();
 const fs = require("fs");
 var nodemailer = require("nodemailer");
-require("dotenv-flow").config();
 //not 100% sure why it works loading in emails.js for environment variables.
 //environment variables not accessible here when it's loaded in start.js, but loaded here, they're available in start.js.
 //may need to revisit when breaking up into more modules.
@@ -31,6 +31,7 @@ var rerank = fs
 var feedbackTemplate = fs
   .readFileSync(__dirname + "/emailtemplates/feedback.html")
   .toString();
+
 
 async function sendEmail(to, subject, email) {
   var mailOptions = {
