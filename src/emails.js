@@ -32,6 +32,7 @@ var feedbackTemplate = fs
   .readFileSync(__dirname + "/emailtemplates/feedback.html")
   .toString();
 
+
 async function sendEmail(to, subject, email) {
   var mailOptions = {
     from: sender,
