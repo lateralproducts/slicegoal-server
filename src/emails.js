@@ -32,6 +32,10 @@ var feedbackTemplate = fs
   .readFileSync(__dirname + "/emailtemplates/feedback.html")
   .toString();
 
+var newUserTemplate = fs
+.readFileSync(__dirname + "/emailtemplates/newUserNotificationEmail.html")
+.toString();
+
 
 async function sendEmail(to, subject, email) {
   var mailOptions = {
@@ -214,12 +218,23 @@ export async function emailNewCoach(coach) {
 }
 
 export async function emailFeedback(user, feedback) {
-  var to = `${process.env.FEEDBACK_EMAIL}`; //update this
+  var to = `${process.env.FEEDBACK_EMAIL}`; 
   var subject = `Feedback from ${user.firstname}`;
   var email = Mustache.render(feedbackTemplate, {
-    from: ` ${user.firstname} (${user.email})`,
+    from: `${user.firstname} ${user.lastname || ''}`,
+    email: `${user.email}`,
     time: new Date(),
     feedback: feedback
   });
+  return await sendEmail(to, subject, email);
+}
+
+export async function newUserNotificationEmail(user) {
+  var to = `${process.env.NEW_USER_NOTIFICATION_EMAIL_ADDRESS}`
+  var subject = `New Cavestep user! ${user.firstname} ${user.lastname|| ''}`
+  var email = Mustach.render(newUserTemplate, {
+    name: `${user.firstname} ${user.lastname || ''}`,
+    email: `${user.email}`
+  })
   return await sendEmail(to, subject, email);
 }

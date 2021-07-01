@@ -4,7 +4,8 @@ import bcrypt from "bcryptjs";
 import {
   emailNewClient,
   emailNewPersonal,
-  emailNewCoach }
+  emailNewCoach, 
+  newUserNotificationEmail}
 from "./emails";
 
 import { createWheel } from "./areas"
@@ -267,6 +268,8 @@ export const resolvers = {
 
         if (args.account === "coach") emailNewCoach(emailuser);
         else emailNewPersonal(emailuser);
+
+        newUserNotificationEmail(user)
 
         return true;
       },
