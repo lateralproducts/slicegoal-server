@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb"
 import fetch from "node-fetch"
 
+import { getuserid } from "./users"
 import DbConnection from "./database"
 
 const TRANSACTION_TIMEOUT = 10 //(second)
@@ -9,11 +10,13 @@ const TRANSACTION_STATUS_POLLING_PERIOD = 0.5 //(seconds)
 export const typeDefs = `
     extend type Query {
         transactionStatus(accessCode: String!): String
+        lastNameRecorded: Boolean
     }
 
     extend type Mutation {
         getAccessCode: PaymentFormFields
         chargeCustomer(accessCode: String!): Boolean
+        addLastNameToUser(lastname: String!): Boolean
     }
 
     type PaymentFormFields {
@@ -24,10 +27,6 @@ export const typeDefs = `
         formActionUrl: String
     }
 
-    type Transaction {
-        responseMessage: String
-        timestamp: String
-    }
 `
 
 export const resolvers = {
@@ -50,8 +49,8 @@ export const resolvers = {
                         return reject(new Error("Transaction not found"))
                     }
 
-                    if(transaction.responseMessage !== null){
-                        return resolve(transaction.responseMessage)
+                    if(transaction.responseCode !== null){
+                        return resolve(transaction.responseCode)
                     } 
 
                     counter++
@@ -65,20 +64,26 @@ export const resolvers = {
                 })()
             })
             .then((result) => {
-                return result
+                return responseMessage(result)
             },
             (error) => {
                 return error
             })
+        },
+
+        lastNameRecorded: async(root, args, { req }) => {
+            if(req.session.lastname == null)
+                return false
+            return true
         }
     },
 
     Mutation: {
 
-        getAccessCode: async (root, {req} ) => {
+        getAccessCode: async (root, args, { req } ) => {
             var firstname = req.session.user.firstname 
             var lastname = req.session.user.lastname
-    
+
             let result = await fetch(`${process.env.PAYMENT_ACCESS_CODE_URL}`, {
                 method: "POST",
                 headers: {
@@ -109,10 +114,10 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Transactions = db.collection("transactions")
 
-            Transactions.insertOne({
+            await Transactions.insertOne({
                 user: getuserid(req.session), 
                 accessCode: return_Obj.accessCode,
-                responseMessage: null 
+                responseCode: null 
             })
 
             return return_Obj
@@ -137,6 +142,14 @@ export const resolvers = {
             Users.updateOne({_id: ObjectId(user_id)}, {$set: {TokenCustomerId: TokenCustomerID}})
 
             return chargeToken(req, TokenCustomerID, accessCode)
+        },
+
+        addLastNameToUser: async(root, { lastname }, { req }) => {
+            const user_id = getuserid(req.session)
+            const db = await DbConnection.Get()
+            const Users = db.collection("users")
+            Users.updateOne({_id: ObjectId(user_id)}, {$set: {lastname: lastname}})
+            return true
         }
     }
 };
@@ -171,7 +184,7 @@ async function chargeToken(req, TokenCustomerID, accessCode) {
         Transactions.updateOne(
             {accessCode: accessCode}, 
             {$set: {
-                responseMessage: response.ResponseMessage,
+                responseCode: response.ResponseCode,
                 timestamp: new Date()
             }}
         )
@@ -180,9 +193,26 @@ async function chargeToken(req, TokenCustomerID, accessCode) {
         Transactions.insertOne(
             {
                 user: getuserid(req.session),
-                responseMessage: response.ResponseMessage,
+                responseCode: response.ResponseCode,
                 timestamp: new Date()
             })
     }
     return true
+}
+
+function responseMessage(responseCode) {
+    return ({
+        "00": "success",
+        "08": "success",
+        "01": "Issuer has indicated problem with card number",
+        "03": "No Merchant - please contact your bank to ensure \
+        your merchant account is active and is an Ecommerce terminal",
+        "05": "Your bank has declined your payment for an \
+        unspecified reason",
+        "06": "Please ensure card details are correct",
+        "12": "Please ensure card details are correct",
+        "14": "Please ensure card details are correct",
+        "51": "Your card issuer has declined the transaction \
+        on basis of insufficient funds"
+    })[responseCode]??'error'
 }
