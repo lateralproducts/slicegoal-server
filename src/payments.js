@@ -201,7 +201,7 @@ async function chargeToken(req, TokenCustomerID, accessCode) {
 }
 
 function responseMessage(responseCode) {
-    return ({
+    let result =  ({
         "00": "success",
         "08": "success",
         "01": "Issuer has indicated problem with card number",
@@ -214,5 +214,7 @@ function responseMessage(responseCode) {
         "14": "Please ensure card details are correct",
         "51": "Your card issuer has declined the transaction \
         on basis of insufficient funds"
-    })[responseCode]??'error'
+    })[responseCode]
+
+    return result == 'undefined' ? "error" : result
 }
