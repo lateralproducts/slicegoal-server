@@ -82,18 +82,18 @@ deploy:
         - rsync -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
         - rsync -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
         #send build to production folder and restart service with environment variables - add new prod env variables here:
-        - ssh -T ec2-user@13.211.38.119 -v "cd /home/ec2-user/strategyserver/ && sudo yarn build && 
-        PAYMENT_API_URL='$PAYMENT_API_URL' 
-        PAYMENT_MONTHLY_COST='$PAYMENT_MONTHLY_COST' 
-        PAYMENT_REDIRECT_URL='$PAYMENT_REDIRECT_URL' 
-        PAYMENT_ENCRYPTION_KEY_CLIENT='$PAYMENT_ENCRYPTION_KEY_CLIENT' 
-        COPY_WHEELOFLIFE='$COPY_WHEELOFLIFE' 
-        FEEDBACK_EMAIL='$FEEDBACK_EMAIL' 
-        MONGODB_URL='$MONGODB_URL' 
-        GOOGLE_CLIENTID='$GOOGLE_CLIENTID' 
-        PATH_URL='$PATH_URL' 
-        EMAILCLIENT_USR='$EMAILCLIENT_USR' 
-        EMAILCLIENT_PWD='$EMAILCLIENT_PWD' 
+        - ssh -T ec2-user@13.211.38.119 -v "cd /home/ec2-user/strategyserver/ && sudo yarn build && \
+        PAYMENT_API_URL='$PAYMENT_API_URL' \
+        PAYMENT_MONTHLY_COST='$PAYMENT_MONTHLY_COST' \
+        PAYMENT_REDIRECT_URL='$PAYMENT_REDIRECT_URL' \
+        PAYMENT_ENCRYPTION_KEY_CLIENT='$PAYMENT_ENCRYPTION_KEY_CLIENT' \
+        COPY_WHEELOFLIFE='$COPY_WHEELOFLIFE' \
+        FEEDBACK_EMAIL='$FEEDBACK_EMAIL' \
+        MONGODB_URL='$MONGODB_URL' \
+        GOOGLE_CLIENTID='$GOOGLE_CLIENTID' \
+        PATH_URL='$PATH_URL' \
+        EMAILCLIENT_USR='$EMAILCLIENT_USR' \
+        EMAILCLIENT_PWD='$EMAILCLIENT_PWD' \
         pm2 restart index --update-env"
         - echo "new version placed on server and started"
     only:
