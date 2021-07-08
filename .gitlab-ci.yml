@@ -5,87 +5,99 @@ variables:
 # TEST_NAME: registry.gitlab.com/daniel175/production-strategy-platform:$CI_COMMIT_REF_NAME
 
 stages:
-  - qa
-  - localqa
-  - staging
-  - deploy
+    - qa
+    - localqa
+    - staging
+    - deploy
 
 autotest:
-  stage: qa
-  # Official docker image.
-  script:
-    #  - yarn add mocha
-    #  - yarn test
-    - echo "qa..."
-  only:
-    - master
-    - development
-  tags:
-    - qa
+    stage: qa
+    # Official docker image.
+    script:
+        #  - yarn add mocha
+        #  - yarn test
+        - echo "qa..."
+    only:
+        - master
+        - development
+    tags:
+        - qa
 
 build:
-  stage:
-    localqa
-    # Official docker image.
-  script:
-    # - yarn add mocha
-    #- yarn test
-    #- yarn install
-    #- yarn buildqa
-    #  - mkdir -pv $TARGET_DIR
-    #- rsync -r --delete ./public/ $TARGET_DIR
-    #- echo '$VERSION_ID' >> $TARGET_DIR/version.txt
-    #  - mkdir .public
-    #  - cp -r * .public
-    #  - mv .public public
-    #  - docker kill $(docker ps -q) || true
-    #  - docker login -u "daniel175" -p "YUHWhx2TsezUBCtsDd" registry.gitlab.com
-    #  - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" .
-    - echo "localqa..."
-  only:
-    - master
-    - development
-  tags:
-    - qa
+    stage:
+        localqa
+        # Official docker image.
+    script:
+        # - yarn add mocha
+        #- yarn test
+        #- yarn install
+        #- yarn buildqa
+        #  - mkdir -pv $TARGET_DIR
+        #- rsync -r --delete ./public/ $TARGET_DIR
+        #- echo '$VERSION_ID' >> $TARGET_DIR/version.txt
+        #  - mkdir .public
+        #  - cp -r * .public
+        #  - mv .public public
+        #  - docker kill $(docker ps -q) || true
+        #  - docker login -u "daniel175" -p "YUHWhx2TsezUBCtsDd" registry.gitlab.com
+        #  - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" .
+        - echo "localqa..."
+    only:
+        - master
+        - development
+    tags:
+        - qa
 
 staging:
-  stage: staging
-  before_script:
-    #generate ssh key
-    #- mkdir -p ~/.ssh
-    #- echo -e "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-    #- chmod 600 ~/.ssh/id_rsa
-    #- echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-    #- yarn install
-    #- yarn buildstaging
-    #- sudo rsync -t -r --delete ./public/ ~/Desktop/Build/staging
-  script:
-    - echo "Staging..."
-    #- rsync -ru --delete ./public/ ec2-user@13.239.168.89:/home/ec2-user/staging/
-    #- echo "placing files into staging folder"
-    #- ssh -T ec2-user@13.239.168.89 -v "sudo rsync -ru --delete /home/ec2-user/staging/ /var/www/staging"
-    #- echo "new files placed in staging folder"
-  only:
-    - master
-  when: manual
-  tags:
-    - staging
+    stage: staging
+    before_script:
+        #generate ssh key
+        #- mkdir -p ~/.ssh
+        #- echo -e "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+        #- chmod 600 ~/.ssh/id_rsa
+        #- echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+        #- yarn install
+        #- yarn buildstaging
+        #- sudo rsync -t -r --delete ./public/ ~/Desktop/Build/staging
+    script:
+        - echo "Staging..."
+        #- rsync -ru --delete ./public/ ec2-user@13.239.168.89:/home/ec2-user/staging/
+        #- echo "placing files into staging folder"
+        #- ssh -T ec2-user@13.239.168.89 -v "sudo rsync -ru --delete /home/ec2-user/staging/ /var/www/staging"
+        #- echo "new files placed in staging folder"
+    only:
+        - master
+    when: manual
+    tags:
+        - staging
 
 deploy:
-  stage: deploy
-  before_script:
-    - yarn install
-    - yarn build
-    #- sudo rsync -r --delete ./public/ ~/Desktop/Build/production
-  script:
-    - echo "Deploying to Production..."
-    - rsync -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
-    - rsync -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
-    #send build to production folder and restart service with environment variables - add new prod env variables here:
-    - ssh -T ec2-user@13.211.38.119 -v "cd /home/ec2-user/strategyserver/ && sudo yarn build && COPY_WHEELOFLIFE="$COPY_WHEELOFLIFE" FEEDBACK_EMAIL="$PROD_FEEDBACK_EMAIL" MONGODB_URL='$PROD_MONGODB_URL' GOOGLE_CLIENTID='$PROD_GOOGLE_CLIENTID' URLpath='$PROD_URLpath' EMAILCLIENT_USR='$PROD_EMAILCLIENT_USR' EMAILCLIENT_PWD='$PROD_EMAILCLIENT_PWD' pm2 restart index --update-env"
-    - echo "new version placed on server and started"
-  only:
-    - master
-  when: manual
-  tags:
-    - production
+    stage: deploy
+    before_script:
+        - yarn install
+        - yarn build
+        #- sudo rsync -r --delete ./public/ ~/Desktop/Build/production
+    script:
+        - echo "Deploying to Production..."
+        - rsync -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
+        - rsync -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
+        #send build to production folder and restart service with environment variables - add new prod env variables here:
+        - ssh -T ec2-user@13.211.38.119 -v "cd /home/ec2-user/strategyserver/ && sudo yarn build && 
+        PAYMENT_API_URL="$PAYMENT_API_URL"
+        PAYMENT_MONTHLY_COST="$PAYMENT_MONTHLY_COST" 
+        PAYMENT_REDIRECT_URL="$PAYMENT_REDIRECT_URL"
+        PAYMENT_ENCRYPTION_KEY_CLIENT="$PAYMENT_ENCRYPTION_KEY_CLIENT"
+        COPY_WHEELOFLIFE="$COPY_WHEELOFLIFE" 
+        FEEDBACK_EMAIL="$FEEDBACK_EMAIL" 
+        MONGODB_URL='$MONGODB_URL' 
+        GOOGLE_CLIENTID='$GOOGLE_CLIENTID' 
+        PATH_URL='$PATH_URL' 
+        EMAILCLIENT_USR='$EMAILCLIENT_USR' 
+        EMAILCLIENT_PWD='$EMAILCLIENT_PWD' 
+        pm2 restart index --update-env"
+        - echo "new version placed on server and started"
+    only:
+        - master
+    when: manual
+    tags:
+        - production

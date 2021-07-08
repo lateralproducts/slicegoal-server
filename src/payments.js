@@ -48,9 +48,12 @@ export const resolvers = {
                         return reject(new Error('Transaction not found'))
                     }
 
-                    if (transaction.responseCode !== null) {
-                        return resolve(transaction.responseCode)
-                    }
+                    if (transaction.response)
+                        if (transaction.response.ResponseCode) {
+                            return resolve(transaction.response.ResponseCode)
+                        } else if (transaction.response.Errors) {
+                            return resolve('An error has occurred') //could interpret the errors?
+                        }
 
                     counter++
                     if (
@@ -66,7 +69,8 @@ export const resolvers = {
                 })()
             }).then(
                 result => {
-                    return responseMessage(result)
+                    let message = responseMessage(result)
+                    return message
                 },
                 error => {
                     return error
@@ -85,26 +89,31 @@ export const resolvers = {
             let firstname = req.session.user.firstname
             let lastname = req.session.user.lastname
 
-            let result = await fetch(`${process.env.PAYMENT_ACCESS_CODE_URL}`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `${process.env.PAYMENT_AUTHORIZATION_HEADER}`,
-                    'Content-Type': 'application/json',
+            let result = await fetch(
+                `${process.env.PAYMENT_API_URL}/AccessCodes`,
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization:
+                            'Basic ' +
+                            `${process.env.PAYMENT_ENCRYPTION_KEY_CLIENT}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        Customer: {
+                            FirstName: firstname,
+                            LastName: lastname,
+                            Country: 'au',
+                        },
+                        Payment: {
+                            TotalAmount: 0, //to get the access code, we just send 0
+                        },
+                        RedirectUrl: `${process.env.PAYMENT_REDIRECT_URL}`,
+                        Method: 'CreateTokenCustomer',
+                        TransactionType: 'Purchase',
+                    }),
                 },
-                body: JSON.stringify({
-                    Customer: {
-                        FirstName: firstname,
-                        LastName: lastname,
-                        Country: 'au',
-                    },
-                    Payment: {
-                        TotalAmount: `${process.env.PAYMENT_ACCESS_CODE_AMOUNT}`,
-                    },
-                    RedirectUrl: `${process.env.PAYMENT_REDIRECT_URL}`,
-                    Method: 'CreateTokenCustomer',
-                    TransactionType: 'Purchase',
-                }),
-            })
+            )
             result = await result.json()
 
             let return_Obj = {
@@ -128,11 +137,13 @@ export const resolvers = {
 
         chargeCustomer: async (root, { accessCode }, { req }) => {
             let response = await fetch(
-                `${process.env.PAYMENT_CUSTOMER_TOKEN_URL}${accessCode}`,
+                `https://secure-au.sandbox.ewaypayments.com/AccessCode/${accessCode}`,
                 {
                     method: 'GET',
                     headers: {
-                        Authorization: `${process.env.PAYMENT_AUTHORIZATION_HEADER}`,
+                        Authorization:
+                            'Basic ' +
+                            `${process.env.PAYMENT_ENCRYPTION_KEY_CLIENT}`,
                     },
                 },
             )
@@ -168,10 +179,11 @@ export const resolvers = {
 
 async function chargeToken(req, TokenCustomerID, accessCode) {
     //Charge with token
-    let response = await fetch(`${process.env.PAYMENT_TRANSACTION_URL}`, {
+    let response = await fetch(`${process.env.PAYMENT_API_URL}/Transaction`, {
         method: 'POST',
         headers: {
-            Authorization: `${process.env.PAYMENT_AUTHORIZATION_HEADER}`,
+            Authorization:
+                'Basic ' + `${process.env.PAYMENT_ENCRYPTION_KEY_CLIENT}`,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -195,7 +207,7 @@ async function chargeToken(req, TokenCustomerID, accessCode) {
             { accessCode: accessCode },
             {
                 $set: {
-                    responseCode: response.ResponseCode,
+                    response: response,
                     timestamp: new Date(),
                 },
             },
@@ -203,7 +215,7 @@ async function chargeToken(req, TokenCustomerID, accessCode) {
     } else {
         Transactions.insertOne({
             user: getuserid(req.session),
-            responseCode: response.ResponseCode,
+            response: response,
             timestamp: new Date(),
         })
     }
@@ -229,5 +241,5 @@ function responseMessage(responseCode) {
         on basis of insufficient funds',
     }[responseCode]
 
-    return result == 'undefined' ? 'error' : result
+    return result === undefined ? responseCode : result
 }

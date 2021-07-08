@@ -13,7 +13,7 @@ let auth = {
 }
 let sender = 'Cavestep 🦶<' + auth.user + '>'
 
-let URLpath = `${process.env.URLpath}`
+let PATH_URL = `${process.env.PATH_URL}`
 
 let transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -76,7 +76,7 @@ export async function emailObjectiveNudge(user, links, objectives) {
             .map(function(obj) {
                 return (
                     "<div class='objective'>• <a href='" +
-                    URLpath +
+                    PATH_URL +
                     '?objective=' +
                     obj._id +
                     "'>" +
@@ -102,7 +102,7 @@ export async function emailNewClient(client, coach, viewname) {
             : "You've been invited to a Cavestep coaching wheel.") + // to Cavestep🦶
         '<br/>' +
         "Click here to start your journey: <a href='" +
-        URLpath +
+        PATH_URL +
         '?page=verify&user=' +
         client._id +
         '&code=' +
@@ -144,7 +144,7 @@ export async function emailNewClient(client, coach, viewname) {
         '<br/>' +
         '<br/>' +
         'verify link: ' + //cavestep
-        URLpath +
+        PATH_URL +
         '?page=verify&user=' +
         client._id +
         '&code=' +
@@ -161,7 +161,7 @@ export async function emailNewPersonal(personal) {
     let subject = "Looks like you've signed up for Cavestep!"
     let email = Mustache.render(newpersonal, {
         name: personal.firstname ? ' ' + personal.firstname : '', //using space in front here to manage formatting.
-        URLpath: URLpath,
+        PATH_URL: PATH_URL,
         personalid: personal._id,
         personalcode: personal.code,
     })
@@ -175,7 +175,7 @@ export async function emailRerankNudge(user) {
     let subject = 'Time to rank your wheel'
     let email = Mustache.render(rerank, {
         name: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
-        URLpath: URLpath,
+        PATH_URL: PATH_URL,
     })
 
     return await sendEmail(to, subject, email)
@@ -193,7 +193,7 @@ export async function emailNewCoach(coach) {
         'Click below to start your Cavestep journey.' + //cavestep
         '<br/>' +
         "<a href='" +
-        URLpath +
+        PATH_URL +
         '?page=verify&user=' +
         coach._id +
         '&code=' +
