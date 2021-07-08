@@ -3,7 +3,7 @@ import { ObjectId } from "mongodb";
 import DbConnection from "./database";
 import { prepare, getuiversion } from "../util/index";
 import { getuserid, getprofileid, getname } from "./users";
-var pjson = require("../package.json");
+let pjson = require("../package.json");
 
 export const schema = `
 
@@ -136,7 +136,7 @@ export const resolvers = {
     views: async (parent, args, { req }) => {
       const db = await DbConnection.Get();
       const Views = db.collection("views");
-      var query = new Object();
+      let query = new Object();
       query.user = getuserid(req.session);
       if (args.default) query._id = ObjectId(args.defaultview); //if asking for default profile only return the default.
       return (await Views.find(query).toArray()).map(prepare);
@@ -172,7 +172,7 @@ export const resolvers = {
     areas: async (parent, args, { req }) => {
       const db = await DbConnection.Get();
       const Areas = db.collection("areas");
-      var areas = (await Areas.find({
+      let areas = (await Areas.find({
         $or: [{ wheelid: getwheelid(req.session) }] //, { userid: "global" } if we want to use global.
       })
         .sort({ clicks: -1 })
@@ -208,7 +208,7 @@ export const resolvers = {
       const Areas = db.collection("areas");
       logareaclick(_id, navdirection, req);
 
-      var area = await Areas.findOne({
+      let area = await Areas.findOne({
         _id: ObjectId(_id),
         $or: [
           { wheelid: getwheelid(req.session) }
@@ -279,7 +279,7 @@ export const resolvers = {
         user: getuserid(req.session) //check that this user own's the view. If not, return error.
       });
 
-      var query = new Object();
+      let query = new Object();
       query.wheel = view.wheel;
       if (view.type === "team") query.user = getuserid(req.session); //access allowed to all profiles for coach.
 
@@ -294,7 +294,7 @@ export const resolvers = {
     },
     createNewWheel: async (parent, { viewtype, templatewheel }, { req }) => {
       //set wheel, view, and profile to the context.
-      var { newview, newprofile } = await createWheel(
+      let { newview, newprofile } = await createWheel(
         req.session.user,
         req.session.user._id.toString(),
         viewtype,
@@ -323,7 +323,7 @@ export const resolvers = {
         rootarea: args.rootarea,
         area: args.area
       });
-      var focusflag;
+      let focusflag;
 
       if (area.focus) focusflag = false;
       else focusflag = true;
@@ -341,7 +341,7 @@ export const resolvers = {
     deleteArea: async (root, { rootarea, area }, { req }) => {
       const db = await DbConnection.Get();
       const AreaLinks = db.collection("arealinks");
-      var message = "";
+      let message = "";
       AreaLinks.deleteOne(
         {
           rootarea: rootarea,
@@ -371,7 +371,7 @@ export const resolvers = {
     copyWheel: async (parent, { wheelid, viewtype }, { req }) => {
       const db = await DbConnection.Get();
       const Users = db.collection("users");
-      var user = await Users.findOne({
+      let user = await Users.findOne({
         _id: ObjectId(getuserid(req.session))
       });
       if (user) createWheel(user, user._id.toString(), viewtype, wheelid);
@@ -499,7 +499,7 @@ export const resolvers = {
     profiles: async (parent, args, { req }) => {
       const db = await DbConnection.Get();
       const Profiles = db.collection("profiles");
-      var query = new Object();
+      let query = new Object();
       query.wheel = parent._id;
       if (parent.view.type !== "coach") query.user = getuserid(req.session);
       //if (args.default) query._id = ObjectId(parent.view.defaultprofile); //if asking for default profile only return the default.
@@ -510,7 +510,7 @@ export const resolvers = {
     startarea: async (parent, args, { req }) => {
       const db = await DbConnection.Get();
       const Areas = db.collection("areas");
-      var query = new Object();
+      let query = new Object();
       query._id = ObjectId(parent.startarea);
       return await Areas.findOne(query);
     }
@@ -543,7 +543,7 @@ export const resolvers = {
     wheel: async (obj, args, context, info) => {
       const db = await DbConnection.Get();
       const Wheels = db.collection("wheels");
-      var wheel = await Wheels.findOne({
+      let wheel = await Wheels.findOne({
         _id: ObjectId(obj.wheel)
       });
       wheel.view = obj;
@@ -561,7 +561,7 @@ export const resolvers = {
     clicks: async ({ _id }, args, { req }) => {
       const db = await DbConnection.Get();
       const Clicks = db.collection("clicks");
-      var currentDate = new Date();
+      let currentDate = new Date();
       currentDate.setDate(currentDate.getDate() - 7); //currently reading one week's trailing data.
       return new Promise(function(resolve, reject) {
         Clicks.aggregate(
@@ -683,7 +683,7 @@ export const resolvers = {
       if (args || item) {
       }
       return new Promise(function(resolve, reject) {
-        var currentDate = new Date();
+        let currentDate = new Date();
         currentDate.setDate(currentDate.getDate() - 7); //currently reading one week's trailing data.
         Pomodoros.aggregate(
           {
@@ -744,11 +744,11 @@ export async function createWheel(user, userid, viewtype, wheel) {
   const Views = db.collection("views");
   const Profiles = db.collection("profiles");
   const Wheels = db.collection("wheels");
-  var wheelid;
+  let wheelid;
 
   switch (viewtype) {
     case "coach": //currently not copying wheel for coach. Just creating a blank wheel.
-      var startareaid = (await Areas.insertOne({
+      let startareaid = (await Areas.insertOne({
         name: "Coaching Wheel",
         email: user.email,
         created: new Date()
@@ -777,7 +777,7 @@ export async function createWheel(user, userid, viewtype, wheel) {
   }
 
   //create new view
-  var newview = {
+  let newview = {
     user: userid,
     email: user.email,
     wheel: wheelid, //req.session.view.wheel,
@@ -791,7 +791,7 @@ export async function createWheel(user, userid, viewtype, wheel) {
   Views.insertOne(newview);
 
   //create new profile
-  var newprofile = {
+  let newprofile = {
     user: userid,
     wheel: wheelid,
     email: user.email,
@@ -814,7 +814,7 @@ async function copywheel(wheelid, userid) {
 
   //only using userid as a tag to keep track of the copy.
   //wheel - global
-  var newwheel = await Wheels.findOne({
+  let newwheel = await Wheels.findOne({
     _id: ObjectId(wheelid)
     //need to work out security here.
   });
@@ -827,9 +827,9 @@ async function copywheel(wheelid, userid) {
     newwheel.created = new Date();
     delete newwheel._id;
     delete newwheel.global;
-    var newwheelid = (await Wheels.insertOne(newwheel)).insertedId.toString();
+    let newwheelid = (await Wheels.insertOne(newwheel)).insertedId.toString();
     //areas - global
-    var newareas = await Areas.find({ wheelid: wheelid }).toArray();
+    let newareas = await Areas.find({ wheelid: wheelid }).toArray();
     newareas.map(area => {
       area.user = userid;
       area.wheelid = newwheelid;
@@ -841,7 +841,7 @@ async function copywheel(wheelid, userid) {
     });
 
     await Areas.insertMany(newareas);
-    var newstartareaid = (await Areas.findOne({
+    let newstartareaid = (await Areas.findOne({
       user: userid,
       copyarea: newwheel.startarea,
       wheelid: newwheelid //this is the id used for returning wheels
@@ -852,7 +852,7 @@ async function copywheel(wheelid, userid) {
       { $set: { startarea: newstartareaid } }
     );
     //arealinks - global
-    var newarealinks = await AreaLinks.find({
+    let newarealinks = await AreaLinks.find({
       wheelid: wheelid
     }).toArray();
     newarealinks.map(arealink => {

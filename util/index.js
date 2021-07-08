@@ -33,16 +33,16 @@ export const resolvers = {
             users.map(async user => {
             //create new view
             if (user.startarea) {
-                var newwheel = {
+                let newwheel = {
                 _id: user._id,
                 user: user._id.toString(),
                 email: user.email,
                 startarea: user.startarea,
                 name: "my wheel"
                 };
-                var wheel = await Wheels.insertOne(newwheel);
+                let wheel = await Wheels.insertOne(newwheel);
 
-                var newview = {
+                let newview = {
                 _id: user._id,
                 user: user._id.toString(),
                 email: user.email,
@@ -58,7 +58,7 @@ export const resolvers = {
                 Views.insertOne(newview);
 
                 //create new profile
-                var newprofile = {
+                let newprofile = {
                 _id: user._id,
                 user: user._id.toString(),
                 email: user.email,

@@ -11,13 +11,13 @@ import {
 import { createWheel } from './areas'
 
 import { prepare } from '../util/index'
-var pjson = require('../package.json')
+let pjson = require('../package.json')
 import DbConnection from './database'
 
 //import { verifier } from "google-id-token-verifier";
 const { OAuth2Client } = require('google-auth-library')
 
-var googleclientId = `${process.env.GOOGLE_CLIENTID}`
+let googleclientId = `${process.env.GOOGLE_CLIENTID}`
 const oAuth2Client = new OAuth2Client({
     clientId: googleclientId,
 })
@@ -97,7 +97,7 @@ export const resolvers = {
         updateProfile: async (parent, args, { req }) => {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
-            var user = await Users.findOneAndUpdate(
+            let user = await Users.findOneAndUpdate(
                 { _id: ObjectId(getuserid(req.session)) }, //update this
                 { $set: args },
                 { returnOriginal: false },
@@ -111,8 +111,8 @@ export const resolvers = {
             const Views = db.collection('views')
             const Profiles = db.collection('profiles')
 
-            var user = await Users.findOne({ email: args.email.toLowerCase() })
-            var userid
+            let user = await Users.findOne({ email: args.email.toLowerCase() })
+            let userid
             if (user) {
                 userid = user._id.toString()
             } else {
@@ -121,7 +121,7 @@ export const resolvers = {
                 args.code = bcrypt.hashSync('verifythisyo', 7)
                 args.created = new Date()
 
-                var newuser = await Users.insertOne(args) //create record to return id
+                let newuser = await Users.insertOne(args) //create record to return id
                 args._id = newuser.insertedId.toString() //use args to pass new user id for email link
                 emailNewClient(args, req.session.user, req.session.view.name)
 
@@ -129,7 +129,7 @@ export const resolvers = {
             }
 
             //create new view
-            var newview = {
+            let newview = {
                 user: userid,
                 wheel: req.session.view.wheel,
                 name: req.session.view.name,
@@ -139,7 +139,7 @@ export const resolvers = {
             Views.insertOne(newview)
 
             //create new profile
-            var newprofile = {
+            let newprofile = {
                 user: userid,
                 wheel: req.session.view.wheel,
                 name: getname(args.firstname, args.lastname, args.email),
@@ -187,7 +187,7 @@ export const resolvers = {
                     throw new Error('Account has not been verified.')
 
                 if (await bcrypt.compareSync(args.pwd, user.password)) {
-                    var loggedinuser = await login(user, args, req)
+                    let loggedinuser = await login(user, args, req)
                     return prepare(loggedinuser)
                 } else {
                     await Users.updateOne(
@@ -253,7 +253,7 @@ export const resolvers = {
 
             const date = new Date()
 
-            var newuser = {
+            let newuser = {
                 email: args.email.toLowerCase(),
                 firstname: args.firstname,
                 code: bcrypt.hashSync(date.toString(), 7),
@@ -264,7 +264,7 @@ export const resolvers = {
                 created: date,
                 createdip: getuserIpAddress(req),
             }
-            var emailuser = await signup(newuser, args, req)
+            let emailuser = await signup(newuser, args, req)
 
             if (args.account === 'coach') emailNewCoach(emailuser)
             else emailNewPersonal(emailuser)
@@ -280,7 +280,7 @@ export const resolvers = {
             if ((tokenInfo.email = args.email)) {
                 //check token authentication...
 
-                var user = await Users.findOne({
+                let user = await Users.findOne({
                     email: args.email.toLowerCase(),
                 })
                 if (!user) {
@@ -294,7 +294,7 @@ export const resolvers = {
                     //args.token = null; //removing the token from saving in database for security
                     args.created = new Date()
                     user = args
-                    var newuser = await signup(user, args, req) //automatically sign up google login.
+                    let newuser = await signup(user, args, req) //automatically sign up google login.
                     return await login(newuser, args, req)
                 } else {
                     return await login(user, args, req)
@@ -338,7 +338,7 @@ export const resolvers = {
         views: async (parent, args, { req }) => {
             const db = await DbConnection.Get()
             const Views = db.collection('views')
-            var query = new Object()
+            let query = new Object()
             query.user = getuserid(req.session) //need to return BSON as string.
             return (await Views.find(query).toArray()).map(prepare)
         },
@@ -381,7 +381,7 @@ async function login(user, args, req) {
 
         if (view) {
             req.session.view = view
-            var query = new Object()
+            let query = new Object()
 
             if (view.type !== 'coach') query.user = user._id.toString()
             query.wheel = view.wheel
@@ -442,7 +442,7 @@ async function signup(newuser, args, req) {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
     newuser.lastip = getuserIpAddress(req)
-    var userid = (await Users.insertOne(newuser)).insertedId.toString()
+    let userid = (await Users.insertOne(newuser)).insertedId.toString()
     await createWheel(newuser, userid, args.account)
     newUserNotificationEmail(newuser)
 

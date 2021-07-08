@@ -3,7 +3,7 @@ import { ObjectId } from "mongodb";
 import { getprofileid } from "./users"
 import { prepare, getuiversion } from "../util/index";
 import DbConnection from "./database"
-var pjson = require("../package.json");
+let pjson = require("../package.json");
 
 
 export const schema = `
@@ -104,7 +104,7 @@ export const resolvers = {
             const Objectives = db.collection("objectives")
             const ObjectiveLinks = db.collection("objectivelinks")
             if (args.search || args.date) {
-                var query = new Object();
+                let query = new Object();
                 query.profileid = getprofileid(req.session);
                 query.complete = { $eq: null };
                 if (args.search) query.objective = new RegExp(args.search, "i");
@@ -150,7 +150,7 @@ export const resolvers = {
                     );
                 });
             } else {
-                var query = Object();
+                let query = Object();
                 args.area ? (query.areaid = args.area) : "";
                 args.objective ? (query.objectiveid = args.objective) : "";
                 query.profileid = getprofileid(req.session);
@@ -294,9 +294,9 @@ export const resolvers = {
             const db = await DbConnection.Get();
             const Areas = db.collection("areas")
             const ObjectiveLinks = db.collection("objectivelinks")
-            var areaid;
+            let areaid;
             if (!args.areaid) {
-              var newarea = new Object(); //create new area.
+              let newarea = new Object(); //create new area.
               newarea.wheelid = getprofileid(req.session);
               newarea.name = args.areaname;
               const inserted = await Areas.insertOne(newarea); //only creating new area if "areaname is added"
@@ -333,12 +333,12 @@ export const resolvers = {
             const db = await DbConnection.Get();
             const Objectives = db.collection("objectives")
             const ObjectiveLinks = db.collection("objectivelinks")
-            var objectiveId = args.objectiveId;
+            let objectiveId = args.objectiveId;
             delete args.objectiveId;
             args.date = args.datetime ? new Date(args.datetime) : null;
             //args.complete = args.complete ? new Date(args.complete) : null;
             args.lastupdated = new Date();
-            var objective = await Objectives.findOneAndUpdate(
+            let objective = await Objectives.findOneAndUpdate(
                 { _id: ObjectId(objectiveId) },
                 { $set: args },
                 { returnOriginal: false }
@@ -380,7 +380,7 @@ export const resolvers = {
         saveFocusLink: async (root, args, { req }) => {
             const db = await DbConnection.Get();
             const FocusLinks = db.collection("focuslinks")
-            var focuslink = await FocusLinks.findOne(
+            let focuslink = await FocusLinks.findOne(
                 {
                 userid: getprofileid(req.session),
                 objective: args.objective
@@ -527,10 +527,10 @@ async function createobjective(newobjective, req) {
       Objectives.insertOne(newobjective).then(result => {
         if (newobjective.arealinks)
           newobjective.arealinks.map(async link => {
-            var areaid = link.area._id;
+            let areaid = link.area._id;
 
             if (!areaid) {
-              var area = {
+              let area = {
                 name: link.name,
                 wheelid: getprofileid(req.session),
                 serverversion: pjson.version,
@@ -542,7 +542,7 @@ async function createobjective(newobjective, req) {
               areaid = res.insertedIds[0].toString();
             }
 
-            var objectivelink = new Object();
+            let objectivelink = new Object();
             objectivelink.objectiveid = result.insertedId.toString();
             objectivelink.profileid = newobjective.profileid;
             objectivelink.areaid = areaid;
