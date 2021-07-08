@@ -1,10 +1,9 @@
 import { ObjectId } from "mongodb";
 
-import DbConnection from "./database"
+import DbConnection from "./database";
 import { prepare, getuiversion } from "../util/index";
-import { getuserid, getprofileid, getname } from "./users"
+import { getuserid, getprofileid, getname } from "./users";
 var pjson = require("../package.json");
-
 
 export const schema = `
 
@@ -94,23 +93,23 @@ export const schema = `
         date: Float
         goaldate: String
     }
-`
+`;
 
 export const typeDefs = `
 
     extend type Query {
-        views: [View]
         wheels:[Wheel]
-        focusLinks(limit: Int, area: String): [Focus]
-        focusLink(focuslink: String): Focus
+        views: [View]
         profiles: [Profile]
-        ranktimes(areaId: String): [RankTime]
         area(_id: String!, navdirection: String, readdate: String): Area
         areas (readdate: String): [Area]
         arealinks(area: String): [AreaLink]
-        goaltimes(areaId: String): [GoalTime]
+        ranktimes(areaId: String): [RankTime]
         lastranktime(areaId: String): RankTime
+        goaltimes(areaId: String): [GoalTime]
         lastgoaltime(areaId: String): GoalTime
+        focusLinks(limit: Int, area: String): [Focus]
+        focusLink(focuslink: String): Focus
     }
     
     extend type Mutation {
@@ -130,788 +129,781 @@ export const typeDefs = `
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
     }
 
-`
+`;
 
 export const resolvers = {
-    Query: {
-        views: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Views = db.collection("views")
-            var query = new Object();
-            query.user = getuserid(req.session);
-            if (args.default) query._id = ObjectId(args.defaultview); //if asking for default profile only return the default.
-            return (await Views.find(query).toArray()).map(prepare);
-        },
-        wheels: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Wheels = db.collection("wheels")
-            return (await Wheels.find({ global: true }).toArray()).map(prepare);
-        },
-        focusLinks: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const FocusLinks = db.collection("focuslinks")
-            return (await FocusLinks.find(
-                {
-                    userid: getprofileid(req.session),
-                    $or: [{ snooze: null }, { snooze: { $lt: new Date() } }],
-                    links: args.area
-                }) //update sort at some stage.
-                .sort({ orderrank: 1 })
-                .limit(args.limit)
-                .toArray()).map(prepare);
-        },
-        focusLink: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const FocusLinks = db.collection("focuslinks")
-            return await FocusLinks.findOne(
-                {
-                userid: getprofileid(req.session),
-                _id: ObjectId(args.focuslink)
-                },
-                { sort: { date: -1 } } //update sort at some stage.
-            );
-        },
-        areas: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Areas = db.collection("areas")
-            var areas = (await Areas.find({
-                $or: [{ wheelid: getwheelid(req.session) }] //, { userid: "global" } if we want to use global.
-            })
-            .sort({ clicks: -1 })
-            .toArray()).map(prepare);
-
-            return areas.map(prepare);
-        },
-        profiles: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Profiles = db.collection("profiles")
-        if (req.session.view.type === "coach") {
-            const profiles = await Profiles.find({
-            wheel: getwheelid(req.session) //return all profiles on wheel
-            })
-            .sort({ type: -1, name: 1 })
-            .toArray(); //.map(function(client) {return client._id;})
-            return profiles.map(prepare);
-        }
-
-        return (await Profiles.find({
-            wheel: getwheelid(req.session),
-            $or: [
-            { user: getuserid(req.session) },
-            { type: "team" },
-            { type: "average" }
-            ] //return both personal profile and team wheels
-        })
-            .sort({ type: -1, name: 1 })
-            .toArray()).map(prepare);
-        },
-        area: async (root, { _id, navdirection, global }, { req }) => {
-            const db = await DbConnection.Get();
-            const Areas = db.collection("areas")
-            logareaclick(_id, navdirection, req);
-
-            var area = await Areas.findOne({
-                _id: ObjectId(_id),
-                $or: [
-                { wheelid: getwheelid(req.session) }
-                //{ userid: "global" }
-                //{ userid: { $in: getcoachesid(req.session) } } //this makes the area visible to clients. Using coach:true field.
-                ]
-            });
-
-            return prepare(area);
-        },
-        ranktimes: async (root, { areaId }, { req }) => {
-            const db = await DbConnection.Get();
-            const RankTimes = db.collection("ranktimes")
-            return (await RankTimes.find({
-                areaId: areaId,
-                profileid: getprofileid(req.session)
-            })
-            .sort({ date: -1 })
-            .toArray()).map(prepare);
-        },
-        arealinks: async (root, args, { req }) => {
-            const db = await DbConnection.Get();
-            const AreaLinks = db.collection("arealinks")
-            return (await AreaLinks.find({
-                rootarea: { $not: { $eq: null } },
-                area: args.area,
-                wheelid: getwheelid(req.session)
-            }).toArray()).map(prepare);
-        },
-        goaltimes: async (root, { _id }, { req }) => {
-            const db = await DbConnection.Get();
-            const GoalTimes = db.collection("goaltimes")
-            return (await GoalTimes.find({ userid: getprofileid(req.session) })
-                .sort({ date: -1 })
-                .toArray()).map(prepare);
-        },
-        lastranktime: async (root, { areaId }, { req }) => {
-        const db = await DbConnection.Get();
-        const RankTimes = db.collection("ranktimes")
-        //if coach, return average of coachees.
-            return prepare(
-                await RankTimes.findOne(
-                { areaId: areaId, profileid: getprofileid(req.session) },
-                { sort: { date: -1 } }
-                )
-            );
-        },
-        lastgoaltime: async (root, { areaId }, { req }) => {
-            const db = await DbConnection.Get();
-            const GoalTimes = db.collection("goaltimes")
-            return prepare(
-                await GoalTimes.findOne(
-                { areaId: areaId, userid: getprofileid(req.session) },
-                { sort: { date: -1 } }
-                )
-            );
-        },
+  Query: {
+    views: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Views = db.collection("views");
+      var query = new Object();
+      query.user = getuserid(req.session);
+      if (args.default) query._id = ObjectId(args.defaultview); //if asking for default profile only return the default.
+      return (await Views.find(query).toArray()).map(prepare);
     },
-    Mutation: {
-        setView: async (parent, { viewid }, { req }) => {
-            const db = await DbConnection.Get();
-            const Views = db.collection("views")
-            const Profiles = db.collection("profiles")
-
-            //set wheel, view, and profile to the context.
-            const view = await Views.findOne({
-                _id: ObjectId(viewid),
-                user: getuserid(req.session) //check that this user own's the view. If not, return error.
-            });
-    
-            var query = new Object();
-            query.wheel = view.wheel;
-            if (view.type === "team") query.user = getuserid(req.session); //access allowed to all profiles for coach.
-    
-            const profile = await Profiles.findOne(query);
-    
-            if (!profile) throw new Error("View Profile combination not found");
-    
-            req.session.view = view;
-            req.session.profile = profile;
-    
-            return prepare(view); //need to return the view, area.
+    wheels: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Wheels = db.collection("wheels");
+      return (await Wheels.find({ global: true }).toArray()).map(prepare);
+    },
+    focusLinks: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const FocusLinks = db.collection("focuslinks");
+      return (await FocusLinks.find({
+        userid: getprofileid(req.session),
+        $or: [{ snooze: null }, { snooze: { $lt: new Date() } }],
+        links: args.area
+      }) //update sort at some stage.
+        .sort({ orderrank: 1 })
+        .limit(args.limit)
+        .toArray()).map(prepare);
+    },
+    focusLink: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const FocusLinks = db.collection("focuslinks");
+      return await FocusLinks.findOne(
+        {
+          userid: getprofileid(req.session),
+          _id: ObjectId(args.focuslink)
         },
-        createNewWheel: async (
-                parent,
-                { viewtype, templatewheel },
-                { req }
-            ) => {
-            //set wheel, view, and profile to the context.
-            var { newview, newprofile } = await createWheel(
-                req.session.user,
-                req.session.user._id.toString(),
-                viewtype,
-                templatewheel
-            );
-            req.session.view = newview;
-            req.session.profile = newprofile;
+        { sort: { date: -1 } } //update sort at some stage.
+      );
+    },
+    areas: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Areas = db.collection("areas");
+      var areas = (await Areas.find({
+        $or: [{ wheelid: getwheelid(req.session) }] //, { userid: "global" } if we want to use global.
+      })
+        .sort({ clicks: -1 })
+        .toArray()).map(prepare);
 
-            return prepare(newview); //need to return the view, area.
+      return areas.map(prepare);
+    },
+    profiles: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Profiles = db.collection("profiles");
+      if (req.session.view.type === "coach") {
+        const profiles = await Profiles.find({
+          wheel: getwheelid(req.session) //return all profiles on wheel
+        })
+          .sort({ type: -1, name: 1 })
+          .toArray(); //.map(function(client) {return client._id;})
+        return profiles.map(prepare);
+      }
+
+      return (await Profiles.find({
+        wheel: getwheelid(req.session),
+        $or: [
+          { user: getuserid(req.session) },
+          { type: "team" },
+          { type: "average" }
+        ] //return both personal profile and team wheels
+      })
+        .sort({ type: -1, name: 1 })
+        .toArray()).map(prepare);
+    },
+    area: async (root, { _id, navdirection, global }, { req }) => {
+      const db = await DbConnection.Get();
+      const Areas = db.collection("areas");
+      logareaclick(_id, navdirection, req);
+
+      var area = await Areas.findOne({
+        _id: ObjectId(_id),
+        $or: [
+          { wheelid: getwheelid(req.session) }
+          //{ userid: "global" }
+          //{ userid: { $in: getcoachesid(req.session) } } //this makes the area visible to clients. Using coach:true field.
+        ]
+      });
+
+      return prepare(area);
+    },
+    ranktimes: async (root, { areaId }, { req }) => {
+      const db = await DbConnection.Get();
+      const RankTimes = db.collection("ranktimes");
+      return (await RankTimes.find({
+        areaId: areaId,
+        profileid: getprofileid(req.session)
+      })
+        .sort({ date: -1 })
+        .toArray()).map(prepare);
+    },
+    arealinks: async (root, args, { req }) => {
+      const db = await DbConnection.Get();
+      const AreaLinks = db.collection("arealinks");
+      return (await AreaLinks.find({
+        rootarea: { $not: { $eq: null } },
+        area: args.area,
+        wheelid: getwheelid(req.session)
+      }).toArray()).map(prepare);
+    },
+    goaltimes: async (root, { _id }, { req }) => {
+      const db = await DbConnection.Get();
+      const GoalTimes = db.collection("goaltimes");
+      return (await GoalTimes.find({ userid: getprofileid(req.session) })
+        .sort({ date: -1 })
+        .toArray()).map(prepare);
+    },
+    lastranktime: async (root, { areaId }, { req }) => {
+      const db = await DbConnection.Get();
+      const RankTimes = db.collection("ranktimes");
+      //if coach, return average of coachees.
+      return prepare(
+        await RankTimes.findOne(
+          { areaId: areaId, profileid: getprofileid(req.session) },
+          { sort: { date: -1 } }
+        )
+      );
+    },
+    lastgoaltime: async (root, { areaId }, { req }) => {
+      const db = await DbConnection.Get();
+      const GoalTimes = db.collection("goaltimes");
+      return prepare(
+        await GoalTimes.findOne(
+          { areaId: areaId, userid: getprofileid(req.session) },
+          { sort: { date: -1 } }
+        )
+      );
+    }
+  },
+  Mutation: {
+    setView: async (parent, { viewid }, { req }) => {
+      const db = await DbConnection.Get();
+      const Views = db.collection("views");
+      const Profiles = db.collection("profiles");
+
+      //set wheel, view, and profile to the context.
+      const view = await Views.findOne({
+        _id: ObjectId(viewid),
+        user: getuserid(req.session) //check that this user own's the view. If not, return error.
+      });
+
+      var query = new Object();
+      query.wheel = view.wheel;
+      if (view.type === "team") query.user = getuserid(req.session); //access allowed to all profiles for coach.
+
+      const profile = await Profiles.findOne(query);
+
+      if (!profile) throw new Error("View Profile combination not found");
+
+      req.session.view = view;
+      req.session.profile = profile;
+
+      return prepare(view); //need to return the view, area.
+    },
+    createNewWheel: async (parent, { viewtype, templatewheel }, { req }) => {
+      //set wheel, view, and profile to the context.
+      var { newview, newprofile } = await createWheel(
+        req.session.user,
+        req.session.user._id.toString(),
+        viewtype,
+        templatewheel
+      );
+      req.session.view = newview;
+      req.session.profile = newprofile;
+
+      return prepare(newview); //need to return the view, area.
+    },
+    removeStartArea: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Users = db.collection("users");
+      await Users.updateOne(
+        { _id: ObjectId(getprofileid(req.session)) },
+        { $set: { startarea: null } }
+      );
+
+      return true;
+    },
+    toggleFocusFlag: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const AreaLinks = db.collection("arealinks");
+      const Areas = db.collection("areas");
+      const area = await AreaLinks.findOne({
+        rootarea: args.rootarea,
+        area: args.area
+      });
+      var focusflag;
+
+      if (area.focus) focusflag = false;
+      else focusflag = true;
+
+      await AreaLinks.updateOne(
+        { rootarea: args.rootarea, area: args.area },
+        { $set: { focus: focusflag } }
+      );
+      await Areas.updateOne(
+        { _id: ObjectId(args.area) },
+        { $set: { focus: focusflag } }
+      );
+      return focusflag;
+    },
+    deleteArea: async (root, { rootarea, area }, { req }) => {
+      const db = await DbConnection.Get();
+      const AreaLinks = db.collection("arealinks");
+      var message = "";
+      AreaLinks.deleteOne(
+        {
+          rootarea: rootarea,
+          area: area,
+          wheelid: getwheelid(req.session)
         },
-        removeStartArea: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Users = db.collection("users")
-            await Users.updateOne(
-                { _id: ObjectId(getprofileid(req.session)) },
-                { $set: { startarea: null } }
-            );
+        function(err, obj) {
+          if (err) throw err;
+          message = obj.deletedCount + " area(s) deleted";
+        }
+      );
+      return { _id: areaId, title: message };
+    },
+    setProfile: async (parent, { profileid }, { req }) => {
+      const db = await DbConnection.Get();
+      const Profiles = db.collection("profiles");
+      const profile = await Profiles.findOne({
+        _id: ObjectId(profileid),
+        wheel: req.session.view.wheel
+      });
 
-            return true;
+      if (!profile) throw new Error("user could not be retrieved.");
+
+      req.session.profile = profile;
+      return profile;
+    },
+    copyWheel: async (parent, { wheelid, viewtype }, { req }) => {
+      const db = await DbConnection.Get();
+      const Users = db.collection("users");
+      var user = await Users.findOne({
+        _id: ObjectId(getuserid(req.session))
+      });
+      if (user) createWheel(user, user._id.toString(), viewtype, wheelid);
+      return true;
+    },
+    deleteAreaLink: async (root, { rootarea, area }, { req }) => {
+      const db = await DbConnection.Get();
+      const AreaLinks = db.collection("arealinks");
+      const res = await AreaLinks.deleteMany(
+        {
+          rootarea: rootarea,
+          area: area,
+          wheelid: getwheelid(req.session)
         },
-        toggleFocusFlag: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const AreaLinks = db.collection("arealinks")
-            const Areas = db.collection("areas")
-            const area = await AreaLinks.findOne({
-                rootarea: args.rootarea,
-                area: args.area
-            });
-            var focusflag;
+        { $set: { arealink: null } }
+      );
+      return res;
+    },
+    createAreaLink: async (root, args, { req }) => {
+      const db = await DbConnection.Get();
+      const AreaLinks = db.collection("arealinks");
+      // args.userid = getwheelid(req.session);
+      // args.serverversion = pjson.version;
+      // args.uiversion = getuiversion(req.session);
+      await AreaLinks.insertOne({
+        rootarea: args.rootarea,
+        area: args.area,
+        wheelid: getwheelid(req.session),
+        created: new Date()
+      });
 
-            if (area.focus) focusflag = false;
-            else focusflag = true;
+      return true;
+    },
+    createArea: async (root, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Areas = db.collection("areas");
+      const AreaLinks = db.collection("arealinks");
+      args.wheelid = getwheelid(req.session);
+      args.serverversion = pjson.version;
+      args.uiversion = getuiversion(req.session);
+      args.created = new Date();
 
-            await AreaLinks.updateOne(
-                { rootarea: args.rootarea, area: args.area },
-                { $set: { focus: focusflag } }
-            );
-            await Areas.updateOne(
-                { _id: ObjectId(args.area) },
-                { $set: { focus: focusflag } }
-            );
-            return focusflag;
-        },
-        deleteArea: async (root, { rootarea, area }, { req }) => {
-            const db = await DbConnection.Get();
-            const AreaLinks = db.collection("arealinks")
-            var message = "";
-            AreaLinks.deleteOne(
+      const res = await Areas.insert(args);
+
+      await AreaLinks.insertOne({
+        rootarea: args.rootarea,
+        area: res.insertedIds[0].toString(),
+        areaname: args.name,
+        wheelid: getwheelid(req.session),
+        serverversion: pjson.version,
+        uiversion: getuiversion(req.session)
+      });
+      return prepare(
+        await Areas.findOne({
+          _id: res.insertedIds[0],
+          wheelid: getwheelid(req.session)
+        })
+      );
+    },
+    createCoachArea: async (root, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Areas = db.collection("areas");
+      const AreaLinks = db.collection("arealinks");
+      args.wheelid = getwheelid(req.session);
+      args.serverversion = pjson.version;
+      args.uiversion = getuiversion(req.session);
+      args.created = new Date();
+      args.coach = true;
+
+      const res = await Areas.insert(args);
+
+      await AreaLinks.insertOne({
+        rootarea: args.rootarea,
+        area: res.insertedIds[0].toString(),
+        areaname: args.name,
+        wheelid: getwheelid(req.session),
+        serverversion: pjson.version,
+        uiversion: getuiversion(req.session)
+      });
+
+      const area = await Areas.findOne({
+        _id: res.insertedIds[0],
+        wheelid: getwheelid(req.session)
+      });
+
+      return prepare(area);
+    },
+    createRankTime: async (root, args, { req }) => {
+      const db = await DbConnection.Get();
+      const RankTimes = db.collection("ranktimes");
+      args.profileid = getprofileid(req.session);
+      args.date = new Date(args.datetime);
+      const res = await RankTimes.insert(args);
+      return {
+        _id: res.insertedIds[1],
+        message: "new rank entry created"
+      };
+    },
+    createGoalTime: async (root, args, { req }) => {
+      const db = await DbConnection.Get();
+      const GoalTimes = db.collection("goaltimes");
+      args.userid = getprofileid(req.session);
+      args.serverversion = pjson.version;
+      args.uiversion = getuiversion(req.session);
+      args.date = new Date(args.datetime);
+      if (args.goaldate) args.goaldate = new Date(args.goaldate);
+      const res = await GoalTimes.insert(args);
+      return {
+        _id: res.insertedIds[1],
+        message: "new goal entry created"
+      };
+    },
+    updateArea: async (root, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Areas = db.collection("areas");
+      await Areas.updateOne(
+        { _id: ObjectId(args.area), wheelid: getwheelid(req.session) },
+        { $set: args }
+      );
+      args._id = args.area;
+      return args;
+    }
+  },
+  Wheel: {
+    profiles: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Profiles = db.collection("profiles");
+      var query = new Object();
+      query.wheel = parent._id;
+      if (parent.view.type !== "coach") query.user = getuserid(req.session);
+      //if (args.default) query._id = ObjectId(parent.view.defaultprofile); //if asking for default profile only return the default.
+      return (await Profiles.find(query)
+        .sort({ type: -1, name: 1 })
+        .toArray()).map(prepare);
+    },
+    startarea: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Areas = db.collection("areas");
+      var query = new Object();
+      query._id = ObjectId(parent.startarea);
+      return await Areas.findOne(query);
+    }
+  },
+  Profile: {
+    wheel: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Wheels = db.collection("wheels");
+      return prepare(
+        await Wheels.findOne({
+          _id: ObjectId(parent.wheel)
+        })
+      );
+    }
+  },
+  AreaLink: {
+    linkedarea: async (parent, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Areas = db.collection("areas");
+      return prepare(
+        parent.rootarea
+          ? await Areas.findOne({
+              _id: ObjectId(parent.rootarea)
+            })
+          : { _id: ObjectId(parent.area), name: null }
+      );
+    }
+  },
+  View: {
+    wheel: async (obj, args, context, info) => {
+      const db = await DbConnection.Get();
+      const Wheels = db.collection("wheels");
+      var wheel = await Wheels.findOne({
+        _id: ObjectId(obj.wheel)
+      });
+      wheel.view = obj;
+      return prepare(wheel);
+    }
+    //user: async (view, args, { req }) => {
+    //    return prepare(
+    //      await Users.findOne({
+    //        _id: ObjectId(view.user)
+    //     })
+    //    );
+    //}
+  },
+  Area: {
+    clicks: async ({ _id }, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Clicks = db.collection("clicks");
+      var currentDate = new Date();
+      currentDate.setDate(currentDate.getDate() - 7); //currently reading one week's trailing data.
+      return new Promise(function(resolve, reject) {
+        Clicks.aggregate(
+          {
+            $match: {
+              areaid: _id,
+              userid: getuserid(req.session),
+              date: {
+                $gte: currentDate
+              }
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              clicks: { $sum: 1 }
+            }
+          },
+
+          function(err, data) {
+            if (err) throw err;
+            resolve(data[0] ? data[0] : 0);
+          }
+        );
+      });
+    },
+    areas: async ({ _id }, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Areas = db.collection("areas");
+      const AreaLinks = db.collection("arealinks");
+      const query = {
+        rootarea: _id,
+        $or: [{ wheelid: getwheelid(req.session) }, { wheelid: "global" }] //use this global flag to return global wheels for templates.
+      };
+      const arealinks = await AreaLinks.distinct("area", query);
+
+      return (await Areas.find({
+        _id: {
+          $in: arealinks.map(function(id) {
+            return ObjectId(id);
+          })
+        }
+      }).toArray()).map(prepare);
+    },
+    rank: async ({ _id, coach }, args, { req }) => {
+      const db = await DbConnection.Get();
+      const Profiles = db.collection("profiles");
+      const RankTimes = db.collection("ranktimes");
+      if (req.session.profile)
+        if (req.session.profile.type === "average") {
+          //was previously using "coach" in area to decide to aggregate rank
+          const profiles = await Profiles.find({
+            wheel: req.session.profile.wheel
+          }).toArray();
+
+          return new Promise(function(resolve, reject) {
+            //returning the average of the area for coaching
+            RankTimes.aggregate(
               {
-                rootarea: rootarea,
-                area: area,
-                wheelid: getwheelid(req.session)
+                $match: {
+                  area: _id,
+                  //userid: req.session.profile.wheel
+                  profileid: {
+                    $in: profiles.map(profile => {
+                      return profile._id.toString();
+                    })
+                  }
+                }
               },
-              function(err, obj) {
+              {
+                $group: {
+                  _id: { area: "$area", profileid: "$userid" },
+                  date: {
+                    $last: "$date"
+                  },
+                  rank: { $last: "$rank" }
+                }
+              },
+              {
+                $group: {
+                  _id: "$*_*id.area",
+                  rank: { $avg: "$rank" }
+                }
+              },
+
+              function(err, data) {
                 if (err) throw err;
-                message = obj.deletedCount + " area(s) deleted";
+                resolve(
+                  data[0]
+                    ? {
+                        rank: parseInt(data[0].rank),
+                        note: "team average"
+                      }
+                    : null
+                );
               }
             );
-            return { _id: areaId, title: message };
-        },
-        setProfile: async (parent, { profileid }, { req }) => {
-            const db = await DbConnection.Get();
-            const Profiles = db.collection("profiles")
-            const profile = await Profiles.findOne({
-                _id: ObjectId(profileid),
-                wheel: req.session.view.wheel
-            });
-    
-            if (!profile) throw new Error("user could not be retrieved.");
-    
-            req.session.profile = profile;
-            return profile;
-        },
-        copyWheel: async (parent, { wheelid, viewtype }, { req }) => {
-            const db = await DbConnection.Get();
-            const Users = db.collection("users")
-            var user = await Users.findOne({
-                _id: ObjectId(getuserid(req.session))
-            });
-            if (user) createWheel(user, user._id.toString(), viewtype, wheelid);
-            return true;
-        },
-        deleteAreaLink: async (root, { rootarea, area }, { req }) => {
-            const db = await DbConnection.Get();
-            const AreaLinks = db.collection("arealinks")
-            const res = await AreaLinks.deleteMany(
-                {
-                rootarea: rootarea,
-                area: area,
-                wheelid: getwheelid(req.session)
-                },
-                { $set: { arealink: null } }
-            );
-            return res;
-        },
-        createAreaLink: async (root, args, { req }) => {
-            const db = await DbConnection.Get();
-            const AreaLinks = db.collection("arealinks")
-            // args.userid = getwheelid(req.session);
-            // args.serverversion = pjson.version;
-            // args.uiversion = getuiversion(req.session);
-            await AreaLinks.insertOne({
-                rootarea: args.rootarea,
-                area: args.area,
-                wheelid: getwheelid(req.session),
-                created: new Date()
-            });
-    
-            return true;
-        },
-        createArea: async (root, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Areas = db.collection("areas")
-            const AreaLinks = db.collection("arealinks")
-            args.wheelid = getwheelid(req.session);
-            args.serverversion = pjson.version;
-            args.uiversion = getuiversion(req.session);
-            args.created = new Date();
-    
-            const res = await Areas.insert(args);
-    
-            await AreaLinks.insertOne({
-                rootarea: args.rootarea,
-                area: res.insertedIds[0].toString(),
-                areaname: args.name,
-                wheelid: getwheelid(req.session),
-                serverversion: pjson.version,
-                uiversion: getuiversion(req.session)
-            });
-            return prepare(
-                await Areas.findOne({
-                _id: res.insertedIds[0],
-                wheelid: getwheelid(req.session)
-                })
-            );
-        },
-        createCoachArea: async (root, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Areas = db.collection("areas")
-            const AreaLinks = db.collection("arealinks")
-            args.wheelid = getwheelid(req.session);
-            args.serverversion = pjson.version;
-            args.uiversion = getuiversion(req.session);
-            args.created = new Date();
-            args.coach = true;
-    
-            const res = await Areas.insert(args);
-    
-            await AreaLinks.insertOne({
-                rootarea: args.rootarea,
-                area: res.insertedIds[0].toString(),
-                areaname: args.name,
-                wheelid: getwheelid(req.session),
-                serverversion: pjson.version,
-                uiversion: getuiversion(req.session)
-            });
-    
-            const area = await Areas.findOne({
-                _id: res.insertedIds[0],
-                wheelid: getwheelid(req.session)
-            });
-    
-            return prepare(area);
-        },
-        createRankTime: async (root, args, { req }) => {
-            const db = await DbConnection.Get();
-            const RankTimes = db.collection("ranktimes")
-            args.profileid = getprofileid(req.session);
-            args.date = new Date(args.datetime);
-            const res = await RankTimes.insert(args);
-            return {
-                _id: res.insertedIds[1],
-                message: "new rank entry created"
-            };
-        },
-        createGoalTime: async (root, args, { req }) => {
-            const db = await DbConnection.Get();
-            const GoalTimes = db.collection("goaltimes")
-            args.userid = getprofileid(req.session);
-            args.serverversion = pjson.version;
-            args.uiversion = getuiversion(req.session);
-            args.date = new Date(args.datetime);
-            if (args.goaldate) args.goaldate = new Date(args.goaldate);
-            const res = await GoalTimes.insert(args);
-            return {
-                _id: res.insertedIds[1],
-                message: "new goal entry created"
-            };
-        },
-        updateArea: async (root, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Areas = db.collection("areas")
-            await Areas.updateOne(
-                { _id: ObjectId(args.area), wheelid: getwheelid(req.session) },
-                { $set: args }
-            );
-            args._id = args.area;
-            return args;
-        }
-    },
-    Wheel: {
-        profiles: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Profiles = db.collection("profiles")
-            var query = new Object();
-            query.wheel = parent._id;
-            if (parent.view.type !== "coach") query.user = getuserid(req.session);
-            //if (args.default) query._id = ObjectId(parent.view.defaultprofile); //if asking for default profile only return the default.
-            return (await Profiles.find(query)
-                .sort({ type: -1, name: 1 })
-                .toArray()).map(prepare);
-        },
-        startarea: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Areas = db.collection("areas")
-            var query = new Object();
-            query._id = ObjectId(parent.startarea);
-            return await Areas.findOne(query);
-        }
-    },
-    Profile: {
-        wheel: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Wheels = db.collection("wheels")
-            return prepare(
-                await Wheels.findOne({
-                    _id: ObjectId(parent.wheel)
-            })
-          );
-        }
-    },
-    AreaLink: {
-        linkedarea: async (parent, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Areas = db.collection("areas")
-            return prepare(
-                parent.rootarea
-                ? await Areas.findOne({
-                    _id: ObjectId(parent.rootarea)
-                    })
-                : { _id: ObjectId(parent.area), name: null }
-            );
-        }
-    },
-    View: {
-        wheel: async (obj, args, context, info) => {
-            const db = await DbConnection.Get();
-            const Wheels = db.collection("wheels")
-            var wheel = await Wheels.findOne({
-                _id: ObjectId(obj.wheel)
-            });
-            wheel.view = obj;
-            return prepare(wheel);
-        },
-        //user: async (view, args, { req }) => {
-        //    return prepare(
-        //      await Users.findOne({
-        //        _id: ObjectId(view.user)
-        //     })
-        //    );
-        //}  
-    },
-    Area: {
-        clicks: async ({ _id }, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Clicks = db.collection("clicks")
-            var currentDate = new Date();
-            currentDate.setDate(currentDate.getDate() - 7); //currently reading one week's trailing data.
-            return new Promise(function(resolve, reject) {
-            Clicks.aggregate(
-                {
-                $match: {
-                    areaid: _id,
-                    userid: getuserid(req.session),
-                    date: {
-                    $gte: currentDate
-                    }
-                }
-                },
-                {
-                $group: {
-                    _id: null,
-                    clicks: { $sum: 1 }
-                }
-                },
-
-                function(err, data) {
-                if (err) throw err;
-                resolve(data[0] ? data[0] : 0);
-                }
-            );
-            });
-        },
-        areas: async ({ _id }, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Areas = db.collection("areas")
-            const AreaLinks = db.collection("arealinks")
-            const query = {
-                rootarea: _id,
-                $or: [{ wheelid: getwheelid(req.session) }, { wheelid: "global" }] //use this global flag to return global wheels for templates.
-            };
-            const arealinks = await AreaLinks.distinct("area", query);
-
-            return (await Areas.find({
-            _id: {
-                $in: arealinks.map(function(id) {
-                return ObjectId(id);
-                })
-            }
-            }).toArray()).map(prepare);
-        },
-        rank: async ({ _id, coach }, args, { req }) => {
-            const db = await DbConnection.Get();
-            const Profiles = db.collection("profiles")
-            const RankTimes = db.collection("ranktimes")
-            if (req.session.profile)
-            if (req.session.profile.type === "average") {
-                //was previously using "coach" in area to decide to aggregate rank
-                const profiles = await Profiles.find({
-                wheel: req.session.profile.wheel
-                }).toArray();
-
-                return new Promise(function(resolve, reject) {
-                //returning the average of the area for coaching
-                RankTimes.aggregate(
-                    {
-                    $match: {
-                        area: _id,
-                        //userid: req.session.profile.wheel
-                        profileid: {
-                        $in: profiles.map(profile => {
-                            return profile._id.toString();
-                        })
-                        }
-                    }
-                    },
-                    {
-                    $group: {
-                        _id: { area: "$area", profileid: "$userid" },
-                        date: {
-                        $last: "$date"
-                        },
-                        rank: { $last: "$rank" }
-                    }
-                    },
-                    {
-                    $group: {
-                        _id: "$*_*id.area",
-                        rank: { $avg: "$rank" }
-                    }
-                    },
-
-                    function(err, data) {
-                    if (err) throw err;
-                    resolve(
-                        data[0]
-                        ? {
-                            rank: parseInt(data[0].rank),
-                            note: "team average"
-                            }
-                        : null
-                    );
-                    }
-                );
-                });
-            } else {
-                const rank = await RankTimes.findOne(
-                { area: _id, profileid: getprofileid(req.session) },
-                { sort: { date: -1 } }
-                );
-                return rank ? prepare(rank) : null;
-            }
-        },
-        goal: async ({ _id }, args, { req }) => {
-            const db = await DbConnection.Get();
-            const GoalTimes = db.collection("goaltimes")
-            const goal = await GoalTimes.findOne(
-            { area: _id, userid: getprofileid(req.session) },
+          });
+        } else {
+          const rank = await RankTimes.findOne(
+            { area: _id, profileid: getprofileid(req.session) },
             { sort: { date: -1 } }
-            );
-            return goal ? prepare(goal) : null;
-        },
-        time: async ({ _id }, args, { req }, query) => {
-            const db = await DbConnection.Get();
-            const Pomodoros = db.collection("pomodoros")
-            if (args || item) {
-            }
-            return new Promise(function(resolve, reject) {
-            var currentDate = new Date();
-            currentDate.setDate(currentDate.getDate() - 7); //currently reading one week's trailing data.
-            Pomodoros.aggregate(
-                {
-                $match: {
-                    userid: getprofileid(req.session),
-                    date: {
-                    $gte: currentDate
-                    },
-                    $or: [
-                    {
-                        area: _id
-                    },
-                    {
-                        links: _id
-                    }
-                    ]
-                }
-                },
-                {
-                $group: {
-                    _id: { links: null }, //"$area"
-                    count: { $sum: "$minutes" },
-                    records: { $sum: 1 },
-                    direct: {
-                    $sum: {
-                        $cond: {
-                        if: { $eq: ["$area", _id] },
-                        then: 1,
-                        else: 0
-                        }
-                    }
-                    },
-                    countdirect: {
-                    $sum: {
-                        $cond: {
-                        if: { $eq: ["$area", _id] },
-                        then: "$minutes",
-                        else: 0
-                        }
-                    }
-                    }
-                }
-                },
-
-                function(err, data) {
-                if (err) throw err;
-                resolve(data[0] ? data[0] : 0);
-                }
-            );
-            });
+          );
+          return rank ? prepare(rank) : null;
         }
+    },
+    goal: async ({ _id }, args, { req }) => {
+      const db = await DbConnection.Get();
+      const GoalTimes = db.collection("goaltimes");
+      const goal = await GoalTimes.findOne(
+        { area: _id, userid: getprofileid(req.session) },
+        { sort: { date: -1 } }
+      );
+      return goal ? prepare(goal) : null;
+    },
+    time: async ({ _id }, args, { req }, query) => {
+      const db = await DbConnection.Get();
+      const Pomodoros = db.collection("pomodoros");
+      if (args || item) {
+      }
+      return new Promise(function(resolve, reject) {
+        var currentDate = new Date();
+        currentDate.setDate(currentDate.getDate() - 7); //currently reading one week's trailing data.
+        Pomodoros.aggregate(
+          {
+            $match: {
+              userid: getprofileid(req.session),
+              date: {
+                $gte: currentDate
+              },
+              $or: [
+                {
+                  area: _id
+                },
+                {
+                  links: _id
+                }
+              ]
+            }
+          },
+          {
+            $group: {
+              _id: { links: null }, //"$area"
+              count: { $sum: "$minutes" },
+              records: { $sum: 1 },
+              direct: {
+                $sum: {
+                  $cond: {
+                    if: { $eq: ["$area", _id] },
+                    then: 1,
+                    else: 0
+                  }
+                }
+              },
+              countdirect: {
+                $sum: {
+                  $cond: {
+                    if: { $eq: ["$area", _id] },
+                    then: "$minutes",
+                    else: 0
+                  }
+                }
+              }
+            }
+          },
+
+          function(err, data) {
+            if (err) throw err;
+            resolve(data[0] ? data[0] : 0);
+          }
+        );
+      });
     }
-}
+  }
+};
 
 export async function createWheel(user, userid, viewtype, wheel) {
+  const db = await DbConnection.Get();
+  const Areas = db.collection("areas");
+  const Views = db.collection("views");
+  const Profiles = db.collection("profiles");
+  const Wheels = db.collection("wheels");
+  var wheelid;
 
-    const db = await DbConnection.Get();
-    const Areas = db.collection("areas")
-    const Views = db.collection("views")
-    const Profiles = db.collection("profiles")
-    const Wheels = db.collection("wheels")
-    var wheelid;
-
-    switch (viewtype) {
-        case "coach": //currently not copying wheel for coach. Just creating a blank wheel.
-        var startareaid = (await Areas.insertOne({
-            name: "Coaching Wheel",
-            email: user.email,
-            created: new Date()
-        })).insertedId.toString();
-
-        wheelid = (await Wheels.insertOne({
-            name: user.email + "'s new coach wheel",
-            startarea: startareaid
-        })).insertedId.toString();
-
-        Areas.updateOne(
-            { _id: ObjectId(startareaid) },
-            {
-                $set: {
-                    wheelid: wheelid
-                }
-            }
-        );
-        break;
-        case "client":
-        default:
-        viewtype = "personal";
-        //use wheel here to copy the global wheel for the new wheel
-        if (!wheel) wheel = `${process.env.COPY_WHEELOFLIFE}`;
-        wheelid = await copywheel(wheel, userid);
-    }
-
-    //create new view
-    var newview = {
-        user: userid,
+  switch (viewtype) {
+    case "coach": //currently not copying wheel for coach. Just creating a blank wheel.
+      var startareaid = (await Areas.insertOne({
+        name: "Coaching Wheel",
         email: user.email,
-        wheel: wheelid, //req.session.view.wheel,
-        created: new Date(),
-        name:
-        viewtype === "coach"
-            ? getname(user.firstname, "", user.email) + "'s Coaching"
-            : "Wheel of Life", //req.session.view.name,
-        type: viewtype
-    };
-    Views.insertOne(newview);
+        created: new Date()
+      })).insertedId.toString();
 
-    //create new profile
-    var newprofile = {
-        user: userid,
-        wheel: wheelid,
-        email: user.email,
-        created: new Date(),
-        name:
-        viewtype === "coach"
-            ? "Team Profile"
-            : getname(user.firstname, user.lastname, user.email),
-        type: viewtype === "coach" ? "team" : viewtype //create the first team profile.
-    };
-    Profiles.insertOne(newprofile);
+      wheelid = (await Wheels.insertOne({
+        name: user.email + "'s new coach wheel",
+        startarea: startareaid
+      })).insertedId.toString();
 
-    return { newview, newprofile };
+      Areas.updateOne(
+        { _id: ObjectId(startareaid) },
+        {
+          $set: {
+            wheelid: wheelid
+          }
+        }
+      );
+      break;
+    case "client":
+    default:
+      viewtype = "personal";
+      //use wheel here to copy the global wheel for the new wheel
+      if (!wheel) wheel = `${process.env.COPY_WHEELOFLIFE}`;
+      wheelid = await copywheel(wheel, userid);
+  }
+
+  //create new view
+  var newview = {
+    user: userid,
+    email: user.email,
+    wheel: wheelid, //req.session.view.wheel,
+    created: new Date(),
+    name:
+      viewtype === "coach"
+        ? getname(user.firstname, "", user.email) + "'s Coaching"
+        : "Wheel of Life", //req.session.view.name,
+    type: viewtype
+  };
+  Views.insertOne(newview);
+
+  //create new profile
+  var newprofile = {
+    user: userid,
+    wheel: wheelid,
+    email: user.email,
+    created: new Date(),
+    name:
+      viewtype === "coach"
+        ? "Team Profile"
+        : getname(user.firstname, user.lastname, user.email),
+    type: viewtype === "coach" ? "team" : viewtype //create the first team profile.
+  };
+  Profiles.insertOne(newprofile);
+
+  return { newview, newprofile };
 }
 async function copywheel(wheelid, userid) {
+  const db = await DbConnection.Get();
+  const Wheels = db.collection("wheels");
+  const Areas = db.collection("areas");
+  const AreaLinks = db.collection("arealinks");
 
-    const db = await DbConnection.Get();
-    const Wheels = db.collection("wheels")
-    const Areas = db.collection("areas")
-    const AreaLinks = db.collection("arealinks")
+  //only using userid as a tag to keep track of the copy.
+  //wheel - global
+  var newwheel = await Wheels.findOne({
+    _id: ObjectId(wheelid)
+    //need to work out security here.
+  });
 
-    //only using userid as a tag to keep track of the copy.
-    //wheel - global
-    var newwheel = await Wheels.findOne({
-        _id: ObjectId(wheelid)
+  if (!newwheel) {
+    throw new Error("Wheel not found to copy");
+  } else {
+    newwheel.copy = wheelid;
+    newwheel.user = userid;
+    newwheel.created = new Date();
+    delete newwheel._id;
+    delete newwheel.global;
+    var newwheelid = (await Wheels.insertOne(newwheel)).insertedId.toString();
+    //areas - global
+    var newareas = await Areas.find({ wheelid: wheelid }).toArray();
+    newareas.map(area => {
+      area.user = userid;
+      area.wheelid = newwheelid;
+      area.copywheel = wheelid;
+      area.copyarea = area._id.toString();
+      area.created = new Date();
+      delete area._id;
+      return area;
     });
 
-    if (!newwheel) {
-        throw new Error("Wheel not found to copy");
-    } else {
-        newwheel.copy = wheelid;
-        newwheel.user = userid;
-        newwheel.created = new Date();
-        delete newwheel._id;
-        delete newwheel.global;
-        var newwheelid = (await Wheels.insertOne(
-            newwheel
-        )).insertedId.toString();
-        //areas - global
-        var newareas = await Areas.find({ wheelid: wheelid }).toArray();
-        newareas.map(area => {
-        area.user = userid;
-        area.wheelid = newwheelid;
-        area.copywheel = wheelid;
-        area.copyarea = area._id.toString();
-        area.created = new Date();
-        delete area._id;
-        return area;
-        });
+    await Areas.insertMany(newareas);
+    var newstartareaid = (await Areas.findOne({
+      user: userid,
+      copyarea: newwheel.startarea,
+      wheelid: newwheelid //this is the id used for returning wheels
+    }))._id.toString();
 
-        await Areas.insertMany(newareas);
-        var newstartareaid = (await Areas.findOne({
-            user: userid,
-            copyarea: newwheel.startarea,
-            wheelid: newwheelid //this is the id used for returning wheels
-        }))._id.toString();
-
-        Wheels.updateOne(
-            { _id: ObjectId(newwheelid) },
-            { $set: { startarea: newstartareaid } }
-        );
-        //arealinks - global
-        var newarealinks = await AreaLinks.find({
-            wheelid: wheelid
-        }).toArray();
-        newarealinks.map(arealink => {
-        arealink.user = userid; //this is just copied as a reference for ease
-        arealink.wheelid = newwheelid; //this is the id used for returning arealinks
-        arealink.rootarea = newareas
-            .find(o => o.copyarea === arealink.rootarea)
-            ._id.toString();
-        arealink.area = newareas
-            .find(o => o.copyarea === arealink.area)
-            ._id.toString();
-        arealink.copywheel = wheelid;
-        arealink.copylink = arealink._id.toString();
-        arealink.created = new Date();
-        delete arealink._id;
-        return arealink;
-        });
-        AreaLinks.insertMany(newarealinks);
-        //return wheel
-        return newwheelid;
-    }
+    Wheels.updateOne(
+      { _id: ObjectId(newwheelid) },
+      { $set: { startarea: newstartareaid } }
+    );
+    //arealinks - global
+    var newarealinks = await AreaLinks.find({
+      wheelid: wheelid
+    }).toArray();
+    newarealinks.map(arealink => {
+      arealink.user = userid; //this is just copied as a reference for ease
+      arealink.wheelid = newwheelid; //this is the id used for returning arealinks
+      arealink.rootarea = newareas
+        .find(o => o.copyarea === arealink.rootarea)
+        ._id.toString();
+      arealink.area = newareas
+        .find(o => o.copyarea === arealink.area)
+        ._id.toString();
+      arealink.copywheel = wheelid;
+      arealink.copylink = arealink._id.toString();
+      arealink.created = new Date();
+      delete arealink._id;
+      return arealink;
+    });
+    AreaLinks.insertMany(newarealinks);
+    //return wheel
+    return newwheelid;
+  }
 }
 export async function logareaclick(_id, navdirection, req) {
-    const db = await DbConnection.Get();
-    const Clicks = db.collection("clicks")
-    const Areas = db.collection("areas")
+  const db = await DbConnection.Get();
+  const Clicks = db.collection("clicks");
+  const Areas = db.collection("areas");
 
-    try {
-        if (navdirection == "forward") {
-        Clicks.insertOne({
-            userid: getuserid(req.session),
-            date: new Date(),
-            areaid: _id
-        });
+  try {
+    if (navdirection == "forward") {
+      Clicks.insertOne({
+        userid: getuserid(req.session),
+        date: new Date(),
+        areaid: _id
+      });
 
-        Areas.updateOne(
-            {
-            wheelid: getprofileid(req.session),
-            _id: ObjectId(_id)
-            },
-            { $inc: { clicks: 1 }, $set: { lastclicked: new Date() } }
-        )};
-    } catch (error) {
-        console.log(error);
+      Areas.updateOne(
+        {
+          wheelid: getprofileid(req.session),
+          _id: ObjectId(_id)
+        },
+        { $inc: { clicks: 1 }, $set: { lastclicked: new Date() } }
+      );
     }
+  } catch (error) {
+    console.log(error);
+  }
 }
 function getwheelid(session) {
-    if (session.view) return session.view.wheel;
-    else {
-        if (!session.user) throw new Error("Invalid Session");
-        else throw new Error("Wheel not found");
-      }
+  if (session.view) return session.view.wheel;
+  else {
+    if (!session.user) throw new Error("Invalid Session");
+    else throw new Error("Wheel not found");
+  }
 }

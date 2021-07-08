@@ -1,26 +1,26 @@
-import { ObjectId } from "mongodb";
-import bcrypt from "bcryptjs";
+import { ObjectId } from 'mongodb'
+import bcrypt from 'bcryptjs'
 
 import {
-  emailNewClient,
-  emailNewPersonal,
-  emailNewCoach, 
-  newUserNotificationEmail}
-from "./emails";
+    emailNewClient,
+    emailNewPersonal,
+    emailNewCoach,
+    newUserNotificationEmail,
+} from './emails'
 
-import { createWheel } from "./areas"
+import { createWheel } from './areas'
 
-import { prepare } from "../util/index";
-var pjson = require("../package.json");
-import DbConnection from "./database"
+import { prepare } from '../util/index'
+var pjson = require('../package.json')
+import DbConnection from './database'
 
 //import { verifier } from "google-id-token-verifier";
-const { OAuth2Client } = require("google-auth-library");
+const { OAuth2Client } = require('google-auth-library')
 
-var googleclientId = `${process.env.GOOGLE_CLIENTID}`;
+var googleclientId = `${process.env.GOOGLE_CLIENTID}`
 const oAuth2Client = new OAuth2Client({
-  clientId: googleclientId
-});
+    clientId: googleclientId,
+})
 
 export const schema = `
   type User {
@@ -58,173 +58,171 @@ export const typeDefs = `
 `
 
 export const resolvers = {
-
     Query: {
-
         isLoggedin: async (root, args, { req, ip }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            const Logins = db.collection('logins')
 
-          const db = await DbConnection.Get();
-          const Users = db.collection("users")
-          const Logins = db.collection("logins")
+            if (!req.session.url) req.session.url = args.url //set the URL string to send back once logged in to load state. rerank. mostly for google auth.
+            if (req.session.user) {
+                const user = await Users.findOne({
+                    _id: ObjectId(getuserid(req.session)),
+                })
 
-          if (!req.session.url) req.session.url = args.url; //set the URL string to send back once logged in to load state. rerank. mostly for google auth.
-          if (req.session.user) {
-            const user = await Users.findOne({
-              _id: ObjectId(getuserid(req.session))
-            });
+                await Logins.insertOne({
+                    email: req.session.user.email,
+                    url: args.url,
+                    lastip: getuserIpAddress(req),
+                    result: 'success',
+                    type: 'loggedin refresh',
+                    lastlogin: new Date(),
+                })
+                return prepare(user)
+            } else {
+                await Logins.insertOne({
+                    email: 'session removed',
+                    url: args.url,
+                    lastip: getuserIpAddress(req),
+                    result: 'failed',
+                    type: 'loggedin refresh',
+                    lastlogin: new Date(),
+                })
 
-            await Logins.insertOne({
-              email: req.session.user.email,
-              url: args.url,
-              lastip: getuserIpAddress(req),
-              result: "success",
-              type: "loggedin refresh",
-              lastlogin: new Date()
-            });
-            return prepare(user);
-          } else {
-            await Logins.insertOne({
-              email: "session removed",
-              url: args.url,
-              lastip: getuserIpAddress(req),
-              result: "failed",
-              type: "loggedin refresh",
-              lastlogin: new Date()
-            });
-
-            throw new Error("User not logged in");
-          }
-        }
+                throw new Error('User not logged in')
+            }
+        },
     },
     Mutation: {
+        updateProfile: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            var user = await Users.findOneAndUpdate(
+                { _id: ObjectId(getuserid(req.session)) }, //update this
+                { $set: args },
+                { returnOriginal: false },
+            )
+            return user.value
+        },
 
-      updateProfile: async (parent, args, { req }) => {
-        const db = await DbConnection.Get();
-        const Users = db.collection("users")
-        var user = await Users.findOneAndUpdate(
-          { _id: ObjectId(getuserid(req.session)) }, //update this
-          { $set: args },
-          { returnOriginal: false }
-        );
-        return user.value;
-      },
+        createClient: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            const Views = db.collection('views')
+            const Profiles = db.collection('profiles')
 
-      createClient: async (parent, args, { req }) => {
-        const db = await DbConnection.Get();
-        const Users = db.collection("users")
-        const Views = db.collection("views")
-        const Profiles = db.collection("profiles")
+            var user = await Users.findOne({ email: args.email.toLowerCase() })
+            var userid
+            if (user) {
+                userid = user._id.toString()
+            } else {
+                //args.profile = "client"; //this belongs on the view now
+                args.state = 'new'
+                args.code = bcrypt.hashSync('verifythisyo', 7)
+                args.created = new Date()
 
-        var user = await Users.findOne({ email: args.email.toLowerCase() });
-        var userid;
-        if (user) {
-          userid = user._id.toString();
-        } else {
-          //args.profile = "client"; //this belongs on the view now
-          args.state = "new";
-          args.code = bcrypt.hashSync("verifythisyo", 7);
-          args.created = new Date();
+                var newuser = await Users.insertOne(args) //create record to return id
+                args._id = newuser.insertedId.toString() //use args to pass new user id for email link
+                emailNewClient(args, req.session.user, req.session.view.name)
 
-          var newuser = await Users.insertOne(args); //create record to return id
-          args._id = newuser.insertedId.toString(); //use args to pass new user id for email link
-          emailNewClient(args, req.session.user, req.session.view.name);
-
-          userid = newuser.insertedId.toString(); //pass id for creating view and profiles
-        }
-
-        //create new view
-        var newview = {
-          user: userid,
-          wheel: req.session.view.wheel,
-          name: req.session.view.name,
-          type: "team",
-          created: new Date()
-        };
-        Views.insertOne(newview);
-
-        //create new profile
-        var newprofile = {
-          user: userid,
-          wheel: req.session.view.wheel,
-          name: getname(args.firstname, args.lastname, args.email),
-          type: "member",
-          created: new Date()
-        };
-        Profiles.insertOne(newprofile);
-
-        return true;
-      },
-
-      verifyAccount: async (parent, args, { req }) => {
-        const db = await DbConnection.Get();
-        const Users = db.collection("users")
-        const user = await Users.findOneAndUpdate(
-          { _id: ObjectId(args.userid), code: args.code, state: "new" },
-          {
-            $set: {
-              state: "verified",
-              password: bcrypt.hashSync(args.password, 10)
+                userid = newuser.insertedId.toString() //pass id for creating view and profiles
             }
-          }
-        );
-        req.session.user = user.value;
-        if (user.value) return prepare(user.value);
-        else {
-          throw new Error(
-            "Your account didn't verify. If you've signed up before, try logging in."
-          );
-        }
-      },
 
-      login: async (parent, args, { req, ip }) => {
-        const db = await DbConnection.Get()
-        const Users = db.collection("users")
-        const Logins = db.collection("logins");
+            //create new view
+            var newview = {
+                user: userid,
+                wheel: req.session.view.wheel,
+                name: req.session.view.name,
+                type: 'team',
+                created: new Date(),
+            }
+            Views.insertOne(newview)
 
-        const user = await Users.findOne({
-          email: args.username.toLowerCase()
-        });
-        //const user = data[username];
+            //create new profile
+            var newprofile = {
+                user: userid,
+                wheel: req.session.view.wheel,
+                name: getname(args.firstname, args.lastname, args.email),
+                type: 'member',
+                created: new Date(),
+            }
+            Profiles.insertOne(newprofile)
 
-        if (user) {
-          if (!user.password)
-            throw new Error("Account has not been verified.");
+            return true
+        },
 
-          if (await bcrypt.compareSync(args.pwd, user.password)) {
-            var loggedinuser = await login(user, args, req);
-            return prepare(loggedinuser);
-          } else {
-            await Users.updateOne(
-              { _id: ObjectId(user._id) },
-              {
-                $set: {
-                  incorrecttries:
-                    (user.incorrecttries ? user.incorrecttries : 0) + 1
+        verifyAccount: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            const user = await Users.findOneAndUpdate(
+                { _id: ObjectId(args.userid), code: args.code, state: 'new' },
+                {
+                    $set: {
+                        state: 'verified',
+                        password: bcrypt.hashSync(args.password, 10),
+                    },
+                },
+            )
+            req.session.user = user.value
+            if (user.value) return prepare(user.value)
+            else {
+                throw new Error(
+                    "Your account didn't verify. If you've signed up before, try logging in.",
+                )
+            }
+        },
+
+        login: async (parent, args, { req, ip }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            const Logins = db.collection('logins')
+
+            const user = await Users.findOne({
+                email: args.username.toLowerCase(),
+            })
+            //const user = data[username];
+
+            if (user) {
+                if (!user.password)
+                    throw new Error('Account has not been verified.')
+
+                if (await bcrypt.compareSync(args.pwd, user.password)) {
+                    var loggedinuser = await login(user, args, req)
+                    return prepare(loggedinuser)
+                } else {
+                    await Users.updateOne(
+                        { _id: ObjectId(user._id) },
+                        {
+                            $set: {
+                                incorrecttries:
+                                    (user.incorrecttries
+                                        ? user.incorrecttries
+                                        : 0) + 1,
+                            },
+                        },
+                    )
+
+                    await Logins.insertOne({
+                        email: user.email,
+                        lastip: getuserIpAddress(req),
+                        result: 'failed',
+                        type: 'username login',
+                        lastlogin: new Date(),
+                    })
+
+                    throw new Error('Incorrect password.')
                 }
-              }
-            );
+            }
 
             await Logins.insertOne({
-              email: user.email,
-              lastip: getuserIpAddress(req),
-              result: "failed",
-              type: "username login",
-              lastlogin: new Date()
-            });
+                email: args.username,
+                lastip: getuserIpAddress(req),
+                result: 'not registered',
+                type: 'username login',
+                lastlogin: new Date(),
+            })
 
-            throw new Error("Incorrect password.");
-          }
-        }
-
-        await Logins.insertOne({
-          email: args.username,
-          lastip: getuserIpAddress(req),
-          result: "not registered",
-          type: "username login",
-          lastlogin: new Date()
-        });
-
-        /*           await Users.insertOne({
+            /*           await Users.insertOne({
           email: args.username,
           password: bcrypt.hashSync(args.pwd, 10),
           uiversion: args.uiversion,
@@ -233,224 +231,228 @@ export const resolvers = {
           profile: "client",
           created: new Date()
         }); */
-        throw new Error("Email not registered");
-      },
+            throw new Error('Email not registered')
+        },
 
-      setSignUpContext: async (parent, { account }, { req }) => {
-        req.session.signupcontext = account;
-        return true;
-      },
+        setSignUpContext: async (parent, { account }, { req }) => {
+            req.session.signupcontext = account
+            return true
+        },
 
-      signup: async (parent, args, { req }) => {
-        const db = await DbConnection.Get()
-        const Users = db.collection("users")
-        const user = await Users.findOne({ email: args.email.toLowerCase() });
-        if (user) {
-          throw new Error(
-            "If you already have a Cavestep profile with this email you can log in."
-          );
-        }
-
-        const date = new Date();
-
-        var newuser = {
-          email: args.email.toLowerCase(),
-          firstname: args.firstname,
-          code: bcrypt.hashSync(date.toString(), 7),
-          uiversion: args.uiversion,
-          serverversion: pjson.version,
-          state: "new",
-          profile: args.account,
-          created: date,
-          createdip: getuserIpAddress(req)
-        };
-        var emailuser = await signup(newuser, args, req);
-
-        if (args.account === "coach") emailNewCoach(emailuser);
-        else emailNewPersonal(emailuser);
-
-        newUserNotificationEmail(user)
-
-        return true;
-      },
-
-      googleLogin: async (parent, args, { req, ip }) => {
-        const db = await DbConnection.Get()
-        const Users = db.collection("users")
-        const Logins = db.collection("logins");
-        const tokenInfo = await oAuth2Client.getTokenInfo(args.token);
-        if ((tokenInfo.email = args.email)) {
-          //check token authentication...
-
-          var user = await Users.findOne({ email: args.email.toLowerCase() });
-          if (!user) {
-            //sign up new google user.
-            args.profile = ""; //can't just be coach. need to fix this.
-            args.state = "verified";
-            args.serverversion = pjson.version;
-            args.lastip = getuserIpAddress(req);
-            args.type = "personal";
-            //req.session.user = user;
-            //args.token = null; //removing the token from saving in database for security
-            args.created = new Date();
-            user = args;
-            var newuser = await signup(user, args, req); //automatically sign up google login.
-            return await login(newuser, args, req);
-          } else {
-            return await login(user, args, req);
-          }
-        }
-        await Logins.insertOne({
-          email: args.email,
-          result: "failed",
-          type: "google login",
-          ip: getuserIpAddress(req),
-          lastlogin: new Date()
-        });
-        throw new Error("Error authenticating with google");
-
-        // https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
-        // https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
-      },
-
-      logout: async (parent, args, { req }) => {
-        if (req.session.user)
-          if (req.session.user.token)
-            try {
-              await oAuth2Client.revokeToken(req.session.user.token);
-            } catch (error) {
-              console.log(error);
+        signup: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            const user = await Users.findOne({
+                email: args.email.toLowerCase(),
+            })
+            if (user) {
+                throw new Error(
+                    'If you already have a Cavestep profile with this email you can log in.',
+                )
             }
-        delete req.session.user;
-        req.session.destroy();
-        return true;
-      },
+
+            const date = new Date()
+
+            var newuser = {
+                email: args.email.toLowerCase(),
+                firstname: args.firstname,
+                code: bcrypt.hashSync(date.toString(), 7),
+                uiversion: args.uiversion,
+                serverversion: pjson.version,
+                state: 'new',
+                profile: args.account,
+                created: date,
+                createdip: getuserIpAddress(req),
+            }
+            var emailuser = await signup(newuser, args, req)
+
+            if (args.account === 'coach') emailNewCoach(emailuser)
+            else emailNewPersonal(emailuser)
+
+            return true
+        },
+
+        googleLogin: async (parent, args, { req, ip }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            const Logins = db.collection('logins')
+            const tokenInfo = await oAuth2Client.getTokenInfo(args.token)
+            if ((tokenInfo.email = args.email)) {
+                //check token authentication...
+
+                var user = await Users.findOne({
+                    email: args.email.toLowerCase(),
+                })
+                if (!user) {
+                    //sign up new google user.
+                    args.profile = '' //can't just be coach. need to fix this.
+                    args.state = 'verified'
+                    args.serverversion = pjson.version
+                    args.lastip = getuserIpAddress(req)
+                    args.type = 'personal'
+                    //req.session.user = user;
+                    //args.token = null; //removing the token from saving in database for security
+                    args.created = new Date()
+                    user = args
+                    var newuser = await signup(user, args, req) //automatically sign up google login.
+                    return await login(newuser, args, req)
+                } else {
+                    return await login(user, args, req)
+                }
+            }
+            await Logins.insertOne({
+                email: args.email,
+                result: 'failed',
+                type: 'google login',
+                ip: getuserIpAddress(req),
+                lastlogin: new Date(),
+            })
+            throw new Error('Error authenticating with google')
+
+            // https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
+            // https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
+        },
+
+        logout: async (parent, args, { req }) => {
+            if (req.session.user)
+                if (req.session.user.token)
+                    try {
+                        await oAuth2Client.revokeToken(req.session.user.token)
+                    } catch (error) {
+                        console.log(error)
+                    }
+            delete req.session.user
+            req.session.destroy()
+            return true
+        },
     },
     User: {
-      area: async ({ startarea }, args, { req }) => {
-        const db = await DbConnection.Get();
-        const Areas = db.collection("areas")
-        const Views = db.collection("views")
-        return startarea
-          ? prepare(await Areas.findOne({ _id: ObjectId(startarea) }))
-          : null;
-      },
-      views: async (parent, args, { req }) => {
-        const db = await DbConnection.Get();
-        const Views = db.collection("views")
-        var query = new Object();
-        query.user = getuserid(req.session); //need to return BSON as string.
-        return (await Views.find(query).toArray()).map(prepare);
-      }
-    }
+        area: async ({ startarea }, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            const Views = db.collection('views')
+            return startarea
+                ? prepare(await Areas.findOne({ _id: ObjectId(startarea) }))
+                : null
+        },
+        views: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Views = db.collection('views')
+            var query = new Object()
+            query.user = getuserid(req.session) //need to return BSON as string.
+            return (await Views.find(query).toArray()).map(prepare)
+        },
+    },
 }
 
 export function getname(firstname, lastname, email) {
-  return firstname ? firstname + (lastname ? " " + lastname : "") : email;
+    return firstname ? firstname + (lastname ? ' ' + lastname : '') : email
 }
 
 export function getprofileid(session) {
-  if (session.profile) return session.profile._id.toString();
-  else {
-    if (!session.user) throw new Error("Invalid Session");
-    else throw new Error("Profile not found");
-  }
+    if (session.profile) return session.profile._id.toString()
+    else {
+        if (!session.user) throw new Error('Invalid Session')
+        else throw new Error('Profile not found')
+    }
 }
 
 export function getuserid(session) {
-  if (session.user) return session.user._id.toString();
-  else throw new Error("Invalid Session");
+    if (session.user) return session.user._id.toString()
+    else throw new Error('Invalid Session')
 }
 
 async function login(user, args, req) {
-  const db = await DbConnection.Get()
-  const Users = db.collection("users")
-  const Logins = db.collection("logins")
-  const Views = db.collection("views")
-  const Profiles = db.collection("profiles")
-  if (
-    (user.incorrecttries < 6 || user.incorrecttries === undefined) &&
-    user.state == "verified"
-  ) {
-    user.serverversion = pjson.version;
-    req.session.user = user;
+    const db = await DbConnection.Get()
+    const Users = db.collection('users')
+    const Logins = db.collection('logins')
+    const Views = db.collection('views')
+    const Profiles = db.collection('profiles')
+    if (
+        (user.incorrecttries < 6 || user.incorrecttries === undefined) &&
+        user.state == 'verified'
+    ) {
+        user.serverversion = pjson.version
+        req.session.user = user
 
-    const view = await Views.findOne({
-      user: user._id.toString()
-    });
+        const view = await Views.findOne({
+            user: user._id.toString(),
+        })
 
-    if (view) {
-      req.session.view = view;
-      var query = new Object();
+        if (view) {
+            req.session.view = view
+            var query = new Object()
 
-      if (view.type !== "coach") query.user = user._id.toString();
-      query.wheel = view.wheel;
-      const profile = await Profiles.findOne(query, {
-        sort: { type: -1 }
-      });
+            if (view.type !== 'coach') query.user = user._id.toString()
+            query.wheel = view.wheel
+            const profile = await Profiles.findOne(query, {
+                sort: { type: -1 },
+            })
 
-      if (profile) req.session.profile = profile;
-    } else {
-      //createWheel(user, user._id.toString(), "personal");
-      //this was causing problems with google logins creating two wheels.
+            if (profile) req.session.profile = profile
+        } else {
+            //createWheel(user, user._id.toString(), "personal");
+            //this was causing problems with google logins creating two wheels.
+        }
+
+        await Logins.insertOne({
+            email: user.email,
+            lastip: getuserIpAddress(req),
+            result: 'success',
+            type: 'username login',
+            lastlogin: new Date(),
+        })
+
+        await Users.updateOne(
+            { _id: ObjectId(user._id) },
+            {
+                $set: {
+                    uiversion: args.uiversion,
+                    lastip: getuserIpAddress(req),
+                    lastlogin: new Date(),
+                },
+            },
+        )
+        user.url = req.session.url
+        return user
     }
 
     await Logins.insertOne({
-      email: user.email,
-      lastip: getuserIpAddress(req),
-      result: "success",
-      type: "username login",
-      lastlogin: new Date()
-    });
+        email: args.username,
+        lastip: getuserIpAddress(req),
+        result: 'failed',
+        type: 'username login',
+        lastlogin: new Date(),
+    })
 
     await Users.updateOne(
-      { _id: ObjectId(user._id) },
-      {
-        $set: {
-          uiversion: args.uiversion,
-          lastip: getuserIpAddress(req),
-          lastlogin: new Date()
-        }
-      }
-    );
-    user.url = req.session.url;
-    return user;
-  }
+        { _id: ObjectId(user._id) },
+        {
+            $set: {
+                incorrecttries:
+                    (user.incorrecttries ? user.incorrecttries : 0) + 1,
+            },
+        },
+    )
 
-  await Logins.insertOne({
-    email: args.username,
-    lastip: getuserIpAddress(req),
-    result: "failed",
-    type: "username login",
-    lastlogin: new Date()
-  });
-
-  await Users.updateOne(
-    { _id: ObjectId(user._id) },
-    {
-      $set: {
-        incorrecttries: (user.incorrecttries ? user.incorrecttries : 0) + 1
-      }
-    }
-  );
-
-  throw new Error("Login Failed.");
+    throw new Error('Login Failed.')
 }
 
 async function signup(newuser, args, req) {
-  const db = await DbConnection.Get()
-  const Users = db.collection("users")
-  newuser.lastip = getuserIpAddress(req);
-  var userid = (await Users.insertOne(newuser)).insertedId.toString();
-  await createWheel(newuser, userid, args.account);
+    const db = await DbConnection.Get()
+    const Users = db.collection('users')
+    newuser.lastip = getuserIpAddress(req)
+    var userid = (await Users.insertOne(newuser)).insertedId.toString()
+    await createWheel(newuser, userid, args.account)
+    newUserNotificationEmail(newuser)
 
-  return newuser;
+    return newuser
 }
 
 const getuserIpAddress = request => {
-  const headers = request.headers;
-  if (!headers) return null;
-  const ipAddress = headers["x-forwarded-for"];
-  if (!ipAddress) return null;
-  return ipAddress;
-};
+    const headers = request.headers
+    if (!headers) return null
+    const ipAddress = headers['x-forwarded-for']
+    if (!ipAddress) return null
+    return ipAddress
+}

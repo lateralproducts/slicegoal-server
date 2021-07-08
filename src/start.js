@@ -9,28 +9,33 @@ import cors from "cors";
 import { GraphQLServer } from "graphql-yoga";
 import session from "express-session";
 import ms from "ms";
-
 import { Queries } from "./schema/queries";
 import { Mutations } from "./schema/mutations";
-
 import { merge } from "lodash";
-import { typeDefs as payments } from "./payments";
-import { resolvers as paymentResolvers } from "./payments"
-import { typeDefs as users } from "./users"
-import { resolvers as userResolvers } from "./users"
-import { schema as userSchema } from "./users"
-import { typeDefs as areas } from "./areas"
-import { resolvers as areaResolvers } from "./areas"
-import { schema as areaSchema } from "./areas"
-import { typeDefs as notes } from "./notes"
-import { resolvers as noteResolvers } from "./notes"
-import { schema as noteSchema } from "./notes"
-import { typeDefs as objectives } from "./objectives"
-import { resolvers as objectiveResolvers } from "./objectives"
-import { schema as objectiveSchema } from "./objectives"
 
+//import schemas
+import { schema as userSchema } from "./users";
+import { schema as areaSchema } from "./areas";
+import { schema as noteSchema } from "./notes";
+import { schema as objectiveSchema } from "./objectives";
 
-import "./schedules"
+//import queries and mutations
+import { typeDefs as userQueryMutation } from "./users";
+import { typeDefs as areaQueryMutation } from "./areas";
+import { typeDefs as noteQueryMutation } from "./notes";
+import { typeDefs as paymentQueryMutation } from "./payments";
+import { typeDefs as feedbackQueryMutation } from "./feedback";
+import { typeDefs as objectiveQueryMutation } from "./objectives";
+
+//import resolvers
+import { resolvers as userResolvers } from "./users";
+import { resolvers as areaResolvers } from "./areas";
+import { resolvers as noteResolvers } from "./notes";
+import { resolvers as paymentResolvers } from "./payments";
+import { resolvers as feedbackResolvers } from "./feedback";
+import { resolvers as objectiveResolvers } from "./objectives";
+
+import "./schedules";
 
 var pjson = require("../package.json");
 console.log("server version: " + pjson.version);
@@ -41,7 +46,6 @@ app.use(cors());
 
 export const start = async () => {
   try {
-
     //const Signup = db.collection("signup");
 
     /*  async function migrateobjectives(objective) {
@@ -222,30 +226,31 @@ export const start = async () => {
       version: pjson.version
     });
 
-    
     // server
     const server = new GraphQLServer({
       typeDefs: [
         Queries,
-        Mutations, 
+        Mutations,
         userSchema,
         areaSchema,
         noteSchema,
-        objectiveSchema, 
-        payments, 
-        users, 
-        notes,
-        areas,
-        objectives
+        objectiveSchema,
+        paymentQueryMutation,
+        userQueryMutation,
+        noteQueryMutation,
+        areaQueryMutation,
+        objectiveQueryMutation,
+        feedbackQueryMutation
       ],
 
       resolvers: merge(
-        paymentResolvers, 
-        userResolvers, 
+        paymentResolvers,
+        userResolvers,
         noteResolvers,
         areaResolvers,
-        objectiveResolvers
-        ),
+        objectiveResolvers,
+        feedbackResolvers
+      ),
       context
     });
 
