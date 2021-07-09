@@ -1,8 +1,13 @@
 import { ObjectId } from 'mongodb'
-import fetch from 'node-fetch'
-
-import { getuserid } from './users'
+import { getuserid, getuserIpAddress } from './users'
 import DbConnection from './database'
+import rapid from 'eway-rapid'
+
+var apiKey = `${process.env.PAYMENT_API_KEY}`,
+    password = `${process.env.PAYMENT_API_PASS}`,
+    rapidEndpoint = `${process.env.PAYMENT_API_ENV}`
+
+var client = rapid.createClient(apiKey, password, rapidEndpoint)
 
 const TRANSACTION_TIMEOUT = 10 //(second)
 const TRANSACTION_STATUS_POLLING_PERIOD = 0.5 //(seconds)
@@ -86,70 +91,55 @@ export const resolvers = {
 
     Mutation: {
         getAccessCode: async (root, args, { req }) => {
-            let firstname = req.session.user.firstname
-            let lastname = req.session.user.lastname
-
-            let result = await fetch(
-                `${process.env.PAYMENT_API_URL}/AccessCodes`,
-                {
-                    method: 'POST',
-                    headers: {
-                        Authorization:
-                            'Basic ' +
-                            `${process.env.PAYMENT_ENCRYPTION_KEY_CLIENT}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        Customer: {
-                            FirstName: firstname,
-                            LastName: lastname,
-                            Country: 'au',
-                        },
-                        Payment: {
-                            TotalAmount: 0, //to get the access code, we just send 0
-                        },
-                        RedirectUrl: `${process.env.PAYMENT_REDIRECT_URL}`,
-                        Method: 'CreateTokenCustomer',
-                        TransactionType: 'Purchase',
-                    }),
-                },
-            )
-            result = await result.json()
-
-            let return_Obj = {
-                firstname: firstname,
-                lastname: lastname,
-                accessCode: result.AccessCode,
-                formActionUrl: result.FormActionURL,
-            }
-
             const db = await DbConnection.Get()
             const Transactions = db.collection('transactions')
 
-            await Transactions.insertOne({
-                user: getuserid(req.session),
-                accessCode: return_Obj.accessCode,
-                responseCode: null,
-            })
+            let firstname = req.session.user.firstname
+            let lastname = req.session.user.lastname
 
-            return return_Obj
+            return client
+                .createTransaction(rapid.Enum.Method.TRANSPARENT_REDIRECT, {
+                    Customer: {
+                        FirstName: firstname,
+                        LastName: lastname,
+                        Country: 'au',
+                    },
+                    Payment: {
+                        TotalAmount: 19.0, //to get the access code, we just send 0
+                    },
+                    RedirectUrl: `${process.env.PAYMENT_REDIRECT_URL}`,
+                    Method: 'ProcessPayment',
+                    TransactionType: 'Purchase',
+                    SaveCustomer: true,
+                })
+                .then(function(response) {
+                    let result = response.attributes
+
+                    Transactions.insertOne({
+                        initiated: new Date(),
+                        ipaddress: getuserIpAddress(req),
+                        user: getuserid(req.session),
+                        accessCode: result.AccessCode,
+                    })
+
+                    return {
+                        //PaymentFormFields
+                        firstname: firstname,
+                        lastname: lastname,
+                        accessCode: result.AccessCode,
+                        formActionUrl: result.FormActionURL,
+                    }
+                })
         },
 
         chargeCustomer: async (root, { accessCode }, { req }) => {
-            let response = await fetch(
-                `https://secure-au.sandbox.ewaypayments.com/AccessCode/${accessCode}`,
-                {
-                    method: 'GET',
-                    headers: {
-                        Authorization:
-                            'Basic ' +
-                            `${process.env.PAYMENT_ENCRYPTION_KEY_CLIENT}`,
-                    },
-                },
-            )
+            let response = await client
+                .queryTransaction(accessCode)
+                .then(function(result) {
+                    debugger
+                    return result.attributes.Transactions[0]
+                })
 
-            // Wait for CustomerToken
-            response = await response.json()
             const TokenCustomerID = response.TokenCustomerID
 
             // Attach TokenCustomerID to user
@@ -160,8 +150,20 @@ export const resolvers = {
                 { _id: ObjectId(user_id) },
                 { $set: { TokenCustomerId: TokenCustomerID } },
             )
+            //With using the rapid SDK, we can charge the customer immediately once they put their details in, then save the token.
+            //so commenting out the below.
+            //return chargeToken(req, TokenCustomerID, accessCode)
 
-            return chargeToken(req, TokenCustomerID, accessCode)
+            const Transactions = db.collection('transactions')
+            Transactions.updateOne(
+                { accessCode: accessCode },
+                {
+                    $set: {
+                        response: response,
+                        responsetimestamp: new Date(),
+                    },
+                },
+            )
         },
 
         addLastNameToUser: async (root, { lastname }, { req }) => {
@@ -178,15 +180,10 @@ export const resolvers = {
 }
 
 async function chargeToken(req, TokenCustomerID, accessCode) {
-    //Charge with token
-    let response = await fetch(`${process.env.PAYMENT_API_URL}/Transaction`, {
-        method: 'POST',
-        headers: {
-            Authorization:
-                'Basic ' + `${process.env.PAYMENT_ENCRYPTION_KEY_CLIENT}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+    //Charge with token.
+    let response = await client.createTransaction(
+        rapid.Enum.Method.TRANSPARENT_REDIRECT,
+        {
             Customer: {
                 TokenCustomerID: TokenCustomerID,
             },
@@ -195,10 +192,8 @@ async function chargeToken(req, TokenCustomerID, accessCode) {
             },
             Method: 'ProcessPayment',
             TransactionType: 'Recurring',
-        }),
-    })
-
-    response = await response.json()
+        },
+    )
 
     const db = await DbConnection.Get()
     const Transactions = db.collection('transactions')

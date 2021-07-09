@@ -449,7 +449,7 @@ async function signup(newuser, args, req) {
     return newuser
 }
 
-const getuserIpAddress = request => {
+export const getuserIpAddress = request => {
     const headers = request.headers
     if (!headers) return null
     const ipAddress = headers['x-forwarded-for']
