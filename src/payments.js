@@ -9,9 +9,6 @@ var apiKey = `${process.env.PAYMENT_API_KEY}`,
 
 var client = rapid.createClient(apiKey, password, rapidEndpoint)
 
-const TRANSACTION_TIMEOUT = 10 //(second)
-const TRANSACTION_STATUS_POLLING_PERIOD = 0.5 //(seconds)
-
 export const typeDefs = `
     extend type Query {
         transactionStatus(accessCode: String!): String
@@ -59,20 +56,20 @@ export const resolvers = {
                         { _id: ObjectId(user_id) },
                         { $set: { TokenCustomerId: TokenCustomerID } },
                     )
-    
+                        
                     // Record transaction
                     Transactions.updateOne(
                         { accessCode: accessCode },
                         {
                             $set: {
-                                response: response,
+                                response: transaction,
                                 responsetimestamp: new Date(),
                             },
                         },
                     )
     
                     if (transaction.ResponseCode) {
-                        return resolve(transaction.ResponseCode) //This will give messages for success and common errors
+                        return resolve(transaction.ResponseCode) //This will give messages for success and common erro
                     } else if (response.Errors) {
                         return reject('An error has occurred') //could interpret the errors? - 
                     }
