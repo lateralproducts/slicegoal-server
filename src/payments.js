@@ -39,37 +39,42 @@ export const resolvers = {
         transactionStatus: async (root, { accessCode }, req) => {
             const db = await DbConnection.Get()
             const Transactions = db.collection('transactions')
-            let transaction
-            let counter = 0
+            const Users = db.collection('users')
 
             return new Promise((resolve, reject) => {
-                //IIFE
-                ;(async function check() {
-                    transaction = await Transactions.findOne({
-                        accessCode: accessCode,
-                    })
 
-                    if (transaction === null) {
+                //IIFE
+                (async function check() {
+                    let response = await client.queryTransaction(accessCode)
+                    const transaction = response.attributes.Transactions[0]
+                    if (transaction == null) {
                         return reject(new Error('Transaction not found'))
                     }
-
-                    if (transaction.response)
-                        if (transaction.response.ResponseCode) {
-                            return resolve(transaction.response.ResponseCode)
-                        } else if (transaction.response.Errors) {
-                            return resolve('An error has occurred') //could interpret the errors?
-                        }
-
-                    counter++
-                    if (
-                        counter <
-                        TRANSACTION_TIMEOUT / TRANSACTION_STATUS_POLLING_PERIOD
-                    ) {
-                        setTimeout(() => {
-                            check()
-                        }, TRANSACTION_STATUS_POLLING_PERIOD * 1000)
-                    } else {
-                        return reject(new Error('Transaction timed out'))
+                    
+                    const TokenCustomerID = transaction.TokenCustomerID
+    
+                    // Attach TokenCustomerID to user
+                    const user_id = getuserid(req.session)
+                    Users.updateOne(
+                        { _id: ObjectId(user_id) },
+                        { $set: { TokenCustomerId: TokenCustomerID } },
+                    )
+    
+                    // Record transaction
+                    Transactions.updateOne(
+                        { accessCode: accessCode },
+                        {
+                            $set: {
+                                response: response,
+                                responsetimestamp: new Date(),
+                            },
+                        },
+                    )
+    
+                    if (transaction.ResponseCode) {
+                        return resolve(transaction.ResponseCode) //This will give messages for success and common errors
+                    } else if (response.Errors) {
+                        return reject('An error has occurred') //could interpret the errors? - 
                     }
                 })()
             }).then(
@@ -105,7 +110,7 @@ export const resolvers = {
                         Country: 'au',
                     },
                     Payment: {
-                        TotalAmount: 19.0, //to get the access code, we just send 0
+                        TotalAmount: 1900, //to get the access code, we just send 0
                     },
                     RedirectUrl: `${process.env.PAYMENT_REDIRECT_URL}`,
                     Method: 'ProcessPayment',
