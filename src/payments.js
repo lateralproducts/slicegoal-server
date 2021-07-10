@@ -17,7 +17,6 @@ export const typeDefs = `
 
     extend type Mutation {
         getAccessCode: PaymentFormFields
-        chargeCustomer(accessCode: String!): Boolean
         addLastNameToUser(lastname: String!): Boolean
     }
 
@@ -33,30 +32,29 @@ export const typeDefs = `
 
 export const resolvers = {
     Query: {
-        transactionStatus: async (root, { accessCode }, req) => {
+        transactionStatus: async (root, { accessCode }, { req }) => {
             const db = await DbConnection.Get()
             const Transactions = db.collection('transactions')
             const Users = db.collection('users')
 
             return new Promise((resolve, reject) => {
-
                 //IIFE
-                (async function check() {
+                ;(async function check() {
                     let response = await client.queryTransaction(accessCode)
                     const transaction = response.attributes.Transactions[0]
                     if (transaction == null) {
                         return reject(new Error('Transaction not found'))
                     }
-                    
+
                     const TokenCustomerID = transaction.TokenCustomerID
-    
+
                     // Attach TokenCustomerID to user
                     const user_id = getuserid(req.session)
                     Users.updateOne(
                         { _id: ObjectId(user_id) },
                         { $set: { TokenCustomerId: TokenCustomerID } },
                     )
-                        
+
                     // Record transaction
                     Transactions.updateOne(
                         { accessCode: accessCode },
@@ -67,11 +65,11 @@ export const resolvers = {
                             },
                         },
                     )
-    
+
                     if (transaction.ResponseCode) {
-                        return resolve(transaction.ResponseCode) //This will give messages for success and common erro
+                        return resolve(transaction.ResponseCode) //This will give messages for success and common errors
                     } else if (response.Errors) {
-                        return reject('An error has occurred') //could interpret the errors? - 
+                        return reject('An error has occurred') //could interpret the errors? -
                     }
                 })()
             }).then(
@@ -134,7 +132,8 @@ export const resolvers = {
                 })
         },
 
-        chargeCustomer: async (root, { accessCode }, { req }) => {
+        //only commenting out for now, because may use for scheduled monthly subscriptions.
+        /* chargeCustomer: async (root, { accessCode }, { req }) => {
             let response = await client
                 .queryTransaction(accessCode)
                 .then(function(result) {
@@ -166,7 +165,7 @@ export const resolvers = {
                     },
                 },
             )
-        },
+        }, */
 
         addLastNameToUser: async (root, { lastname }, { req }) => {
             const user_id = getuserid(req.session)
@@ -182,7 +181,7 @@ export const resolvers = {
 }
 
 async function chargeToken(req, TokenCustomerID, accessCode) {
-    //Charge with token.
+    //Charge with token. will be used for scheduled monthly subscriptions.
     let response = await client.createTransaction(
         rapid.Enum.Method.TRANSPARENT_REDIRECT,
         {
