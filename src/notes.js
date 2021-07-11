@@ -50,10 +50,9 @@ export const typeDefs = `
     markSpacedYes(noteId: String, datetime: String): Boolean
     markSpacedNo(noteId: String, datetime: String): Boolean
     updateNote(noteid: String, datetime: String, prompt: String, answer: String): Spaced 
-    createNoteLink(noteid: String, area: String): Boolean
-    updateNoteLink(linkid: String, notes: String): Boolean
+    createNoteLink(noteid: String!, area: String, areaname: String): Boolean
+    updateNoteLink(linkid: String!, notes: String): Boolean
     removeNoteLink(linkid: String): Boolean
-    createNewNoteLink(areaname: String!, noteid: String!): Boolean
     createNote(datetime: String, prompt: String, answer: String, arealinks: [AreaLinkIn]): Spaced
   }
 
@@ -195,12 +194,32 @@ export const resolvers = {
         createNoteLink: async (root, args, { req }) => {
             const db = await DbConnection.Get()
             const NoteLinks = db.collection('notelinks')
+            const Areas = db.collection('areas')
             args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
             args.datecreated = new Date()
-            const res = await NoteLinks.insert(args)
-            return res.insertedIds[1] ? true : false
+
+            let areaid
+            if (!args.area) {
+                let newarea = new Object() //create new area.
+                newarea.wheelid = getprofileid(req.session) //update: check to see if this should be profileid, not wheelid...
+                newarea.name = args.areaname
+                const inserted = await Areas.insertOne(newarea) //only creating new area if "areaname is added"
+                areaid = inserted.insertedId.toString()
+            } else {
+                areaid = args.area
+            }
+
+            const link = await NoteLinks.insertOne({
+                //insert the link to connect note and new area.
+                noteid: args.noteid,
+                profileid: getprofileid(req.session),
+                area: areaid,
+                datecreated: new Date(),
+            })
+
+            return link.insertedId ? true : false
         },
         updateNoteLink: async (root, args, { req }) => {
             const db = await DbConnection.Get()
@@ -230,7 +249,7 @@ export const resolvers = {
             )
             return true
         },
-        createNewNoteLink: async (root, args, { req }) => {
+        /* createNewNoteLink: async (root, args, { req }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const NoteLinks = db.collection('notelinks')
@@ -247,7 +266,7 @@ export const resolvers = {
                 datecreated: new Date(args.datetime),
             })
             return res.insertedIds[1] ? true : false
-        },
+        }, */
         createNote: async (root, args, { req }) => {
             args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
