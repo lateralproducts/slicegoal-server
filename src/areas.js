@@ -25,6 +25,12 @@ export const schema = `
     input AreaId {
         _id: String
     }
+
+    input AreaIn {
+        areaname: String
+        definition: String
+    }
+
     type Focus {
         _id: String
         area: Area
@@ -114,7 +120,7 @@ export const typeDefs = `
     
     extend type Mutation {
         setView(viewid: String): View
-        createNewWheel(viewtype: String, templatewheel: String): View 
+        createNewWheel(viewtype: String, wheelname: String!, areas: [AreaIn]): View
         removeStartArea: Boolean!
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
         deleteArea(area: String): Area
@@ -290,20 +296,23 @@ export const resolvers = {
         },
         createNewWheel: async (
             parent,
-            { viewtype, templatewheel },
+            { viewtype, wheelname, areas },
             { req },
         ) => {
+
             //set wheel, view, and profile to the context.
             let { newview, newprofile } = await createWheel(
                 req.session.user,
                 req.session.user._id.toString(),
                 viewtype,
-                templatewheel,
+                wheelname,
+                areas
             )
             req.session.view = newview
             req.session.profile = newprofile
-
+        
             return prepare(newview) //need to return the view, area.
+
         },
         removeStartArea: async (parent, args, { req }) => {
             const db = await DbConnection.Get()
@@ -746,9 +755,10 @@ export const resolvers = {
     },
 }
 
-export async function createWheel(user, userid, viewtype, wheel) {
+export async function createWheel(user, userid, viewtype, wheelname, areas) {
     const db = await DbConnection.Get()
     const Areas = db.collection('areas')
+    const AreaLinks = db.collection('arealinks')
     const Views = db.collection('views')
     const Profiles = db.collection('profiles')
     const Wheels = db.collection('wheels')
@@ -779,9 +789,51 @@ export async function createWheel(user, userid, viewtype, wheel) {
         case 'client':
         default:
             viewtype = 'personal'
-            //use wheel here to copy the global wheel for the new wheel
-            if (!wheel) wheel = `${process.env.COPY_WHEELOFLIFE}`
-            wheelid = await copywheel(wheel, userid)
+        
+            //First area passed is root/start area
+            const startArea = (await Areas.insertOne({
+                user: userid,
+                name: areas[0].areaname,
+                email: user.email,
+                created: new Date(),
+            })).insertedId.toString()
+            
+            //Create wheel object
+            const newWheel = (await Wheels.insertOne({
+                user: userid,
+                created: new Date(),
+                startarea: startArea,
+                name: wheelname
+            })).insertedId.toString()
+
+            //Update startarea to have correct wheelid
+            Areas.updateOne({_id: startArea}, {wheelid: newWheel})
+            
+            //Insert the rest of the areas 
+            await areas.slice(1).forEach( (area) => {
+                Areas.insertOne({
+                    name: area.areaname,
+                    wheelid: newWheel,
+                    definition: area.definition,
+                    rootarea: startArea,
+                    uiversion: getuiversion(req.session),
+                    created: new Date(),
+                    serverversion: pjson.version
+                })
+            })
+
+            //Insert the area links
+            let newAreas = Areas.find({rootarea: startArea})
+            await newAreas.forEach( (area) => {
+                AreaLinks.insertOne({
+                    area: area._id.toString(),
+                    areaname: area.name,
+                    rootarea: area.rootarea,
+                    wheelid: newWheel,
+                    uiversion: getuiversion(req.session),
+                    serverversion: pjson.version
+                })
+            })
     }
 
     //create new view
@@ -814,6 +866,7 @@ export async function createWheel(user, userid, viewtype, wheel) {
 
     return { newview, newprofile }
 }
+
 async function copywheel(wheelid, userid) {
     const db = await DbConnection.Get()
     const Wheels = db.collection('wheels')
