@@ -173,7 +173,7 @@ export const resolvers = {
       const db = await DbConnection.Get();
       const Areas = db.collection("areas");
       let areas = (await Areas.find({
-        $or: [{ wheelid: getwheelid(req.session) }] //, { userid: "global" } if we want to use global.
+        $or: [{ wheelid: getwheelid(req.session) }, { global: true }] // if we want to use global areas to define wheels.
       })
         .sort({ clicks: -1 })
         .toArray()).map(prepare);
@@ -203,21 +203,17 @@ export const resolvers = {
         .sort({ type: -1, name: 1 })
         .toArray()).map(prepare);
     },
-    area: async (root, { _id, navdirection, global }, { req }) => {
+    area: async (root, { _id, navdirection }, { req }) => {
       const db = await DbConnection.Get();
       const Areas = db.collection("areas");
       logareaclick(_id, navdirection, req);
 
       let area = await Areas.findOne({
         _id: ObjectId(_id),
-        $or: [
-          { wheelid: getwheelid(req.session) }
-          //{ userid: "global" }
-          //{ userid: { $in: getcoachesid(req.session) } } //this makes the area visible to clients. Using coach:true field.
-        ]
+        $or: [{ wheelid: getwheelid(req.session) }]
       });
 
-      return prepare(area);
+      return area; //removing "prepare()" for consistency, because it turns _id into string which is read by children in graph.
     },
     ranktimes: async (root, { areaId }, { req }) => {
       const db = await DbConnection.Get();
@@ -588,13 +584,13 @@ export const resolvers = {
         );
       });
     },
-    areas: async ({ _id }, args, { req }) => {
+    areas: async (parent, args, { req }, info) => {
       const db = await DbConnection.Get();
       const Areas = db.collection("areas");
       const AreaLinks = db.collection("arealinks");
       const query = {
-        rootarea: _id,
-        $or: [{ wheelid: getwheelid(req.session) }, { wheelid: "global" }] //use this global flag to return global wheels for templates.
+        rootarea: parent._id.toString(), //using parent ID from Area object on Graph. No need for global boolean on AreaLink for now.
+        $or: [{ wheelid: getwheelid(req.session) }, { wheelid: parent.wheelid }]
       };
       const arealinks = await AreaLinks.distinct("area", query);
 
@@ -603,7 +599,8 @@ export const resolvers = {
           $in: arealinks.map(function(id) {
             return ObjectId(id);
           })
-        }
+        },
+        $or: [{ wheelid: getwheelid(req.session) }, { global: true }] //need to return areas where global: true.
       }).toArray()).map(prepare);
     },
     rank: async ({ _id, coach }, args, { req }) => {
@@ -633,7 +630,10 @@ export const resolvers = {
               },
               {
                 $group: {
-                  _id: { area: "$area", profileid: "$userid" },
+                  _id: {
+                    area: "$area",
+                    profileid: "$userid"
+                  },
                   date: {
                     $last: "$date"
                   },
