@@ -216,9 +216,8 @@ export const resolvers = {
 
             let area = await Areas.findOne({
                 _id: ObjectId(_id),
-                $or: [{ wheelid: getwheelid(req.session) }],
+                $or: [{ wheelid: getwheelid(req.session) }, { global: true }],
             })
-
             return area //removing "prepare()" for consistency, because it turns _id into string which is read by children in graph.
         },
         ranktimes: async (root, { areaId }, { req }) => {
@@ -292,7 +291,7 @@ export const resolvers = {
             req.session.view = view
             req.session.profile = profile
 
-            return prepare(view) //need to return the view, area.
+            return view //need to return the view, area.
         },
         createNewWheel: async (
             parent,
@@ -610,10 +609,7 @@ export const resolvers = {
             const AreaLinks = db.collection('arealinks')
             const query = {
                 rootarea: parent._id.toString(), //using parent ID from Area object on Graph. No need for global boolean on AreaLink for now.
-                $or: [
-                    { wheelid: getwheelid(req.session) },
-                    { wheelid: parent.wheelid },
-                ],
+                wheelid: parent.wheelid,
             }
             const arealinks = await AreaLinks.distinct('area', query)
 
@@ -820,7 +816,10 @@ export async function createWheel(
             })).insertedId.toString()
 
             //Update startarea to have correct wheelid
-            Areas.updateOne({ _id: startArea }, { wheelid: wheelid })
+            Areas.updateOne(
+                { _id: ObjectId(startArea) },
+                { $set: { wheelid: wheelid } },
+            )
 
             //Insert the rest of the areas
             await areas.forEach(area => {
@@ -858,7 +857,7 @@ export async function createWheel(
         name:
             viewtype === 'coach'
                 ? getname(user.firstname, '', user.email) + "'s Coaching"
-                : 'Wheel of Life', //req.session.view.name,
+                : wheelname,
         type: viewtype,
     }
     Views.insertOne(newview)
