@@ -27,7 +27,7 @@ export const schema = `
     }
 
     input AreaIn {
-        areaname: String
+        name: String
         definition: String
     }
 
@@ -299,20 +299,19 @@ export const resolvers = {
             { viewtype, wheelname, areas },
             { req },
         ) => {
-
             //set wheel, view, and profile to the context.
             let { newview, newprofile } = await createWheel(
                 req.session.user,
                 req.session.user._id.toString(),
                 viewtype,
                 wheelname,
-                areas
+                areas,
+                getuiversion(req.session),
             )
             req.session.view = newview
             req.session.profile = newprofile
-        
-            return prepare(newview) //need to return the view, area.
 
+            return prepare(newview) //need to return the view, area.
         },
         removeStartArea: async (parent, args, { req }) => {
             const db = await DbConnection.Get()
@@ -383,7 +382,14 @@ export const resolvers = {
             let user = await Users.findOne({
                 _id: ObjectId(getuserid(req.session)),
             })
-            if (user) createWheel(user, user._id.toString(), viewtype, wheelid)
+            if (user)
+                createWheel(
+                    user,
+                    user._id.toString(),
+                    viewtype,
+                    wheelid,
+                    getuiversion(req.session),
+                )
             return true
         },
         deleteAreaLink: async (root, { rootarea, area }, { req }) => {
@@ -755,7 +761,14 @@ export const resolvers = {
     },
 }
 
-export async function createWheel(user, userid, viewtype, wheelname, areas) {
+export async function createWheel(
+    user,
+    userid,
+    viewtype,
+    wheelname,
+    areas,
+    uiversion,
+) {
     const db = await DbConnection.Get()
     const Areas = db.collection('areas')
     const AreaLinks = db.collection('arealinks')
@@ -789,49 +802,49 @@ export async function createWheel(user, userid, viewtype, wheelname, areas) {
         case 'client':
         default:
             viewtype = 'personal'
-        
+
             //First area passed is root/start area
             const startArea = (await Areas.insertOne({
                 user: userid,
-                name: areas[0].areaname,
+                name: wheelname,
                 email: user.email,
                 created: new Date(),
             })).insertedId.toString()
-            
+
             //Create wheel object
-            const newWheel = (await Wheels.insertOne({
+            wheelid = (await Wheels.insertOne({
                 user: userid,
                 created: new Date(),
                 startarea: startArea,
-                name: wheelname
+                name: wheelname,
             })).insertedId.toString()
 
             //Update startarea to have correct wheelid
-            Areas.updateOne({_id: startArea}, {wheelid: newWheel})
-            
-            //Insert the rest of the areas 
-            await areas.slice(1).forEach( (area) => {
+            Areas.updateOne({ _id: startArea }, { wheelid: wheelid })
+
+            //Insert the rest of the areas
+            await areas.forEach(area => {
                 Areas.insertOne({
-                    name: area.areaname,
-                    wheelid: newWheel,
+                    name: area.name,
+                    wheelid: wheelid,
                     definition: area.definition,
                     rootarea: startArea,
-                    uiversion: getuiversion(req.session),
+                    uiversion: uiversion,
                     created: new Date(),
-                    serverversion: pjson.version
+                    serverversion: pjson.version,
                 })
             })
 
             //Insert the area links
-            let newAreas = Areas.find({rootarea: startArea})
-            await newAreas.forEach( (area) => {
+            let newAreas = Areas.find({ rootarea: startArea })
+            await newAreas.forEach(area => {
                 AreaLinks.insertOne({
                     area: area._id.toString(),
                     areaname: area.name,
                     rootarea: area.rootarea,
-                    wheelid: newWheel,
-                    uiversion: getuiversion(req.session),
-                    serverversion: pjson.version
+                    wheelid: wheelid,
+                    uiversion: uiversion,
+                    serverversion: pjson.version,
                 })
             })
     }

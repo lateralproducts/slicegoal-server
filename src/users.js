@@ -340,7 +340,7 @@ export const resolvers = {
             const Views = db.collection('views')
             let query = new Object()
             query.user = getuserid(req.session) //need to return BSON as string.
-            return (await Views.find(query).toArray()).map(prepare)
+            return await Views.find(query).toArray()
         },
     },
 }
