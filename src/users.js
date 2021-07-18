@@ -8,6 +8,8 @@ import {
     newUserNotificationEmail,
 } from './emails'
 
+import { getuiversion } from '../util/index'
+
 import { createWheel } from './areas'
 
 let pjson = require('../package.json')
@@ -446,7 +448,14 @@ async function signup(newuser, args, req) {
     const Users = db.collection('users')
     newuser.lastip = getuserIpAddress(req)
     let userid = (await Users.insertOne(newuser)).insertedId.toString()
-    await createWheel(newuser, userid, args.account)
+    await createWheel(
+        newuser,
+        userid,
+        args.account,
+        'Your New Wheel',
+        null,
+        getuiversion(req.session),
+    )
     newUserNotificationEmail(newuser)
 
     return newuser

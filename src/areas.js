@@ -849,30 +849,32 @@ export async function createWheel(
             )
 
             //Insert the rest of the areas
-            await areas.forEach(area => {
-                Areas.insertOne({
-                    name: area.name,
-                    wheelid: wheelid,
-                    definition: area.definition,
-                    rootarea: startArea,
-                    uiversion: uiversion,
-                    created: new Date(),
-                    serverversion: pjson.version,
+            if (areas) {
+                await areas.map(area => {
+                    Areas.insertOne({
+                        name: area.name,
+                        wheelid: wheelid,
+                        definition: area.definition,
+                        rootarea: startArea,
+                        uiversion: uiversion,
+                        created: new Date(),
+                        serverversion: pjson.version,
+                    })
                 })
-            })
 
-            //Insert the area links
-            let newAreas = Areas.find({ rootarea: startArea })
-            await newAreas.forEach(area => {
-                AreaLinks.insertOne({
-                    area: area._id.toString(),
-                    areaname: area.name,
-                    rootarea: area.rootarea,
-                    wheelid: wheelid,
-                    uiversion: uiversion,
-                    serverversion: pjson.version,
+                //Insert the area links
+                let newAreas = Areas.find({ rootarea: startArea })
+                await newAreas.map(area => {
+                    AreaLinks.insertOne({
+                        area: area._id.toString(),
+                        areaname: area.name,
+                        rootarea: area.rootarea,
+                        wheelid: wheelid,
+                        uiversion: uiversion,
+                        serverversion: pjson.version,
+                    })
                 })
-            })
+            }
     }
 
     //create new view
