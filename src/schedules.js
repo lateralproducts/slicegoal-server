@@ -66,7 +66,7 @@ async function ranknudge() {
 
             function(err, userrankss) {
                 if (err) throw err
-                if (userrankss) resolve(userrankss.map(prepare))
+                if (userrankss) resolve(userrankss)
                 else resolve(null)
             },
         )

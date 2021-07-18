@@ -10,7 +10,6 @@ import {
 
 import { createWheel } from './areas'
 
-import { prepare } from '../util/index'
 let pjson = require('../package.json')
 import DbConnection from './database'
 
@@ -60,6 +59,7 @@ export const typeDefs = `
 export const resolvers = {
     Query: {
         isLoggedin: async (root, args, { req, ip }) => {
+            //this is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const Logins = db.collection('logins')
@@ -78,7 +78,7 @@ export const resolvers = {
                     type: 'loggedin refresh',
                     lastlogin: new Date(),
                 })
-                return prepare(user)
+                return user
             } else {
                 await Logins.insertOne({
                     email: 'session removed',
@@ -95,6 +95,7 @@ export const resolvers = {
     },
     Mutation: {
         updateProfile: async (parent, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             let user = await Users.findOneAndUpdate(
@@ -106,6 +107,7 @@ export const resolvers = {
         },
 
         createClient: async (parent, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const Views = db.collection('views')
@@ -152,6 +154,7 @@ export const resolvers = {
         },
 
         verifyAccount: async (parent, args, { req }) => {
+            //This function is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const user = await Users.findOneAndUpdate(
@@ -164,7 +167,7 @@ export const resolvers = {
                 },
             )
             req.session.user = user.value
-            if (user.value) return prepare(user.value)
+            if (user.value) return user.value
             else {
                 throw new Error(
                     "Your account didn't verify. If you've signed up before, try logging in.",
@@ -173,6 +176,7 @@ export const resolvers = {
         },
 
         login: async (parent, args, { req, ip }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const Logins = db.collection('logins')
@@ -188,7 +192,7 @@ export const resolvers = {
 
                 if (await bcrypt.compareSync(args.pwd, user.password)) {
                     let loggedinuser = await login(user, args, req)
-                    return prepare(loggedinuser)
+                    return loggedinuser
                 } else {
                     await Users.updateOne(
                         { _id: ObjectId(user._id) },
@@ -240,6 +244,7 @@ export const resolvers = {
         },
 
         signup: async (parent, args, { req }) => {
+            //This is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const user = await Users.findOne({
@@ -273,6 +278,7 @@ export const resolvers = {
         },
 
         googleLogin: async (parent, args, { req, ip }) => {
+            //This is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const Logins = db.collection('logins')
@@ -332,7 +338,7 @@ export const resolvers = {
             const Areas = db.collection('areas')
             const Views = db.collection('views')
             return startarea
-                ? prepare(await Areas.findOne({ _id: ObjectId(startarea) }))
+                ? await Areas.findOne({ _id: ObjectId(startarea) })
                 : null
         },
         views: async (parent, args, { req }) => {
@@ -351,15 +357,12 @@ export function getname(firstname, lastname, email) {
 
 export function getprofileid(session) {
     if (session.profile) return session.profile._id.toString()
-    else {
-        if (!session.user) throw new Error('Invalid Session')
-        else throw new Error('Profile not found')
-    }
+    else return null
 }
 
 export function getuserid(session) {
     if (session.user) return session.user._id.toString()
-    else throw new Error('Invalid Session')
+    else return null
 }
 
 async function login(user, args, req) {

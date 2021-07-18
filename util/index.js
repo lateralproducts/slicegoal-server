@@ -1,11 +1,11 @@
-export const prepare = (o) => {
+/* export const prepare = o => {
     o._id = o._id.toString()
     return o
-}
+} */
 
 export function getuiversion(session) {
-    if (session.user) return session.user.uiversion;
-    else return "test";
+    if (session.user) return session.user.uiversion
+    else return 'test'
 }
 
 export const typeDefs = `
@@ -15,17 +15,16 @@ export const typeDefs = `
     }`
 
 export const resolvers = {
-
     Mutation: {
         runUpdate101: async (parent, args, { req }) => {
-            Areas.updateMany({}, { $rename: { userid: "wheelid" } });
-            Areas.updateMany({}, { $rename: { userid: "wheelid" } });
-            AreaLinks.updateMany({}, { $rename: { userid: "wheelid" } });
-            RankTimes.updateMany({}, { $rename: { userid: "profileid" } });
-            Notes.updateMany({}, { $rename: { userid: "profileid" } });
-            NoteLinks.updateMany({}, { $rename: { userid: "profileid" } });
-            Objectives.updateMany({}, { $rename: { userid: "profileid" } });
-            ObjectiveLinks.updateMany({}, { $rename: { userid: "profileid" } });
+            Areas.updateMany({}, { $rename: { userid: 'wheelid' } })
+            Areas.updateMany({}, { $rename: { userid: 'wheelid' } })
+            AreaLinks.updateMany({}, { $rename: { userid: 'wheelid' } })
+            RankTimes.updateMany({}, { $rename: { userid: 'profileid' } })
+            Notes.updateMany({}, { $rename: { userid: 'profileid' } })
+            NoteLinks.updateMany({}, { $rename: { userid: 'profileid' } })
+            Objectives.updateMany({}, { $rename: { userid: 'profileid' } })
+            ObjectiveLinks.updateMany({}, { $rename: { userid: 'profileid' } })
 
             //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
             /* const users = await Users.find().toArray();
@@ -100,7 +99,7 @@ export const resolvers = {
             updategoal(goaltime);
             }); */
 
-            return true;
-        }
-    }
+            return true
+        },
+    },
 }

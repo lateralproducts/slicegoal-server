@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb'
 
 let pjson = require('../package.json')
-import { prepare, getuiversion } from '../util/index'
+import { getuiversion } from '../util/index'
 import { getprofileid } from './users'
 import DbConnection from './database'
 
@@ -61,9 +61,10 @@ export const typeDefs = `
 export const resolvers = {
     Query: {
         notes: async (parent, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const NoteLinks = db.collection('notelinks')
-            const notelinks = (await NoteLinks.find(
+            const notelinks = await NoteLinks.find(
                 {
                     area: args.area,
                     profileid: getprofileid(req.session),
@@ -73,36 +74,39 @@ export const resolvers = {
                     ],
                 },
                 { sort: { datecreated: -1 } }, //return reverse chron. Last note created at top of list.
-            ).toArray()).map(prepare)
+            ).toArray()
 
-            return notelinks.map(prepare)
+            return notelinks
         },
         searchnotes: async (parent, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Notes = db.collection('notes')
-            const notes = (await Notes.find(
+            const notes = await Notes.find(
                 {
                     answer: new RegExp(args.search, 'i'),
                     profileid: getprofileid(req.session),
                     prompt: args.spaced ? { $not: { $eq: '' } } : '',
                 },
                 { sort: { datecreated: -1 } }, //return reverse chron. Last note created at top of list.
-            ).toArray()).map(prepare)
+            ).toArray()
 
-            return notes.map(prepare)
+            return notes
         },
         noteLinks: async (parent, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const NoteLinks = db.collection('notelinks')
-            const notelinks = (await NoteLinks.find({
+            const notelinks = await NoteLinks.find({
                 noteid: args.noteid,
                 profileid: getprofileid(req.session),
-            }).toArray()).map(prepare)
+            }).toArray()
             return notelinks
         },
     },
     Mutation: {
         markSpacedYes: async (root, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
             const NoteLinks = db.collection('notelinks')
@@ -141,6 +145,7 @@ export const resolvers = {
             return true
         },
         markSpacedNo: async (root, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const NoteLinks = db.collection('notelinks')
             const Spaced = db.collection('spaced')
@@ -177,6 +182,7 @@ export const resolvers = {
             return true
         },
         updateNote: async (root, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Notes = db.collection('notes')
             args.lastedited = new Date(args.datetime)
@@ -192,6 +198,7 @@ export const resolvers = {
             }
         },
         createNoteLink: async (root, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const NoteLinks = db.collection('notelinks')
             const Areas = db.collection('areas')
@@ -222,6 +229,7 @@ export const resolvers = {
             return link.insertedId ? true : false
         },
         updateNoteLink: async (root, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const NoteLinks = db.collection('notelinks')
             args.profileid = getprofileid(req.session)
@@ -235,6 +243,7 @@ export const resolvers = {
             return true
         },
         removeNoteLink: async (root, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const NoteLinks = db.collection('notelinks')
             args.profileid = getprofileid(req.session)
@@ -268,6 +277,7 @@ export const resolvers = {
             return res.insertedIds[1] ? true : false
         }, */
         createNote: async (root, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
             args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
@@ -282,11 +292,11 @@ export const resolvers = {
         },
     },
     Note: {
-        spaced: async ({ _id }, args, { req }) => {
+        spaced: async (parent, args, { req }) => {
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
             let spaced = await Spaced.findOne({
-                noteid: _id,
+                noteid: parent._id.toString(),
                 userid: getprofileid(req.session),
             })
             return spaced
@@ -296,20 +306,12 @@ export const resolvers = {
         area: async (parent, args, { req }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            return prepare(
-                await Areas.findOne({
-                    _id: ObjectId(parent.area),
-                }),
-            )
+            return await Areas.findOne({ _id: ObjectId(parent.area) })
         },
-        note: async ({ noteid }, args, { req }) => {
+        note: async (parent, args, { req }) => {
             const db = await DbConnection.Get()
             const Notes = db.collection('notes')
-            return prepare(
-                await Notes.findOne({
-                    _id: ObjectId(noteid),
-                }),
-            )
+            return await Notes.findOne({ _id: ObjectId(parent.noteid) })
         },
     },
 }
