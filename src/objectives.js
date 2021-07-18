@@ -510,8 +510,7 @@ export const resolvers = {
                     {
                         $match: {
                             userid: getprofileid(req.session),
-
-                            objective: _id,
+                            objective: _id.toString(),
                         },
                     },
                     {
