@@ -176,7 +176,7 @@ export const resolvers = {
         },
 
         login: async (parent, args, { req, ip }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            //public function
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const Logins = db.collection('logins')
