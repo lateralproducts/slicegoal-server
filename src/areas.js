@@ -848,10 +848,10 @@ export async function createWheel(
                 { $set: { wheelid: wheelid } },
             )
 
-            //Insert the rest of the areas
+            //Setting up the Area records
             if (areas) {
-                await areas.map(area => {
-                    Areas.insertOne({
+                let insertAreas = areas.map(area => {
+                    return {
                         name: area.name,
                         wheelid: wheelid,
                         definition: area.definition,
@@ -859,21 +859,23 @@ export async function createWheel(
                         uiversion: uiversion,
                         created: new Date(),
                         serverversion: pjson.version,
-                    })
+                    }
                 })
 
-                //Insert the area links
-                let newAreas = Areas.find({ rootarea: startArea })
-                await newAreas.map(area => {
-                    AreaLinks.insertOne({
-                        area: area._id.toString(),
-                        areaname: area.name,
-                        rootarea: area.rootarea,
+                let newAreas = (await Areas.insertMany(insertAreas)).insertedIds //insert all records in one go.
+
+                //Setting up the AreaLink records
+                let insertAreaLinks = newAreas.map(areaid => {
+                    return {
+                        area: areaid,
+                        rootarea: startArea,
                         wheelid: wheelid,
                         uiversion: uiversion,
                         serverversion: pjson.version,
-                    })
+                    }
                 })
+
+                AreaLinks.insert(insertAreaLinks) //inserting in one request
             }
     }
 
