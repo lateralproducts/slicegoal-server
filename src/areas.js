@@ -849,7 +849,7 @@ export async function createWheel(
             )
 
             //Setting up the Area records
-            if (areas) {
+            if (areas.length > 0) { //Blank wheel will have zero attached areas.
                 let insertAreas = areas.map(area => {
                     return {
                         name: area.name,
