@@ -5,6 +5,26 @@ import { getuiversion } from '../util/index'
 import { getprofileid } from './users'
 import DbConnection from './database'
 
+export const typeDefs = `
+
+  extend type Query {
+    noteLinks(noteid: String): [NoteLink]
+    notes(area: String): [NoteLink]
+    searchnotes(search: String, spaced: Boolean): [Note]
+  }
+
+  extend type Mutation {
+    markSpacedYes(noteId: String, datetime: String): Boolean
+    markSpacedNo(noteId: String, datetime: String): Boolean
+    updateNote(noteid: String, datetime: String, prompt: String, answer: String): Spaced 
+    createNoteLink(noteid: String!, area: String, areaname: String): Boolean
+    updateNoteLink(linkid: String!, notes: String): Boolean
+    removeNoteLink(linkid: String): Boolean
+    createNote(datetime: String, prompt: String, answer: String, arealinks: [AreaLinkIn]): Spaced
+  }
+
+`
+
 export const schema = `
 
     type Note {
@@ -36,26 +56,6 @@ export const schema = `
         fib1: String
         datenext: String
     }
-`
-
-export const typeDefs = `
-
-  extend type Query {
-    noteLinks(noteid: String): [NoteLink]
-    notes(area: String): [NoteLink]
-    searchnotes(search: String, spaced: Boolean): [Note]
-  }
-
-  extend type Mutation {
-    markSpacedYes(noteId: String, datetime: String): Boolean
-    markSpacedNo(noteId: String, datetime: String): Boolean
-    updateNote(noteid: String, datetime: String, prompt: String, answer: String): Spaced 
-    createNoteLink(noteid: String!, area: String, areaname: String): Boolean
-    updateNoteLink(linkid: String!, notes: String): Boolean
-    removeNoteLink(linkid: String): Boolean
-    createNote(datetime: String, prompt: String, answer: String, arealinks: [AreaLinkIn]): Spaced
-  }
-
 `
 
 export const resolvers = {
@@ -102,6 +102,29 @@ export const resolvers = {
                 profileid: getprofileid(req.session),
             }).toArray()
             return notelinks
+        },
+    },
+    Note: {
+        spaced: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Spaced = db.collection('spaced')
+            let spaced = await Spaced.findOne({
+                noteid: parent._id.toString(),
+                userid: getprofileid(req.session),
+            })
+            return spaced
+        },
+    },
+    NoteLink: {
+        area: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            return await Areas.findOne({ _id: ObjectId(parent.area) })
+        },
+        note: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Notes = db.collection('notes')
+            return await Notes.findOne({ _id: ObjectId(parent.noteid) })
         },
     },
     Mutation: {
@@ -290,30 +313,7 @@ export const resolvers = {
                 message: 'new note created',
             }
         },
-    },
-    Note: {
-        spaced: async (parent, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Spaced = db.collection('spaced')
-            let spaced = await Spaced.findOne({
-                noteid: parent._id.toString(),
-                userid: getprofileid(req.session),
-            })
-            return spaced
-        },
-    },
-    NoteLink: {
-        area: async (parent, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            return await Areas.findOne({ _id: ObjectId(parent.area) })
-        },
-        note: async (parent, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Notes = db.collection('notes')
-            return await Notes.findOne({ _id: ObjectId(parent.noteid) })
-        },
-    },
+    }
 }
 
 async function createnote(newnote, req) {
