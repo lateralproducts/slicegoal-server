@@ -145,7 +145,7 @@ export const resolvers = {
             const Views = db.collection('views')
             let query = new Object()
             query.user = getuserid(req.session)
-            if (args.default) query._id = ObjectId(args.defaultview) //if asking for default profile only return the default.
+            //if (args.default) query._id = ObjectId(args.defaultview) //if asking for default profile only return the default.
             return await Views.find(query).toArray()
         },
         wheels: async (parent, args, { req }) => {
@@ -781,7 +781,7 @@ export const resolvers = {
             args._id = args.area
             return args
         },
-    }
+    },
 }
 
 export async function createWheel(
@@ -849,7 +849,8 @@ export async function createWheel(
             )
 
             //Setting up the Area records
-            if (areas.length > 0) { //Blank wheel will have zero attached areas.
+            if (areas.length > 0) {
+                //Blank wheel will have zero attached areas.
                 let insertAreas = areas.map(area => {
                     return {
                         name: area.name,
