@@ -33,7 +33,7 @@ export const schema = `
     serverversion: String
     profile: String
     views: [View]
-    defaultview: View
+    currentview: View
     url: String
   }
 `
@@ -347,8 +347,21 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Views = db.collection('views')
             let query = new Object()
-            query.user = getuserid(req.session) //need to return BSON as string.
+            query.user = getuserid(req.session)
             return await Views.find(query).toArray()
+        },
+        currentview: async (parent, args, { req }) => {
+            if (req.session.view) return req.session.view
+            else {
+                const db = await DbConnection.Get()
+                const Views = db.collection('views')
+                let query = new Object()
+                query.user = getuserid(req.session)
+                return await Views.find(query)
+                    .sort({ defaultview: 1 })
+                    .limit(1)
+                    .toArray()
+            }
         },
     },
 }
@@ -448,14 +461,14 @@ async function signup(newuser, args, req) {
     const Users = db.collection('users')
     newuser.lastip = getuserIpAddress(req)
     let userid = (await Users.insertOne(newuser)).insertedId.toString()
-    await createWheel(
+    /* await createWheel(
         newuser,
         userid,
         args.account,
         'Your New Wheel',
         null,
         getuiversion(req.session),
-    )
+    ) */
     newUserNotificationEmail(newuser)
 
     return newuser

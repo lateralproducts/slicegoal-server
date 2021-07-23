@@ -145,7 +145,6 @@ export const resolvers = {
             const Views = db.collection('views')
             let query = new Object()
             query.user = getuserid(req.session)
-            if (args.default) query._id = ObjectId(args.defaultview) //if asking for default profile only return the default.
             return await Views.find(query).toArray()
         },
         wheels: async (parent, args, { req }) => {
@@ -849,7 +848,8 @@ export async function createWheel(
             )
 
             //Setting up the Area records
-            if (areas.length > 0) { //Blank wheel will have zero attached areas.
+            if (areas.length > 0) {
+                //Blank wheel will have zero attached areas.
                 let insertAreas = areas.map(area => {
                     return {
                         name: area.name,
@@ -874,8 +874,8 @@ export async function createWheel(
                         serverversion: pjson.version,
                     }
                 })
-
-                AreaLinks.insert(insertAreaLinks) //inserting in one request
+                //check deprecation of insertMany
+                AreaLinks.insertMany(insertAreaLinks) //inserting in one request
             }
     }
 

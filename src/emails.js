@@ -11,7 +11,7 @@ let auth = {
     user: `${process.env.EMAILCLIENT_USR}`,
     pass: `${process.env.EMAILCLIENT_PWD}`,
 }
-let sender = 'Cavestep 🦶<' + auth.user + '>'
+let sender = 'CAVESTEP<' + auth.user + '>'
 
 let PATH_URL = `${process.env.PATH_URL}`
 
