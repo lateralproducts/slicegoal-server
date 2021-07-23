@@ -23,21 +23,6 @@ const oAuth2Client = new OAuth2Client({
     clientId: googleclientId,
 })
 
-export const schema = `
-  type User {
-    _id: String
-    firstname: String
-    email: String
-    startarea: String
-    area: Area
-    serverversion: String
-    profile: String
-    views: [View]
-    defaultview: View
-    url: String
-  }
-`
-
 export const typeDefs = `
 
   extend type Query {
@@ -56,6 +41,21 @@ export const typeDefs = `
     logout: Boolean!
   }
 
+`
+
+export const schema = `
+  type User {
+    _id: String
+    firstname: String
+    email: String
+    startarea: String
+    area: Area
+    serverversion: String
+    profile: String
+    views: [View]
+    defaultview: View
+    url: String
+  }
 `
 
 export const resolvers = {
@@ -93,6 +93,23 @@ export const resolvers = {
 
                 throw new Error('User not logged in')
             }
+        },
+    },
+    User: {
+        area: async ({ startarea }, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            const Views = db.collection('views')
+            return startarea
+                ? await Areas.findOne({ _id: ObjectId(startarea) })
+                : null
+        },
+        views: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Views = db.collection('views')
+            let query = new Object()
+            query.user = getuserid(req.session) //need to return BSON as string.
+            return await Views.find(query).toArray()
         },
     },
     Mutation: {
@@ -333,24 +350,7 @@ export const resolvers = {
             req.session.destroy()
             return true
         },
-    },
-    User: {
-        area: async ({ startarea }, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            const Views = db.collection('views')
-            return startarea
-                ? await Areas.findOne({ _id: ObjectId(startarea) })
-                : null
-        },
-        views: async (parent, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Views = db.collection('views')
-            let query = new Object()
-            query.user = getuserid(req.session) //need to return BSON as string.
-            return await Views.find(query).toArray()
-        },
-    },
+    }
 }
 
 export function getname(firstname, lastname, email) {

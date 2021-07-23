@@ -39,7 +39,7 @@ export const resolvers = {
 
             return new Promise((resolve, reject) => {
                 //IIFE
-                ;(async function check() {
+                (async function check() {
                     let response = await client.queryTransaction(accessCode)
                     const transaction = response.attributes.Transactions[0]
                     if (transaction == null) {
@@ -88,7 +88,6 @@ export const resolvers = {
             return true
         },
     },
-
     Mutation: {
         getAccessCode: async (root, args, { req }) => {
             const db = await DbConnection.Get()
@@ -178,44 +177,6 @@ export const resolvers = {
             return true
         },
     },
-}
-
-async function chargeToken(req, TokenCustomerID, accessCode) {
-    //Charge with token. will be used for scheduled monthly subscriptions.
-    let response = await client.createTransaction(
-        rapid.Enum.Method.TRANSPARENT_REDIRECT,
-        {
-            Customer: {
-                TokenCustomerID: TokenCustomerID,
-            },
-            Payment: {
-                TotalAmount: `${process.env.PAYMENT_MONTHLY_COST}`,
-            },
-            Method: 'ProcessPayment',
-            TransactionType: 'Recurring',
-        },
-    )
-
-    const db = await DbConnection.Get()
-    const Transactions = db.collection('transactions')
-    if (accessCode) {
-        Transactions.updateOne(
-            { accessCode: accessCode },
-            {
-                $set: {
-                    response: response,
-                    timestamp: new Date(),
-                },
-            },
-        )
-    } else {
-        Transactions.insertOne({
-            user: getuserid(req.session),
-            response: response,
-            timestamp: new Date(),
-        })
-    }
-    return true
 }
 
 function responseMessage(responseCode) {

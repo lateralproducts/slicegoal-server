@@ -6,7 +6,7 @@ let pjson = require('../package.json')
 
 export const typeDefs = `
     extend type Mutation {
-    submitFeedback(title: String, description: String): Boolean
+        submitFeedback(title: String, description: String): Boolean
     }
 `
 

@@ -5,6 +5,31 @@ import { prepare, getuiversion } from '../util/index'
 import DbConnection from './database'
 let pjson = require('../package.json')
 
+export const typeDefs = `
+    extend type Query {
+        objectives(area: String!): [Objective]
+        objectiveLinks(area: String, objective: String, search: String, date: String): [ObjectiveLink]
+        readPomoData(area: String): PomodoroData
+        readObjectivePomoData(objective: String): PomodoroData
+        pomodoros(objectiveId: String): [Pomodoro]
+    }
+
+    extend type Mutation {
+        createObjective(datetime: String, objective: String, notes: String, keys:[KeyIn], arealinks: [AreaLinkIn], links: [String]): Objective
+        createObjectiveLink(objectiveid: String, areaid: String, areaname: String): String
+        checkKey(objectiveId: String!, index: Int, check: Boolean): Boolean
+        updateObjectiveLink(linkid: String!, notes: String, snooze: String): Boolean
+        removeObjectiveLink(linkid: String!): Boolean
+        updateObjective(objectiveId: String!, objective: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Objective
+        updateObjectiveOrder(objectives: [String]): Boolean
+        updateFocusOrder(objectives: [String]): Boolean
+        saveFocusLink(area: String!, objective: String!, datetime: String!, links: [String]): Boolean
+        snoozeFocusLink(objectiveid: String!, snooze: String!): Boolean
+        snoozeObjectiveLink(objectiveid: String!, snooze: String!): Boolean
+        savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
+    }
+`
+
 export const schema = `
     type Objective {
         _id: String
@@ -58,31 +83,6 @@ export const schema = `
     }
 `
 
-export const typeDefs = `
-    extend type Query {
-        objectives(area: String!): [Objective]
-        objectiveLinks(area: String, objective: String, search: String, date: String): [ObjectiveLink]
-        readPomoData(area: String): PomodoroData
-        readObjectivePomoData(objective: String): PomodoroData
-        pomodoros(objectiveId: String): [Pomodoro]
-    }
-
-    extend type Mutation {
-        createObjective(datetime: String, objective: String, notes: String, keys:[KeyIn], arealinks: [AreaLinkIn], links: [String]): Objective
-        createObjectiveLink(objectiveid: String, areaid: String, areaname: String): String
-        checkKey(objectiveId: String!, index: Int, check: Boolean): Boolean
-        updateObjectiveLink(linkid: String!, notes: String, snooze: String): Boolean
-        removeObjectiveLink(linkid: String!): Boolean
-        updateObjective(objectiveId: String!, objective: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Objective
-        updateObjectiveOrder(objectives: [String]): Boolean
-        updateFocusOrder(objectives: [String]): Boolean
-        saveFocusLink(area: String!, objective: String!, datetime: String!, links: [String]): Boolean
-        snoozeFocusLink(objectiveid: String!, snooze: String!): Boolean
-        snoozeObjectiveLink(objectiveid: String!, snooze: String!): Boolean
-        savePomodoro(area: String, links: [String], notes: String, objective: String, datetime: String, minutes: Int): Boolean!
-    }
-
-`
 export const resolvers = {
     Query: {
         objectives: async (parent, args, { req }) => {
@@ -257,6 +257,74 @@ export const resolvers = {
                         resolve(data[0] ? data[0] : 0)
                     },
                 )
+            })
+        },
+    },
+    Objective: {
+        links: async ({ links }, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            if (links)
+                return await Areas.find({
+                    _id: {
+                        $in: links.map(link => {
+                            return ObjectId(link)
+                        }),
+                    },
+                }).toArray()
+            else return null
+        },
+        time: async ({ _id }, args, { req }, query) => {
+            const db = await DbConnection.Get()
+            const Pomodoros = db.collection('pomodoros')
+            return new Promise(function(resolve, reject) {
+                Pomodoros.aggregate(
+                    {
+                        $match: {
+                            userid: getprofileid(req.session),
+                            objective: _id.toString(),
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: { links: null }, //"$area"
+                            count: { $sum: '$minutes' },
+                        },
+                    },
+
+                    function(err, data) {
+                        if (err) throw err
+                        resolve(data[0] ? data[0] : 0)
+                    },
+                )
+            })
+        },
+    },
+    ObjectiveLink: {
+        area: async ({ areaid }, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            return await Areas.findOne({ _id: ObjectId(areaid) })
+        },
+        objective: async ({ objectiveid }, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Objectives = db.collection('objectives')
+            return await Objectives.findOne({ _id: ObjectId(objectiveid) })
+        },
+    },
+    Focus: {
+        area: async ({ area }, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            return await Areas.findOne({
+                _id: ObjectId(area),
+            })
+        },
+        objective: async ({ objective }, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Objectives = db.collection('objectives')
+            return await Objectives.findOne({
+                _id: ObjectId(objective),
             })
         },
     },
@@ -487,75 +555,7 @@ export const resolvers = {
             await Pomodoros.insertOne(args)
             return true
         },
-    },
-    Objective: {
-        links: async ({ links }, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            if (links)
-                return await Areas.find({
-                    _id: {
-                        $in: links.map(link => {
-                            return ObjectId(link)
-                        }),
-                    },
-                }).toArray()
-            else return null
-        },
-        time: async ({ _id }, args, { req }, query) => {
-            const db = await DbConnection.Get()
-            const Pomodoros = db.collection('pomodoros')
-            return new Promise(function(resolve, reject) {
-                Pomodoros.aggregate(
-                    {
-                        $match: {
-                            userid: getprofileid(req.session),
-                            objective: _id.toString(),
-                        },
-                    },
-                    {
-                        $group: {
-                            _id: { links: null }, //"$area"
-                            count: { $sum: '$minutes' },
-                        },
-                    },
-
-                    function(err, data) {
-                        if (err) throw err
-                        resolve(data[0] ? data[0] : 0)
-                    },
-                )
-            })
-        },
-    },
-    ObjectiveLink: {
-        area: async ({ areaid }, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            return await Areas.findOne({ _id: ObjectId(areaid) })
-        },
-        objective: async ({ objectiveid }, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Objectives = db.collection('objectives')
-            return await Objectives.findOne({ _id: ObjectId(objectiveid) })
-        },
-    },
-    Focus: {
-        area: async ({ area }, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            return await Areas.findOne({
-                _id: ObjectId(area),
-            })
-        },
-        objective: async ({ objective }, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Objectives = db.collection('objectives')
-            return await Objectives.findOne({
-                _id: ObjectId(objective),
-            })
-        },
-    },
+    }
 }
 
 async function createobjective(newobjective, req) {
