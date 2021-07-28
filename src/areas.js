@@ -154,7 +154,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
             return await Wheels.find({ global: true })
-                .sort({templateorder: 1})
+                .sort({templateorder: -1})
                 .toArray()
         },
         focusLinks: async (parent, args, { req }) => {
