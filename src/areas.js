@@ -153,7 +153,9 @@ export const resolvers = {
             //Could potentially have a completely different server running this in the future.
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
-            return await Wheels.find({ global: true }).toArray()
+            return await Wheels.find({ global: true })
+                .sort({templateorder: 1})
+                .toArray()
         },
         focusLinks: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
