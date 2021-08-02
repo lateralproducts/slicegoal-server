@@ -84,9 +84,11 @@ export const resolvers = {
             const Notes = db.collection('notes')
             const notes = await Notes.find(
                 {
-                    answer: new RegExp(args.search, 'i'),
+                    $or: [
+                        { answer: new RegExp(args.search, 'i') },
+                        { prompt: new RegExp(args.search, 'i') },
+                    ],
                     profileid: getprofileid(req.session),
-                    prompt: args.spaced ? { $not: { $eq: '' } } : '',
                 },
                 { sort: { datecreated: -1 } }, //return reverse chron. Last note created at top of list.
             ).toArray()
@@ -313,7 +315,7 @@ export const resolvers = {
                 message: 'new note created',
             }
         },
-    }
+    },
 }
 
 async function createnote(newnote, req) {
