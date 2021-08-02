@@ -48,6 +48,7 @@ export const typeDefs = `
     updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
     createClient(email: String!, firstname: String, lastname: String): Boolean
     verifyAccount(userid: String, code: String, password: String): User
+    updatePassword(userid: String, oldpassword: String, newpassword: String): User
     login(username: String!, pwd: String!, uiversion: String): User
     setSignUpContext(account: String): Boolean
     signup(email: String, firstname: String, uiversion: String, account: String): Boolean!
@@ -159,7 +160,25 @@ export const resolvers = {
             //This function is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
-            const user = await Users.findOneAndUpdate(
+
+            let user = await Users.findOne(
+                {
+                    $and: [
+                        {_id: ObjectId(args.userid)},
+                        {code: args.code}
+                    ]
+                }
+            )
+            if(user.state !== 'new')
+                throw new Error(
+                    "Your account didn't verify. If you've signed up before, try logging in.",
+                )
+
+            const passwordCheck = checkPasswordFormat(args.password)
+            if(passwordCheck !== 'Accepted')
+                throw new Error(passwordCheck)
+    
+            user = await Users.findOneAndUpdate(
                 { _id: ObjectId(args.userid), code: args.code, state: 'new' },
                 {
                     $set: {
@@ -168,13 +187,7 @@ export const resolvers = {
                     },
                 },
             )
-            req.session.user = user.value
-            if (user.value) return user.value
-            else {
-                throw new Error(
-                    "Your account didn't verify. If you've signed up before, try logging in.",
-                )
-            }
+            return user.value
         },
 
         login: async (parent, args, { req, ip }) => {
@@ -333,6 +346,32 @@ export const resolvers = {
             req.session.destroy()
             return true
         },
+
+        updatePassword: async(parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+
+            let user = await Users.findOne(
+                    {_id: ObjectId(args.userid)}
+            )
+            if(user.state !== 'verified')
+                throw new Error('Password cannot be updated on unverified account')
+
+            const check = bcrypt.compareSync(args.oldpassword, user.password)
+            if(!check)
+                throw new Error('Incorrect current password')
+            
+            user = await Users.findOneAndUpdate(
+                { _id: ObjectId(args.userid)},
+                {
+                    $set: {
+                        password: bcrypt.hashSync(args.newpassword, 10),
+                    },
+                },
+            )
+
+            return user.value
+        }
     },
     User: {
         area: async ({ startarea }, args, { req }) => {
@@ -480,4 +519,25 @@ export const getuserIpAddress = request => {
     const ipAddress = headers['x-forwarded-for']
     if (!ipAddress) return null
     return ipAddress
+}
+
+function checkPasswordFormat (password){
+    const alpha_char = /[a-z]/i //regex of alphabetical chars
+    let return_message = ''
+    if(password.length > process.env.PASSWORD_MAX_LENGTH)
+        return_message += `Password must be fewer than ` 
+        + `${process.env.PASSWORD_MAX_LENGTH} characters `
+        + `in length `
+    if(password.length < process.env.PASSWORD_MIN_LENGTH)
+        return_message += `Password must be more than ` 
+        + `${process.env.PASSWORD_MIN_LENGTH} characters `
+        + `in length `
+    if(!alpha_char.test(password))
+        return_message += 'Password must contain at least ' 
+        + '1 alphabetical character'
+
+    if(return_message.length === 0)
+        return 'Accepted'
+
+    return return_message
 }
