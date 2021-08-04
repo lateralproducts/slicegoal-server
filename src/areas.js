@@ -154,7 +154,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
             return await Wheels.find({ global: true })
-                .sort({templateorder: -1})
+                .sort({ templateorder: -1 })
                 .toArray()
         },
         focusLinks: async (parent, args, { req }) => {
@@ -286,7 +286,11 @@ export const resolvers = {
             let query = new Object()
             query.wheel = parent._id.toString()
             if (parent.view.type !== 'coach')
-                query.user = getuserid(req.session)
+                query.$or = [
+                    { user: getuserid(req.session) },
+                    { type: 'team' },
+                    { type: 'average' },
+                ]
             //if (args.default) query._id = ObjectId(parent.view.defaultprofile); //if asking for default profile only return the default.
             return await Profiles.find(query)
                 .sort({ type: -1, name: 1 })
