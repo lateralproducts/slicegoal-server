@@ -128,7 +128,7 @@ export const resolvers = {
                     },
                 }
 
-                const ObjectiveLinks = new Promise(function(resolve, reject) {
+                const ObjLinksReturn = new Promise(function(resolve, reject) {
                     ObjectiveLinks.aggregate(
                         {
                             $match: query,
@@ -152,7 +152,7 @@ export const resolvers = {
                         },
                     )
                 })
-                return ObjectiveLinks.toArray()
+                return ObjLinksReturn
             } else {
                 let query = Object()
                 args.area ? (query.areaid = args.area) : ''
@@ -555,7 +555,7 @@ export const resolvers = {
             await Pomodoros.insertOne(args)
             return true
         },
-    }
+    },
 }
 
 async function createobjective(newobjective, req) {

@@ -331,7 +331,7 @@ export const resolvers = {
             let wheel = await Wheels.findOne({
                 _id: ObjectId(obj.wheel),
             })
-            wheel.view = obj
+            if (wheel) wheel.view = obj
             return wheel
         },
         //user: async (view, args, { req }) => {
@@ -550,7 +550,8 @@ export const resolvers = {
 
             let query = new Object()
             query.wheel = view.wheel
-            if (view.type === 'team') query.user = getuserid(req.session) //access allowed to all profiles for coach.
+            if (view.type === 'team')
+                query.$or = [{ user: getuserid(req.session) }, { type: 'team' }] //access allowed to all profiles for coach.
 
             const profile = await Profiles.findOne(query)
 
@@ -830,7 +831,7 @@ export async function createWheel(
             break
         case 'client':
         default:
-            viewtype = 'personal'
+            viewtype = 'multiwheel'
 
             //First area passed is root/start area
             const startArea = (await Areas.insertOne({
@@ -910,7 +911,7 @@ export async function createWheel(
             viewtype === 'coach'
                 ? 'Team Profile'
                 : getname(user.firstname, user.lastname, user.email),
-        type: viewtype === 'coach' ? 'team' : viewtype, //create the first team profile.
+        type: 'team', //create the first team profile.
     }
     Profiles.insertOne(newprofile)
 

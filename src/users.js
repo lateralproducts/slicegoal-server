@@ -130,6 +130,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Users = db.collection('users')
+
             let user = await Users.findOneAndUpdate(
                 { _id: ObjectId(getuserid(req.session)) }, //update this
                 { $set: args },
@@ -173,15 +174,26 @@ export const resolvers = {
             Views.insertOne(newview)
 
             //create new profile
-            let newprofile = {
-                user: userid,
+            const profiles = await Profiles.find({
                 wheel: req.session.view.wheel,
-                name: getname(args.firstname, args.lastname, args.email),
-                type: 'member',
-                created: new Date(),
-            }
-            Profiles.insertOne(newprofile)
+            })
+            if (profiles.length === 1)
+                Profiles.updateOne(
+                    { wheel: req.session.view.wheel },
+                    { $set: { type: 'team' } },
+                )
 
+            if (args.profile) {
+                //need to implement this as an option in the front end.
+                let newprofile = {
+                    user: userid,
+                    wheel: req.session.view.wheel,
+                    name: getname(args.firstname, args.lastname, args.email),
+                    type: 'member',
+                    created: new Date(),
+                }
+                Profiles.insertOne(newprofile)
+            }
             return true
         },
 
@@ -335,6 +347,17 @@ export const resolvers = {
                     let newuser = await signup(user, args, req) //automatically sign up google login.
                     return await login(newuser, args, req)
                 } else {
+                    if (user.state !== 'verified') {
+                        //if the user exists and isn't verified, verify them, because we have their google id verified
+                        await Users.updateOne(
+                            { _id: user._id },
+                            {
+                                $set: {
+                                    state: 'verified',
+                                },
+                            },
+                        )
+                    }
                     return await login(user, args, req)
                 }
             }
