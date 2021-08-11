@@ -23,6 +23,9 @@ const oAuth2Client = new OAuth2Client({
     clientId: googleclientId,
 })
 
+const PASSWORD_MAX_LENGTH = 64
+const PASSWORD_MIN_LENGTH = 8
+
 export const typeDefs = `
 
   extend type Query {
@@ -216,9 +219,9 @@ export const resolvers = {
                     "Your account didn't verify. If you've signed up before, try logging in.",
                 )
 
-            const passwordCheck = checkPasswordFormat(args.password)
-            if(passwordCheck !== 'Accepted')
-                throw new Error(passwordCheck)
+            
+
+            checkPasswordFormat(args.password)
     
             user = await Users.findOneAndUpdate(
                 { _id: ObjectId(args.userid), code: args.code, state: 'new' },
@@ -544,21 +547,31 @@ export const getuserIpAddress = request => {
 
 function checkPasswordFormat (password){
     const alpha_char = /[a-z]/i //regex of alphabetical chars
+    const numeric_char = /[0-9]/
+    const special_char = /[!"#$%&'()*+,-.\/:;<=>?@[\]^_`{|}~]/
     let return_message = ''
-    if(password.length > process.env.PASSWORD_MAX_LENGTH)
+    if(password.length > PASSWORD_MAX_LENGTH)
         return_message += `Password must be fewer than ` 
-        + `${process.env.PASSWORD_MAX_LENGTH} characters `
+        + `${PASSWORD_MAX_LENGTH} characters `
         + `in length `
-    if(password.length < process.env.PASSWORD_MIN_LENGTH)
+    if(password.length < PASSWORD_MIN_LENGTH)
         return_message += `Password must be more than ` 
-        + `${process.env.PASSWORD_MIN_LENGTH} characters `
+        + `${PASSWORD_MIN_LENGTH} characters `
         + `in length `
     if(!alpha_char.test(password))
         return_message += 'Password must contain at least ' 
-        + '1 alphabetical character'
-
+        + 'one alphabetical character'
+    if(!special_char.test(password))
+        return_message += 'Password must contain at least '
+        + 'one of the following characters: '
+        + '!"#$%&\'()*+,-.\/:;<=>?@[]^_`{|}~ '
+    if(!numeric_char.test(password))
+        return_message += 'Password must contain at least '
+        + 'one number'
     if(return_message.length === 0)
         return 'Accepted'
 
+    if(return_message.length > 0)
+        throw new Error(return_message)
     return return_message
 }
