@@ -23,27 +23,29 @@ async function objectivenudge(email) {
 
     const user = await Users.findOne({ email: email })
 
-    const links = await FocusLinks.find({
-        userid: user._id.toString(),
-        $or: [{ snooze: null }, { snooze: { $lt: new Date() } }],
-    })
-        .sort({ orderrank: 1 })
-        .limit(3)
-        .toArray()
+    if (user) {
+        const links = await FocusLinks.find({
+            userid: user._id.toString(),
+            $or: [{ snooze: null }, { snooze: { $lt: new Date() } }],
+        })
+            .sort({ orderrank: 1 })
+            .limit(3)
+            .toArray()
 
-    const objectives = await Objectives.find({
-        _id: {
-            $in: links.map(function(link) {
-                return ObjectId(link.objective)
-            }),
-        },
-        $or: [{ snooze: null }, { snooze: { $lt: new Date() } }],
-    })
-        .sort({ orderrank: 1 })
-        .limit(100)
-        .toArray()
+        const objectives = await Objectives.find({
+            _id: {
+                $in: links.map(function(link) {
+                    return ObjectId(link.objective)
+                }),
+            },
+            $or: [{ snooze: null }, { snooze: { $lt: new Date() } }],
+        })
+            .sort({ orderrank: 1 })
+            .limit(100)
+            .toArray()
 
-    emailObjectiveNudge(user, links, objectives)
+        emailObjectiveNudge(user, links, objectives)
+    }
 }
 
 async function ranknudge() {
