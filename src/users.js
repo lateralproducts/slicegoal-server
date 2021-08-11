@@ -23,21 +23,6 @@ const oAuth2Client = new OAuth2Client({
     clientId: googleclientId,
 })
 
-export const schema = `
-  type User {
-    _id: String
-    firstname: String
-    email: String
-    startarea: String
-    area: Area
-    serverversion: String
-    profile: String
-    views: [View]
-    currentview: View
-    url: String
-  }
-`
-
 export const typeDefs = `
 
   extend type Query {
@@ -57,6 +42,21 @@ export const typeDefs = `
     logout: Boolean!
   }
 
+`
+
+export const schema = `
+  type User {
+    _id: String
+    firstname: String
+    email: String
+    startarea: String
+    area: Area
+    serverversion: String
+    profile: String
+    views: [View]
+    currentview: View
+    url: String
+  }
 `
 
 export const resolvers = {
@@ -93,6 +93,36 @@ export const resolvers = {
                 })
 
                 throw new Error('User not logged in')
+            }
+        },
+    },
+    User: {
+        area: async ({ startarea }, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            const Views = db.collection('views')
+            return startarea
+                ? await Areas.findOne({ _id: ObjectId(startarea) })
+                : null
+        },
+        views: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Views = db.collection('views')
+            let query = new Object()
+            query.user = getuserid(req.session)
+            return await Views.find(query).toArray()
+        },
+        currentview: async (parent, args, { req }) => {
+            if (req.session.view) return req.session.view
+            else {
+                const db = await DbConnection.Get()
+                const Views = db.collection('views')
+                let query = new Object()
+                query.user = getuserid(req.session)
+                return await Views.find(query)
+                    .sort({ defaultview: 1 })
+                    .limit(1)
+                    .toArray()
             }
         },
     },
@@ -373,36 +403,6 @@ export const resolvers = {
             return user.value
         }
     },
-    User: {
-        area: async ({ startarea }, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            const Views = db.collection('views')
-            return startarea
-                ? await Areas.findOne({ _id: ObjectId(startarea) })
-                : null
-        },
-        views: async (parent, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Views = db.collection('views')
-            let query = new Object()
-            query.user = getuserid(req.session)
-            return await Views.find(query).toArray()
-        },
-        currentview: async (parent, args, { req }) => {
-            if (req.session.view) return req.session.view
-            else {
-                const db = await DbConnection.Get()
-                const Views = db.collection('views')
-                let query = new Object()
-                query.user = getuserid(req.session)
-                return await Views.find(query)
-                    .sort({ defaultview: 1 })
-                    .limit(1)
-                    .toArray()
-            }
-        },
-    },
 }
 
 export function getname(firstname, lastname, email) {
@@ -500,17 +500,15 @@ async function signup(newuser, args, req) {
     const Users = db.collection('users')
     newuser.lastip = getuserIpAddress(req)
     let userid = (await Users.insertOne(newuser)).insertedId.toString()
-    /* await createWheel(
-        newuser,
-        userid,
-        args.account,
-        'Your New Wheel',
-        null,
-        getuiversion(req.session),
-    ) */
-    newUserNotificationEmail(newuser)
 
-    return newuser
+    if (userid) {
+        newUserNotificationEmail(newuser)
+        return newuser
+    } else {
+        throw new Error(
+            'Sign up failed for some reason. Sorry. Please try again.',
+        )
+    }
 }
 
 export const getuserIpAddress = request => {

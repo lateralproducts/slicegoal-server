@@ -5,6 +5,42 @@ import { getuiversion } from '../util/index'
 import { getuserid, getprofileid, getname } from './users'
 let pjson = require('../package.json')
 
+export const typeDefs = `
+
+    extend type Query {
+        wheels:[Wheel]
+        views: [View]
+        profiles: [Profile]
+        area(_id: String!, navdirection: String, readdate: String): Area
+        areas (readdate: String): [Area]
+        arealinks(area: String): [AreaLink]
+        ranktimes(areaId: String): [RankTime]
+        lastranktime(areaId: String): RankTime
+        goaltimes(areaId: String): [GoalTime]
+        lastgoaltime(areaId: String): GoalTime
+        focusLinks(limit: Int, area: String): [Focus]
+        focusLink(focuslink: String): Focus
+    }
+    
+    extend type Mutation {
+        setView(viewid: String): View
+        createNewWheel(viewtype: String, wheelname: String!, areas: [AreaIn]): View
+        removeStartArea: Boolean!
+        toggleFocusFlag(rootarea: String!, area: String!): Boolean
+        deleteArea(area: String): Area
+        updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
+        setProfile(profileid: String!): Profile
+        copyWheel(wheelid: String!, viewtype: String!): Boolean
+        createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
+        deleteAreaLink(rootarea: String, area: String): Area
+        createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
+        createCoachArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
+        createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
+        createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
+    }
+
+`
+
 export const schema = `
 
     type AreaLink {
@@ -101,42 +137,6 @@ export const schema = `
     }
 `
 
-export const typeDefs = `
-
-    extend type Query {
-        wheels:[Wheel]
-        views: [View]
-        profiles: [Profile]
-        area(_id: String!, navdirection: String, readdate: String): Area
-        areas (readdate: String): [Area]
-        arealinks(area: String): [AreaLink]
-        ranktimes(areaId: String): [RankTime]
-        lastranktime(areaId: String): RankTime
-        goaltimes(areaId: String): [GoalTime]
-        lastgoaltime(areaId: String): GoalTime
-        focusLinks(limit: Int, area: String): [Focus]
-        focusLink(focuslink: String): Focus
-    }
-    
-    extend type Mutation {
-        setView(viewid: String): View
-        createNewWheel(viewtype: String, wheelname: String!, areas: [AreaIn]): View
-        removeStartArea: Boolean!
-        toggleFocusFlag(rootarea: String!, area: String!): Boolean
-        deleteArea(area: String): Area
-        updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
-        setProfile(profileid: String!): Profile
-        copyWheel(wheelid: String!, viewtype: String!): Boolean
-        createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
-        deleteAreaLink(rootarea: String, area: String): Area
-        createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
-        createCoachArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
-        createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
-        createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
-    }
-
-`
-
 export const resolvers = {
     Query: {
         views: async (parent, args, { req }) => {
@@ -145,6 +145,7 @@ export const resolvers = {
             const Views = db.collection('views')
             let query = new Object()
             query.user = getuserid(req.session)
+            //if (args.default) query._id = ObjectId(args.defaultview) //if asking for default profile only return the default.
             return await Views.find(query).toArray()
         },
         wheels: async (parent, args, { req }) => {
@@ -152,7 +153,9 @@ export const resolvers = {
             //Could potentially have a completely different server running this in the future.
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
-            return await Wheels.find({ global: true }).toArray()
+            return await Wheels.find({ global: true })
+                .sort({templateorder: -1})
+                .toArray()
         },
         focusLinks: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -274,6 +277,258 @@ export const resolvers = {
                 { areaId: areaId, userid: getprofileid(req.session) },
                 { sort: { date: -1 } },
             )
+        },
+    },
+    Wheel: {
+        profiles: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Profiles = db.collection('profiles')
+            let query = new Object()
+            query.wheel = parent._id.toString()
+            if (parent.view.type !== 'coach')
+                query.user = getuserid(req.session)
+            //if (args.default) query._id = ObjectId(parent.view.defaultprofile); //if asking for default profile only return the default.
+            return await Profiles.find(query)
+                .sort({ type: -1, name: 1 })
+                .toArray()
+        },
+        startarea: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            let query = new Object()
+            query._id = ObjectId(parent.startarea)
+            return await Areas.findOne(query)
+        },
+    },
+    Profile: {
+        wheel: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Wheels = db.collection('wheels')
+            return await Wheels.findOne({
+                _id: ObjectId(parent.wheel),
+            })
+        },
+    },
+    AreaLink: {
+        linkedarea: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            return parent.rootarea
+                ? await Areas.findOne({
+                      _id: ObjectId(parent.rootarea),
+                  })
+                : { _id: ObjectId(parent.area), name: null }
+        },
+    },
+    View: {
+        wheel: async (obj, args, context, info) => {
+            const db = await DbConnection.Get()
+            const Wheels = db.collection('wheels')
+            let wheel = await Wheels.findOne({
+                _id: ObjectId(obj.wheel),
+            })
+            wheel.view = obj
+            return wheel
+        },
+        //user: async (view, args, { req }) => {
+        //    return (
+        //      await Users.findOne({
+        //        _id: ObjectId(view.user)
+        //     })
+        //    );
+        //}
+    },
+    Area: {
+        clicks: async ({ _id }, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Clicks = db.collection('clicks')
+            let currentDate = new Date()
+            currentDate.setDate(currentDate.getDate() - 7) //currently reading one week's trailing data.
+            return new Promise(function(resolve, reject) {
+                Clicks.aggregate(
+                    {
+                        $match: {
+                            areaid: _id.toString(),
+                            userid: getuserid(req.session),
+                            date: {
+                                $gte: currentDate,
+                            },
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            clicks: { $sum: 1 },
+                        },
+                    },
+
+                    function(err, data) {
+                        if (err) throw err
+                        resolve(data[0] ? data[0] : 0)
+                    },
+                )
+            })
+        },
+        areas: async (parent, args, { req }, info) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            const AreaLinks = db.collection('arealinks')
+            const query = {
+                rootarea: parent._id.toString(), //using parent ID from Area object on Graph. No need for global boolean on AreaLink for now.
+                wheelid: parent.wheelid,
+            }
+            const arealinks = await AreaLinks.distinct('area', query)
+
+            return await Areas.find({
+                _id: {
+                    $in: arealinks.map(function(id) {
+                        return ObjectId(id)
+                    }),
+                },
+                $or: [
+                    {
+                        wheelid: req.session.view
+                            ? getwheelid(req.session)
+                            : 'public', //placeholder, to stop error calling.
+                    },
+                    { global: true },
+                ], //need to return areas where global: true.
+            }).toArray()
+        },
+        rank: async ({ _id, coach }, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Profiles = db.collection('profiles')
+            const RankTimes = db.collection('ranktimes')
+            if (req.session.profile)
+                if (req.session.profile.type === 'average') {
+                    //was previously using "coach" in area to decide to aggregate rank
+                    const profiles = await Profiles.find({
+                        wheel: req.session.profile.wheel,
+                    }).toArray()
+
+                    return new Promise(function(resolve, reject) {
+                        //returning the average of the area for coaching
+                        RankTimes.aggregate(
+                            {
+                                $match: {
+                                    area: _id.toString(),
+                                    //userid: req.session.profile.wheel
+                                    profileid: {
+                                        $in: profiles.map(profile => {
+                                            return profile._id.toString()
+                                        }),
+                                    },
+                                },
+                            },
+                            {
+                                $group: {
+                                    _id: {
+                                        area: '$area',
+                                        profileid: '$userid',
+                                    },
+                                    date: {
+                                        $last: '$date',
+                                    },
+                                    rank: { $last: '$rank' },
+                                },
+                            },
+                            {
+                                $group: {
+                                    _id: '$*_*id.area',
+                                    rank: { $avg: '$rank' },
+                                },
+                            },
+
+                            function(err, data) {
+                                if (err) throw err
+                                resolve(
+                                    data[0]
+                                        ? {
+                                              rank: parseInt(data[0].rank),
+                                              note: 'team average',
+                                          }
+                                        : null,
+                                )
+                            },
+                        )
+                    })
+                } else {
+                    const rank = await RankTimes.findOne(
+                        {
+                            area: _id.toString(),
+                            profileid: getprofileid(req.session),
+                        },
+                        { sort: { date: -1 } },
+                    )
+                    return rank ? rank : null
+                }
+        },
+        goal: async ({ _id }, args, { req }) => {
+            const db = await DbConnection.Get()
+            const GoalTimes = db.collection('goaltimes')
+            const goal = await GoalTimes.findOne(
+                { area: _id.toString(), userid: getprofileid(req.session) },
+                { sort: { date: -1 } },
+            )
+            return goal ? goal : null
+        },
+        time: async ({ _id }, args, { req }, query) => {
+            const db = await DbConnection.Get()
+            const Pomodoros = db.collection('pomodoros')
+            if (args || item) {
+            }
+            return new Promise(function(resolve, reject) {
+                let currentDate = new Date()
+                currentDate.setDate(currentDate.getDate() - 7) //currently reading one week's trailing data.
+                Pomodoros.aggregate(
+                    {
+                        $match: {
+                            userid: getprofileid(req.session),
+                            date: {
+                                $gte: currentDate,
+                            },
+                            $or: [
+                                /*{
+                                    area: _id,
+                                }, */
+                                {
+                                    links: _id.toString(),
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: { links: null }, //"$area"
+                            count: { $sum: '$minutes' },
+                            records: { $sum: 1 },
+                            direct: {
+                                $sum: {
+                                    $cond: {
+                                        if: { $eq: ['$area', _id.toString()] },
+                                        then: 1,
+                                        else: 0,
+                                    },
+                                },
+                            },
+                            countdirect: {
+                                $sum: {
+                                    $cond: {
+                                        if: { $eq: ['$area', _id.toString()] },
+                                        then: '$minutes',
+                                        else: 0,
+                                    },
+                                },
+                            },
+                        },
+                    },
+
+                    function(err, data) {
+                        if (err) throw err
+                        resolve(data[0] ? data[0] : 0)
+                    },
+                )
+            })
         },
     },
     Mutation: {
@@ -527,258 +782,6 @@ export const resolvers = {
             )
             args._id = args.area
             return args
-        },
-    },
-    Wheel: {
-        profiles: async (parent, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Profiles = db.collection('profiles')
-            let query = new Object()
-            query.wheel = parent._id.toString()
-            if (parent.view.type !== 'coach')
-                query.user = getuserid(req.session)
-            //if (args.default) query._id = ObjectId(parent.view.defaultprofile); //if asking for default profile only return the default.
-            return await Profiles.find(query)
-                .sort({ type: -1, name: 1 })
-                .toArray()
-        },
-        startarea: async (parent, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            let query = new Object()
-            query._id = ObjectId(parent.startarea)
-            return await Areas.findOne(query)
-        },
-    },
-    Profile: {
-        wheel: async (parent, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Wheels = db.collection('wheels')
-            return await Wheels.findOne({
-                _id: ObjectId(parent.wheel),
-            })
-        },
-    },
-    AreaLink: {
-        linkedarea: async (parent, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            return parent.rootarea
-                ? await Areas.findOne({
-                      _id: ObjectId(parent.rootarea),
-                  })
-                : { _id: ObjectId(parent.area), name: null }
-        },
-    },
-    View: {
-        wheel: async (obj, args, context, info) => {
-            const db = await DbConnection.Get()
-            const Wheels = db.collection('wheels')
-            let wheel = await Wheels.findOne({
-                _id: ObjectId(obj.wheel),
-            })
-            wheel.view = obj
-            return wheel
-        },
-        //user: async (view, args, { req }) => {
-        //    return (
-        //      await Users.findOne({
-        //        _id: ObjectId(view.user)
-        //     })
-        //    );
-        //}
-    },
-    Area: {
-        clicks: async ({ _id }, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Clicks = db.collection('clicks')
-            let currentDate = new Date()
-            currentDate.setDate(currentDate.getDate() - 7) //currently reading one week's trailing data.
-            return new Promise(function(resolve, reject) {
-                Clicks.aggregate(
-                    {
-                        $match: {
-                            areaid: _id.toString(),
-                            userid: getuserid(req.session),
-                            date: {
-                                $gte: currentDate,
-                            },
-                        },
-                    },
-                    {
-                        $group: {
-                            _id: null,
-                            clicks: { $sum: 1 },
-                        },
-                    },
-
-                    function(err, data) {
-                        if (err) throw err
-                        resolve(data[0] ? data[0] : 0)
-                    },
-                )
-            })
-        },
-        areas: async (parent, args, { req }, info) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            const AreaLinks = db.collection('arealinks')
-            const query = {
-                rootarea: parent._id.toString(), //using parent ID from Area object on Graph. No need for global boolean on AreaLink for now.
-                wheelid: parent.wheelid,
-            }
-            const arealinks = await AreaLinks.distinct('area', query)
-
-            return await Areas.find({
-                _id: {
-                    $in: arealinks.map(function(id) {
-                        return ObjectId(id)
-                    }),
-                },
-                $or: [
-                    {
-                        wheelid: req.session.view
-                            ? getwheelid(req.session)
-                            : 'public', //placeholder, to stop error calling.
-                    },
-                    { global: true },
-                ], //need to return areas where global: true.
-            }).toArray()
-        },
-        rank: async ({ _id, coach }, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Profiles = db.collection('profiles')
-            const RankTimes = db.collection('ranktimes')
-            if (req.session.profile)
-                if (req.session.profile.type === 'average') {
-                    //was previously using "coach" in area to decide to aggregate rank
-                    const profiles = await Profiles.find({
-                        wheel: req.session.profile.wheel,
-                    }).toArray()
-
-                    return new Promise(function(resolve, reject) {
-                        //returning the average of the area for coaching
-                        RankTimes.aggregate(
-                            {
-                                $match: {
-                                    area: _id.toString(),
-                                    //userid: req.session.profile.wheel
-                                    profileid: {
-                                        $in: profiles.map(profile => {
-                                            return profile._id.toString()
-                                        }),
-                                    },
-                                },
-                            },
-                            {
-                                $group: {
-                                    _id: {
-                                        area: '$area',
-                                        profileid: '$userid',
-                                    },
-                                    date: {
-                                        $last: '$date',
-                                    },
-                                    rank: { $last: '$rank' },
-                                },
-                            },
-                            {
-                                $group: {
-                                    _id: '$*_*id.area',
-                                    rank: { $avg: '$rank' },
-                                },
-                            },
-
-                            function(err, data) {
-                                if (err) throw err
-                                resolve(
-                                    data[0]
-                                        ? {
-                                              rank: parseInt(data[0].rank),
-                                              note: 'team average',
-                                          }
-                                        : null,
-                                )
-                            },
-                        )
-                    })
-                } else {
-                    const rank = await RankTimes.findOne(
-                        {
-                            area: _id.toString(),
-                            profileid: getprofileid(req.session),
-                        },
-                        { sort: { date: -1 } },
-                    )
-                    return rank ? rank : null
-                }
-        },
-        goal: async ({ _id }, args, { req }) => {
-            const db = await DbConnection.Get()
-            const GoalTimes = db.collection('goaltimes')
-            const goal = await GoalTimes.findOne(
-                { area: _id.toString(), userid: getprofileid(req.session) },
-                { sort: { date: -1 } },
-            )
-            return goal ? goal : null
-        },
-        time: async ({ _id }, args, { req }, query) => {
-            const db = await DbConnection.Get()
-            const Pomodoros = db.collection('pomodoros')
-            if (args || item) {
-            }
-            return new Promise(function(resolve, reject) {
-                let currentDate = new Date()
-                currentDate.setDate(currentDate.getDate() - 7) //currently reading one week's trailing data.
-                Pomodoros.aggregate(
-                    {
-                        $match: {
-                            userid: getprofileid(req.session),
-                            date: {
-                                $gte: currentDate,
-                            },
-                            $or: [
-                                /*{
-                                    area: _id,
-                                }, */
-                                {
-                                    links: _id.toString(),
-                                },
-                            ],
-                        },
-                    },
-                    {
-                        $group: {
-                            _id: { links: null }, //"$area"
-                            count: { $sum: '$minutes' },
-                            records: { $sum: 1 },
-                            direct: {
-                                $sum: {
-                                    $cond: {
-                                        if: { $eq: ['$area', _id.toString()] },
-                                        then: 1,
-                                        else: 0,
-                                    },
-                                },
-                            },
-                            countdirect: {
-                                $sum: {
-                                    $cond: {
-                                        if: { $eq: ['$area', _id.toString()] },
-                                        then: '$minutes',
-                                        else: 0,
-                                    },
-                                },
-                            },
-                        },
-                    },
-
-                    function(err, data) {
-                        if (err) throw err
-                        resolve(data[0] ? data[0] : 0)
-                    },
-                )
-            })
         },
     },
 }
