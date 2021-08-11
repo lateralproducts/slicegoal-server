@@ -202,6 +202,7 @@ export const resolvers = {
         },
 
         verifyAccount: async (parent, args, { req }) => {
+
             //This function is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
@@ -218,8 +219,6 @@ export const resolvers = {
                 throw new Error(
                     "Your account didn't verify. If you've signed up before, try logging in.",
                 )
-
-            
 
             checkPasswordFormat(args.password)
     
@@ -568,8 +567,6 @@ function checkPasswordFormat (password){
     if(!numeric_char.test(password))
         return_message += 'Password must contain at least '
         + 'one number'
-    if(return_message.length === 0)
-        return 'Accepted'
 
     if(return_message.length > 0)
         throw new Error(return_message)
