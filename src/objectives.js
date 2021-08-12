@@ -539,7 +539,6 @@ export const resolvers = {
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
             args.date = new Date(args.datetime)
-
             //need to check the objective and overwrite the links.
             const Objectives = db.collection('objectives')
             const Objective = await Objectives.findOne({
@@ -562,6 +561,7 @@ async function createobjective(newobjective, req) {
     const db = await DbConnection.Get()
     const Objectives = db.collection('objectives')
     const ObjectiveLinks = db.collection('objectivelinks')
+    const Areas = db.collection('areas')
     try {
         Objectives.insertOne(newobjective).then(result => {
             if (newobjective.arealinks)

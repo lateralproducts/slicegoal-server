@@ -21,8 +21,8 @@ export const resolvers = {
             Areas.updateMany({}, { $rename: { userid: 'wheelid' } })
             AreaLinks.updateMany({}, { $rename: { userid: 'wheelid' } })
             RankTimes.updateMany({}, { $rename: { userid: 'profileid' } })
-            Notes.updateMany({}, { $rename: { userid: 'profileid' } })
-            NoteLinks.updateMany({}, { $rename: { userid: 'profileid' } })
+            Insights.updateMany({}, { $rename: { userid: 'profileid' } })
+            InsightLinks.updateMany({}, { $rename: { userid: 'profileid' } })
             Objectives.updateMany({}, { $rename: { userid: 'profileid' } })
             ObjectiveLinks.updateMany({}, { $rename: { userid: 'profileid' } })
 

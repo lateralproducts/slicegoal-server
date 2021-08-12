@@ -16,13 +16,13 @@ import { merge } from 'lodash'
 //import schemas
 import { schema as userSchema } from './users'
 import { schema as areaSchema } from './areas'
-import { schema as noteSchema } from './notes'
+import { schema as insightSchema } from './insights'
 import { schema as objectiveSchema } from './objectives'
 
 //import queries and mutations
 import { typeDefs as userQueryMutation } from './users'
 import { typeDefs as areaQueryMutation } from './areas'
-import { typeDefs as noteQueryMutation } from './notes'
+import { typeDefs as insightQueryMutation } from './insights'
 import { typeDefs as paymentQueryMutation } from './payments'
 import { typeDefs as feedbackQueryMutation } from './feedback'
 import { typeDefs as objectiveQueryMutation } from './objectives'
@@ -30,7 +30,7 @@ import { typeDefs as objectiveQueryMutation } from './objectives'
 //import resolvers
 import { resolvers as userResolvers } from './users'
 import { resolvers as areaResolvers } from './areas'
-import { resolvers as noteResolvers } from './notes'
+import { resolvers as insightResolvers } from './insights'
 import { resolvers as paymentResolvers } from './payments'
 import { resolvers as feedbackResolvers } from './feedback'
 import { resolvers as objectiveResolvers } from './objectives'
@@ -65,39 +65,39 @@ export const start = async () => {
       }
     }
 
-    async function migratenotes(spaced) {
-      let newnote = new Object();
-      newnote.area = spaced.area;
-      newnote.answer = spaced.answer;
-      newnote.prompt = spaced.prompt;
-      newnote.userid = spaced.userid;
-      newnote.datecreated = spaced.datecreated;
-      newnote.lastedited = spaced.lastedited;
-      newnote.datetime = spaced.datetime;
+    async function migrateinsights(spaced) {
+      let newinsight = new Object();
+      newinsight.area = spaced.area;
+      newinsight.answer = spaced.answer;
+      newinsight.prompt = spaced.prompt;
+      newinsight.userid = spaced.userid;
+      newinsight.datecreated = spaced.datecreated;
+      newinsight.lastedited = spaced.lastedited;
+      newinsight.datetime = spaced.datetime;
 
       try {
-        Notes.insertOne(newnote).then(result => {
-          let note = new Object();
-          note.noteid = result.insertedId.toString();
-          note.userid = newnote.userid;
-          note.fib0 = 0;
-          note.fib1 = 1;
+        Insights.insertOne(newinsight).then(result => {
+          let insight = new Object();
+          insight.insightid = result.insertedId.toString();
+          insight.userid = newinsight.userid;
+          insight.fib0 = 0;
+          insight.fib1 = 1;
           let nextdate = new Date(); //set nextdate for tomorrow.
-          if (newnote.prompt) nextdate.setDate(nextdate.getDate() + 1);
-          note.datenext = nextdate;
+          if (newinsight.prompt) nextdate.setDate(nextdate.getDate() + 1);
+          insight.datenext = nextdate;
 
-          let notelink = new Object();
-          notelink.noteid = result.insertedId.toString();
-          notelink.userid = newnote.userid;
-          notelink.area = newnote.area;
-          notelink.datecreated = new Date();
-          NoteLinks.insert(notelink);
+          let insightlink = new Object();
+          insightlink.insightid = result.insertedId.toString();
+          insightlink.userid = newinsight.userid;
+          insightlink.area = newinsight.area;
+          insightlink.datecreated = new Date();
+          InsightLinks.insert(insightlink);
 
           Spaced.updateOne(
             {
               _id: spaced._id
             },
-            { $set: { noteid: result.insertedId.toString() } }
+            { $set: { insightid: result.insertedId.toString() } }
           );
         });
       } catch (error) {
@@ -129,12 +129,12 @@ export const start = async () => {
       );
     }
 
-    async function updatenotes(spaced) {
+    async function updateinsights(spaced) {
       try {
-        if (area.notes) {
+        if (area.insights) {
           await Spaced.insertOne({
             area: area._id.toString(),
-            answer: area.notes,
+            answer: area.insights,
             userid: area.userid
           });
           return false;
@@ -233,11 +233,11 @@ export const start = async () => {
                 Mutations,
                 userSchema,
                 areaSchema,
-                noteSchema,
+                insightSchema,
                 objectiveSchema,
                 paymentQueryMutation,
                 userQueryMutation,
-                noteQueryMutation,
+                insightQueryMutation,
                 areaQueryMutation,
                 objectiveQueryMutation,
                 feedbackQueryMutation,
@@ -246,7 +246,7 @@ export const start = async () => {
             resolvers: merge(
                 paymentResolvers,
                 userResolvers,
-                noteResolvers,
+                insightResolvers,
                 areaResolvers,
                 objectiveResolvers,
                 feedbackResolvers,

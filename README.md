@@ -1,6 +1,6 @@
 # Welcome to the Cavestep Server
 
-Cavestep is a notes, goals, and habit tracker.
+Cavestep is a tracker for habits, goals, and insights.
 Designed to support optimal outcomes for users.
 Helping people focus on the right things at the right time for the best results.
 
