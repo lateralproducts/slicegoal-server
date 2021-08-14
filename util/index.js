@@ -23,8 +23,8 @@ export const resolvers = {
             RankTimes.updateMany({}, { $rename: { userid: 'profileid' } })
             Insights.updateMany({}, { $rename: { userid: 'profileid' } })
             InsightLinks.updateMany({}, { $rename: { userid: 'profileid' } })
-            Objectives.updateMany({}, { $rename: { userid: 'profileid' } })
-            ObjectiveLinks.updateMany({}, { $rename: { userid: 'profileid' } })
+            Goals.updateMany({}, { $rename: { userid: 'profileid' } })
+            GoalLinks.updateMany({}, { $rename: { userid: 'profileid' } })
 
             //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
             /* const users = await Users.find().toArray();
@@ -78,10 +78,10 @@ export const resolvers = {
             }); */
 
             // runUpdate: Boolean
-            /* const objectives = await Objectives.find().toArray();
+            /* const goals = await Goals.find().toArray();
 
-            objectives.map(function(objective) {
-            migrateobjectives(objective);
+            goals.map(function(goal) {
+            migrategoals(goal);
             }); */
 
             /* const wheelarealinks = await WheelAreaLinks.find().toArray();

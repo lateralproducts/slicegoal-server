@@ -70,7 +70,7 @@ export const schema = `
     type Focus {
         _id: String
         area: Area
-        objective: Objective
+        goal: Goal
         links: [String]
     }
 

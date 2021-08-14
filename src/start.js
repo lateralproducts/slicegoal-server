@@ -17,7 +17,7 @@ import { merge } from 'lodash'
 import { schema as userSchema } from './users'
 import { schema as areaSchema } from './areas'
 import { schema as insightSchema } from './insights'
-import { schema as objectiveSchema } from './objectives'
+import { schema as goalSchema } from './goals'
 
 //import queries and mutations
 import { typeDefs as userQueryMutation } from './users'
@@ -25,7 +25,7 @@ import { typeDefs as areaQueryMutation } from './areas'
 import { typeDefs as insightQueryMutation } from './insights'
 import { typeDefs as paymentQueryMutation } from './payments'
 import { typeDefs as feedbackQueryMutation } from './feedback'
-import { typeDefs as objectiveQueryMutation } from './objectives'
+import { typeDefs as goalQueryMutation } from './goals'
 
 //import resolvers
 import { resolvers as userResolvers } from './users'
@@ -33,7 +33,7 @@ import { resolvers as areaResolvers } from './areas'
 import { resolvers as insightResolvers } from './insights'
 import { resolvers as paymentResolvers } from './payments'
 import { resolvers as feedbackResolvers } from './feedback'
-import { resolvers as objectiveResolvers } from './objectives'
+import { resolvers as goalResolvers } from './goals'
 
 import './schedules'
 
@@ -48,18 +48,18 @@ export const start = async () => {
     try {
         //const Signup = db.collection("signup");
 
-        /*  async function migrateobjectives(objective) {
-      let objectivelink = new Object();
-      objectivelink.areaid = objective.area;
-      objectivelink.userid = objective.userid;
-      objectivelink.objectiveid = objective._id.toString();
-      objectivelink.date = objective.date;
-      objectivelink.orderrank = objective.orderrank;
-      objectivelink.datetime = objective.datetime;
-      objectivelink.complete = objective.complete;
+        /*  async function migrategoals(goal) {
+      let goallink = new Object();
+      goallink.areaid = goal.area;
+      goallink.userid = goal.userid;
+      goallink.goalid = goal._id.toString();
+      goallink.date = goal.date;
+      goallink.orderrank = goal.orderrank;
+      goallink.datetime = goal.datetime;
+      goallink.complete = goal.complete;
 
       try {
-        ObjectiveLinks.insertOne(objectivelink);
+        GoalLinks.insertOne(goallink);
       } catch (error) {
         console.log(error);
       }
@@ -234,12 +234,12 @@ export const start = async () => {
                 userSchema,
                 areaSchema,
                 insightSchema,
-                objectiveSchema,
+                goalSchema,
                 paymentQueryMutation,
                 userQueryMutation,
                 insightQueryMutation,
                 areaQueryMutation,
-                objectiveQueryMutation,
+                goalQueryMutation,
                 feedbackQueryMutation,
             ],
 
@@ -248,7 +248,7 @@ export const start = async () => {
                 userResolvers,
                 insightResolvers,
                 areaResolvers,
-                objectiveResolvers,
+                goalResolvers,
                 feedbackResolvers,
             ),
             context,

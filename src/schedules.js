@@ -1,12 +1,12 @@
 import { ObjectId } from 'mongodb'
 import DbConnection from './database'
-import { emailObjectiveNudge, emailRerankNudge } from './emails'
+import { emailGoalNudge, emailRerankNudge } from './emails'
 
 let schedule = require('node-schedule')
 
 schedule.scheduleJob({ hour: 14, minute: 53 }, function() {
     //set to UTC time for server
-    objectivenudge('daniel@lateralproducts.com')
+    goalnudge('daniel@lateralproducts.com')
 })
 
 schedule.scheduleJob({ dayOfWeek: 0, hour: 22, minute: 0 }, function() {
@@ -15,11 +15,11 @@ schedule.scheduleJob({ dayOfWeek: 0, hour: 22, minute: 0 }, function() {
     //ranknudge(); //holding off sending these messages again for a little bit.
 })
 
-async function objectivenudge(email) {
+async function goalnudge(email) {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
     const FocusLinks = db.collection('focuslinks')
-    const Objectives = db.collection('objectives')
+    const Goals = db.collection('goals')
 
     const user = await Users.findOne({ email: email })
 
@@ -32,10 +32,10 @@ async function objectivenudge(email) {
             .limit(3)
             .toArray()
 
-        const objectives = await Objectives.find({
+        const goals = await Goals.find({
             _id: {
                 $in: links.map(function(link) {
-                    return ObjectId(link.objective)
+                    return ObjectId(link.goal)
                 }),
             },
             $or: [{ snooze: null }, { snooze: { $lt: new Date() } }],
@@ -44,7 +44,7 @@ async function objectivenudge(email) {
             .limit(100)
             .toArray()
 
-        emailObjectiveNudge(user, links, objectives)
+        emailGoalNudge(user, links, goals)
     }
 }
 

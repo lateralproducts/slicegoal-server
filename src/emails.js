@@ -64,23 +64,23 @@ async function sendEmail(to, subject, email) {
     return response
 }
 
-export async function emailObjectiveNudge(user, links, objectives) {
+export async function emailGoalNudge(user, links, goals) {
     let to = user.email
-    let subject = 'Your Cavestep Objectives'
+    let subject = 'Your Cavestep Goals'
     let email =
-        '<head><style>a {cursor: help;} .objective { margin: 3px; }</style></head>' +
+        '<head><style>a {cursor: help;} .goal { margin: 3px; }</style></head>' +
         '<div>Hey ' +
         user.firstname +
-        ', here are your top objectives for today!</div>' +
-        objectives
+        ', here are your top goals for today!</div>' +
+        goals
             .map(function(obj) {
                 return (
-                    "<div class='objective'>• <a href='" +
+                    "<div class='goal'>• <a href='" +
                     PATH_URL +
-                    '?objective=' +
+                    '?goal=' +
                     obj._id +
                     "'>" +
-                    obj.objective +
+                    obj.goal +
                     '</a></div>'
                 )
             })
