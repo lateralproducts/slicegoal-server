@@ -8,17 +8,17 @@ import DbConnection from './database'
 export const typeDefs = `
 
   extend type Query {
-    insightLinks(insightid: String): [InsightLink]
+    insightLinks(noteid: String): [InsightLink]
     insights(area: String): [InsightLink]
     searchinsights(search: String, spaced: Boolean): [Insight]
   }
 
   extend type Mutation {
-    markSpacedYes(insightId: String, datetime: String): Boolean
-    markSpacedNo(insightId: String, datetime: String): Boolean
-    updateInsight(insightid: String, datetime: String, prompt: String, answer: String): Spaced 
-    createInsightLink(insightid: String!, area: String, areaname: String): Boolean
-    updateInsightLink(linkid: String!, insights: String): Boolean
+    markSpacedYes(noteid: String, datetime: String): Boolean
+    markSpacedNo(noteid: String, datetime: String): Boolean
+    updateInsight(noteid: String, datetime: String, prompt: String, answer: String): Spaced 
+    createInsightLink(noteid: String!, area: String, areaname: String): Boolean
+    updateInsightLink(linkid: String!, notes: String): Boolean
     removeInsightLink(linkid: String): Boolean
     createInsight(datetime: String, prompt: String, answer: String, arealinks: [AreaLinkIn]): Spaced
   }
@@ -38,16 +38,16 @@ export const schema = `
 
     type InsightLink {
         _id: String
-        insightid: String
+        noteid: String
         areaid: String
         area: Area
-        insight: Insight
-        insights: String 
+        note: Insight
+        notes: String 
     }
 
     type Spaced {
         _id: String
-        insightid: String
+        noteid: String
         insight: Insight
         area: String
         datetimecreated: Float
@@ -63,7 +63,7 @@ export const resolvers = {
         insights: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightLinks = db.collection('insightlinks')
+            const InsightLinks = db.collection('notelinks')
             const insightlinks = await InsightLinks.find(
                 {
                     area: args.area,
@@ -81,7 +81,7 @@ export const resolvers = {
         searchinsights: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const Insights = db.collection('insights')
+            const Insights = db.collection('notes')
             const insights = await Insights.find(
                 {
                     $or: [
@@ -98,9 +98,9 @@ export const resolvers = {
         insightLinks: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightLinks = db.collection('insightlinks')
-            const insightlinks = await NoteLinks.find({
-                insightid: args.insightid,
+            const InsightLinks = db.collection('notelinks')
+            const insightlinks = await InsightLinks.find({
+                noteid: args.noteid,
                 profileid: getprofileid(req.session),
             }).toArray()
             return insightlinks
@@ -111,7 +111,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
             let spaced = await Spaced.findOne({
-                insightid: parent._id.toString(),
+                noteid: parent._id.toString(),
                 userid: getprofileid(req.session),
             })
             return spaced
@@ -123,10 +123,10 @@ export const resolvers = {
             const Areas = db.collection('areas')
             return await Areas.findOne({ _id: ObjectId(parent.area) })
         },
-        insight: async (parent, args, { req }) => {
+        note: async (parent, args, { req }) => {
             const db = await DbConnection.Get()
-            const Insights = db.collection('insights')
-            return await Insights.findOne({ _id: ObjectId(parent.insightid) })
+            const Insights = db.collection('notes')
+            return await Insights.findOne({ _id: ObjectId(parent.noteid) })
         },
     },
     Mutation: {
@@ -134,12 +134,12 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
-            const InsightLinks = db.collection('insightlinks')
+            const InsightLinks = db.collection('notelinks')
             args.date = new Date(args.datetime)
-            const insightId = args.insightId
-            delete args.insightId
+            const noteId = args.noteId
+            delete args.noteId
             const spaced = await Spaced.findOne({
-                insightid: insightId,
+                noteid: noteId,
                 userid: getprofileid(req.session),
             })
             if (spaced.fib1) {
@@ -154,7 +154,7 @@ export const resolvers = {
             args.datenext = nextdate
 
             InsightLinks.update(
-                { insightid: insightId, profileid: getprofileid(req.session) },
+                { noteid: noteId, profileid: getprofileid(req.session) },
                 {
                     $set: { nextdate: nextdate },
                 },
@@ -162,7 +162,7 @@ export const resolvers = {
             )
 
             Spaced.update(
-                { insightid: insightId, userid: getprofileid(req.session) },
+                { noteid: noteId, userid: getprofileid(req.session) },
                 {
                     $set: args,
                 },
@@ -172,24 +172,24 @@ export const resolvers = {
         markSpacedNo: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightLinks = db.collection('insightlinks')
+            const InsightLinks = db.collection('notelinks')
             const Spaced = db.collection('spaced')
             args.date = new Date(args.datetime)
             args.fib0 = 0
             args.fib1 = 1
-            const insightId = args.insightId
-            delete args.insightId
+            const noteId = args.noteId
+            delete args.noteId
             let nextdate = new Date()
             nextdate.setDate(nextdate.getDate() + 1)
             args.datenext = nextdate
 
             const spaced = await Spaced.findOne({
-                insightid: insightId,
+                noteid: noteId,
                 userid: getprofileid(req.session),
             })
 
             await InsightLinks.update(
-                { insightid: insightId, profileid: getprofileid(req.session) },
+                { noteid: insightId, profileid: getprofileid(req.session) },
                 {
                     $set: { nextdate: nextdate },
                 },
@@ -199,7 +199,7 @@ export const resolvers = {
             args.markedno = spaced.markedno ? spaced.markedno + 1 : 1
 
             await Spaced.update(
-                { insightid: insightId, userid: getprofileid(req.session) },
+                { noteid: insightId, userid: getprofileid(req.session) },
                 {
                     $set: args,
                 },
@@ -209,23 +209,23 @@ export const resolvers = {
         updateInsight: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const Insights = db.collection('insights')
+            const Insights = db.collection('notes')
             args.lastedited = new Date(args.datetime)
-            let insightid = args.insightid
+            let noteid = args.noteid
             delete args.insightid
             const res = await Insights.updateOne(
-                { _id: ObjectId(insightid) },
+                { _id: ObjectId(noteid) },
                 { $set: args },
             )
             return {
-                _id: insightid,
+                _id: noteid,
                 message: 'insight updated',
             }
         },
         createInsightLink: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightLinks = db.collection('insightlinks')
+            const InsightLinks = db.collection('notelinks')
             const Areas = db.collection('areas')
             args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
@@ -245,7 +245,7 @@ export const resolvers = {
 
             const link = await InsightLinks.insertOne({
                 //insert the link to connect insight and new area.
-                insightid: args.insightid,
+                noteid: args.noteid,
                 profileid: getprofileid(req.session),
                 area: areaid,
                 datecreated: new Date(),
@@ -256,11 +256,11 @@ export const resolvers = {
         updateInsightLink: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightLinks = db.collection('insightlinks')
+            const InsightLinks = db.collection('notelinks')
             args.profileid = getprofileid(req.session)
             InsightLinks.updateOne(
                 { _id: ObjectId(args.linkid) },
-                { $set: { insights: args.insights } },
+                { $set: { notes: args.notes } },
                 function(err, obj) {
                     if (err) throw err
                 },
@@ -270,7 +270,7 @@ export const resolvers = {
         removeInsightLink: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightLinks = db.collection('insightlinks')
+            const InsightLinks = db.collection('notelinks')
             args.profileid = getprofileid(req.session)
             InsightLinks.deleteOne(
                 {
@@ -286,7 +286,7 @@ export const resolvers = {
         /* createNewInsightLink: async (root, args, { req }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            const InsightLinks = db.collection('insightlinks')
+            const InsightLinks = db.collection('notelinks')
             let newarea = new Object() //create new area.
             newarea.wheelid = getprofileid(req.session)
             newarea.name = args.areaname
@@ -294,7 +294,7 @@ export const resolvers = {
 
             await InsightLinks.insertOne({
                 //insert the link to connect insight and new area.
-                insightid: args.insightid,
+                noteid: args.insightid,
                 profileid: getprofileid(req.session),
                 area: res.insertedIds[0].toString(),
                 datecreated: new Date(args.datetime),
@@ -320,16 +320,16 @@ export const resolvers = {
 
 async function createinsight(newinsight, req) {
     const db = await DbConnection.Get()
-    const Insights = db.collection('insights')
+    const Insights = db.collection('notes')
     const Spaced = db.collection('spaced')
     const Areas = db.collection('areas')
-    const insightLinks = db.collection('insightlinks')
+    const insightLinks = db.collection('notelinks')
 
     try {
         const result = await Insights.insertOne(newinsight)
 
         let insight = new Object()
-        insight.insightid = result.insertedId.toString()
+        insight.noteid = result.insertedId.toString()
         insight.profileid = newinsight.profileid
         insight.fib0 = 0
         insight.fib1 = 1
@@ -355,7 +355,7 @@ async function createinsight(newinsight, req) {
                 }
 
                 let insightlink = new Object()
-                insightlink.insightid = result.insertedId.toString()
+                insightlink.noteid = result.insertedId.toString()
                 insightlink.profileid = newinsight.profileid
                 insightlink.area = areaid
                 insightlink.notes = link.insights
