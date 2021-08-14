@@ -86,7 +86,7 @@ export const schema = `
         definition: String
         focus: Boolean
         vision: String
-        notes: String
+        insights: String
         areas: [Area]
         time(readdate: String): PomodoroData
         clicks: ClickData
