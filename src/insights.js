@@ -358,7 +358,7 @@ async function createinsight(newinsight, req) {
                 insightlink.noteid = result.insertedId.toString()
                 insightlink.profileid = newinsight.profileid
                 insightlink.area = areaid
-                insightlink.notes = link.insights
+                insightlink.insights = link.insights
                 insightlink.datecreated = new Date()
                 insightLinks.insert(insightlink)
             })
