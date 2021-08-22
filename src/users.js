@@ -202,26 +202,20 @@ export const resolvers = {
         },
 
         verifyAccount: async (parent, args, { req }) => {
-
             //This function is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
-            let user = await Users.findOne(
-                {
-                    $and: [
-                        {_id: ObjectId(args.userid)},
-                        {code: args.code}
-                    ]
-                }
-            )
-            if(user.state !== 'new')
+            let user = await Users.findOne({
+                $and: [{ _id: ObjectId(args.userid) }, { code: args.code }],
+            })
+            if (user.state !== 'new')
                 throw new Error(
                     "Your account didn't verify. If you've signed up before, try logging in.",
                 )
 
             checkPasswordFormat(args.password)
-    
+
             user = await Users.findOneAndUpdate(
                 { _id: ObjectId(args.userid), code: args.code, state: 'new' },
                 {
@@ -231,7 +225,10 @@ export const resolvers = {
                     },
                 },
             )
-            return user.value
+            user.value.state = 'verified'
+            //overriding state to verified as it doesn't update in returned value.
+
+            return await login(user.value, args, req)
         },
 
         login: async (parent, args, { req, ip }) => {
@@ -250,8 +247,7 @@ export const resolvers = {
                     throw new Error('Account has not been verified.')
 
                 if (await bcrypt.compareSync(args.pwd, user.password)) {
-                    let loggedinuser = await login(user, args, req)
-                    return loggedinuser
+                    return await login(user, args, req)
                 } else {
                     await Users.updateOne(
                         { _id: ObjectId(user._id) },
@@ -402,22 +398,21 @@ export const resolvers = {
             return true
         },
 
-        updatePassword: async(parent, args, { req }) => {
+        updatePassword: async (parent, args, { req }) => {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
-            let user = await Users.findOne(
-                    {_id: ObjectId(args.userid)}
-            )
-            if(user.state !== 'verified')
-                throw new Error('Password cannot be updated on unverified account')
+            let user = await Users.findOne({ _id: ObjectId(args.userid) })
+            if (user.state !== 'verified')
+                throw new Error(
+                    'Password cannot be updated on unverified account',
+                )
 
             const check = bcrypt.compareSync(args.oldpassword, user.password)
-            if(!check)
-                throw new Error('Incorrect current password')
-            
+            if (!check) throw new Error('Incorrect current password')
+
             user = await Users.findOneAndUpdate(
-                { _id: ObjectId(args.userid)},
+                { _id: ObjectId(args.userid) },
                 {
                     $set: {
                         password: bcrypt.hashSync(args.newpassword, 10),
@@ -426,7 +421,7 @@ export const resolvers = {
             )
 
             return user.value
-        }
+        },
     },
 }
 
@@ -544,31 +539,32 @@ export const getuserIpAddress = request => {
     return ipAddress
 }
 
-function checkPasswordFormat (password){
+function checkPasswordFormat(password) {
     const alpha_char = /[a-z]/i //regex of alphabetical chars
     const numeric_char = /[0-9]/
     const special_char = /[!"#$%&'()*+,-.\/:;<=>?@[\]^_`{|}~]/
     let return_message = ''
-    if(password.length > PASSWORD_MAX_LENGTH)
-        return_message += `Password must be fewer than ` 
-        + `${PASSWORD_MAX_LENGTH} characters `
-        + `in length `
-    if(password.length < PASSWORD_MIN_LENGTH)
-        return_message += `Password must be more than ` 
-        + `${PASSWORD_MIN_LENGTH} characters `
-        + `in length `
-    if(!alpha_char.test(password))
-        return_message += 'Password must contain at least ' 
-        + 'one alphabetical character'
-    if(!special_char.test(password))
-        return_message += 'Password must contain at least '
-        + 'one of the following characters: '
-        + '!"#$%&\'()*+,-.\/:;<=>?@[]^_`{|}~ '
-    if(!numeric_char.test(password))
-        return_message += 'Password must contain at least '
-        + 'one number'
+    if (password.length > PASSWORD_MAX_LENGTH)
+        return_message +=
+            `Password must be fewer than ` +
+            `${PASSWORD_MAX_LENGTH} characters ` +
+            `in length `
+    if (password.length < PASSWORD_MIN_LENGTH)
+        return_message +=
+            `Password must be more than ` +
+            `${PASSWORD_MIN_LENGTH} characters ` +
+            `in length `
+    if (!alpha_char.test(password))
+        return_message +=
+            'Password must contain at least ' + 'one alphabetical character'
+    if (!special_char.test(password))
+        return_message +=
+            'Password must contain at least ' +
+            'one of the following characters: ' +
+            '!"#$%&\'()*+,-./:;<=>?@[]^_`{|}~ '
+    if (!numeric_char.test(password))
+        return_message += 'Password must contain at least ' + 'one number'
 
-    if(return_message.length > 0)
-        throw new Error(return_message)
+    if (return_message.length > 0) throw new Error(return_message)
     return return_message
 }
