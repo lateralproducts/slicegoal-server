@@ -19,7 +19,7 @@ export const resolvers = {
         runUpdate101: async (parent, args, { req }) => {
             Areas.updateMany({}, { $rename: { userid: 'wheelid' } })
             Areas.updateMany({}, { $rename: { userid: 'wheelid' } })
-            AreaLinks.updateMany({}, { $rename: { userid: 'wheelid' } })
+            AreaTags.updateMany({}, { $rename: { userid: 'wheelid' } })
             RankTimes.updateMany({}, { $rename: { userid: 'profileid' } })
             Insights.updateMany({}, { $rename: { userid: 'profileid' } })
             InsightLinks.updateMany({}, { $rename: { userid: 'profileid' } })
@@ -84,8 +84,8 @@ export const resolvers = {
             migrategoals(goal);
             }); */
 
-            /* const wheelarealinks = await WheelAreaLinks.find().toArray();
-            wheelarealinks.map(function(wheelarealink) {
+            /* const wheelareatags = await WheelAreaTags.find().toArray();
+            wheelareatags.map(function(wheelarealink) {
             queryarea(wheelarealink);
             });
 

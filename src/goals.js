@@ -15,18 +15,24 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        createGoal(datetime: String, goal: String, notes: String, keys:[KeyIn], arealinks: [AreaLinkIn], links: [String]): Goal
-        createGoalLink(goalid: String, areaid: String, areaname: String): String
-        checkKey(goalId: String!, index: Int, check: Boolean): Boolean
-        updateGoalLink(linkid: String!, notes: String, snooze: String): Boolean
-        removeGoalLink(linkid: String!): Boolean
+        createGoal(datetime: String, goal: String, notes: String, keys:[KeyIn], areatags: [AreaTagIn], links: [String]): Goal
         updateGoal(goalId: String!, goal: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Goal
         updateGoalOrder(goals: [String]): Boolean
+        savePomodoro(area: String, links: [String], notes: String, goal: String, datetime: String, minutes: Int): Boolean!
+        checkKey(goalId: String!, index: Int, check: Boolean): Boolean
+    }
+    
+    extend type Mutation {
+        createGoalLink(goalid: String, areaid: String, areaname: String): String
+        updateGoalLink(linkid: String!, notes: String, snooze: String): Boolean
+        removeGoalLink(linkid: String!): Boolean
+        snoozeGoalLink(goalid: String!, snooze: String!): Boolean
+    }
+
+    extend type Mutation {
         updateFocusOrder(goals: [String]): Boolean
         saveFocusLink(area: String!, goal: String!, datetime: String!, links: [String]): Boolean
         snoozeFocusLink(goalid: String!, snooze: String!): Boolean
-        snoozeGoalLink(goalid: String!, snooze: String!): Boolean
-        savePomodoro(area: String, links: [String], notes: String, goal: String, datetime: String, minutes: Int): Boolean!
     }
 `
 
@@ -121,9 +127,7 @@ export const resolvers = {
                     profileid: getprofileid(req.session),
                     goalid: {
                         $in: goals.map(function(goal) {
-                            return goal._id
-                                ? goal._id.toString()
-                                : null
+                            return goal._id ? goal._id.toString() : null
                         }),
                     },
                 }
@@ -564,8 +568,8 @@ async function creategoal(newgoal, req) {
     const Areas = db.collection('areas')
     try {
         Goals.insertOne(newgoal).then(result => {
-            if (newgoal.arealinks)
-                newgoal.arealinks.map(async link => {
+            if (newgoal.areatags)
+                newgoal.areatags.map(async link => {
                     let areaid = link.area._id
 
                     if (!areaid) {

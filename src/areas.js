@@ -13,7 +13,7 @@ export const typeDefs = `
         profiles: [Profile]
         area(_id: String!, navdirection: String, readdate: String): Area
         areas (readdate: String): [Area]
-        arealinks(area: String): [AreaLink]
+        areatags(area: String): [AreaTag]
         ranktimes(areaId: String): [RankTime]
         lastranktime(areaId: String): RankTime
         goaltimes(areaId: String): [GoalTime]
@@ -31,8 +31,8 @@ export const typeDefs = `
         updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
         setProfile(profileid: String!): Profile
         copyWheel(wheelid: String!, viewtype: String!): Boolean
-        createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
-        deleteAreaLink(rootarea: String, area: String): Area
+        createAreaTag(rootarea: String, area: String, title: String, notes: String): Boolean
+        deleteAreaTag(rootarea: String, area: String): Area
         createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
         createCoachArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
         createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
@@ -43,7 +43,7 @@ export const typeDefs = `
 
 export const schema = `
 
-    type AreaLink {
+    type AreaTag {
         _id: String
         rootarea: String
         area: String
@@ -51,7 +51,7 @@ export const schema = `
         linkedarea: Area
     }
 
-    input AreaLinkIn {
+    input AreaTagIn {
         area: AreaId
         name: String
         notes: String
@@ -241,11 +241,11 @@ export const resolvers = {
                 .sort({ date: -1 })
                 .toArray()
         },
-        arealinks: async (root, args, { req }) => {
+        areatags: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const AreaLinks = db.collection('arealinks')
-            return await AreaLinks.find({
+            const AreaTags = db.collection('arealinks')
+            return await AreaTags.find({
                 rootarea: { $not: { $eq: null } },
                 area: args.area,
                 wheelid: getwheelid(req.session),
@@ -313,7 +313,7 @@ export const resolvers = {
             })
         },
     },
-    AreaLink: {
+    AreaTag: {
         linkedarea: async (parent, args, { req }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -376,16 +376,16 @@ export const resolvers = {
         areas: async (parent, args, { req }, info) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            const AreaLinks = db.collection('arealinks')
+            const AreaTags = db.collection('arealinks')
             const query = {
-                rootarea: parent._id.toString(), //using parent ID from Area object on Graph. No need for global boolean on AreaLink for now.
+                rootarea: parent._id.toString(), //using parent ID from Area object on Graph. No need for global boolean on AreaTag for now.
                 wheelid: parent.wheelid,
             }
-            const arealinks = await AreaLinks.distinct('area', query)
+            const areatags = await AreaTags.distinct('area', query)
 
             return await Areas.find({
                 _id: {
-                    $in: arealinks.map(function(id) {
+                    $in: areatags.map(function(id) {
                         return ObjectId(id)
                     }),
                 },
@@ -596,9 +596,9 @@ export const resolvers = {
         toggleFocusFlag: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const AreaLinks = db.collection('arealinks')
+            const AreaTags = db.collection('arealinks')
             const Areas = db.collection('areas')
-            const area = await AreaLinks.findOne({
+            const area = await AreaTags.findOne({
                 rootarea: args.rootarea,
                 area: args.area,
             })
@@ -607,7 +607,7 @@ export const resolvers = {
             if (area.focus) focusflag = false
             else focusflag = true
 
-            await AreaLinks.updateOne(
+            await AreaTags.updateOne(
                 { rootarea: args.rootarea, area: args.area },
                 { $set: { focus: focusflag } },
             )
@@ -620,9 +620,9 @@ export const resolvers = {
         deleteArea: async (root, { rootarea, area }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const AreaLinks = db.collection('arealinks')
+            const AreaTags = db.collection('arealinks')
             let message = ''
-            AreaLinks.deleteOne(
+            AreaTags.deleteOne(
                 {
                     rootarea: rootarea,
                     area: area,
@@ -666,11 +666,11 @@ export const resolvers = {
                 )
             return true
         },
-        deleteAreaLink: async (root, { rootarea, area }, { req }) => {
+        deleteAreaTag: async (root, { rootarea, area }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const AreaLinks = db.collection('arealinks')
-            const res = await AreaLinks.deleteMany(
+            const AreaTags = db.collection('arealinks')
+            const res = await AreaTags.deleteMany(
                 {
                     rootarea: rootarea,
                     area: area,
@@ -680,14 +680,14 @@ export const resolvers = {
             )
             return res
         },
-        createAreaLink: async (root, args, { req }) => {
+        createAreaTag: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const AreaLinks = db.collection('arealinks')
+            const AreaTags = db.collection('arealinks')
             // args.userid = getwheelid(req.session);
             // args.serverversion = pjson.version;
             // args.uiversion = getuiversion(req.session);
-            await AreaLinks.insertOne({
+            await AreaTags.insertOne({
                 rootarea: args.rootarea,
                 area: args.area,
                 wheelid: getwheelid(req.session),
@@ -700,7 +700,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            const AreaLinks = db.collection('arealinks')
+            const AreaTags = db.collection('arealinks')
             args.wheelid = getwheelid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
@@ -708,7 +708,7 @@ export const resolvers = {
 
             const res = await Areas.insert(args)
 
-            await AreaLinks.insertOne({
+            await AreaTags.insertOne({
                 rootarea: args.rootarea,
                 area: res.insertedIds[0].toString(),
                 areaname: args.name,
@@ -725,7 +725,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            const AreaLinks = db.collection('arealinks')
+            const AreaTags = db.collection('arealinks')
             args.wheelid = getwheelid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
@@ -734,7 +734,7 @@ export const resolvers = {
 
             const res = await Areas.insert(args)
 
-            await AreaLinks.insertOne({
+            await AreaTags.insertOne({
                 rootarea: args.rootarea,
                 area: res.insertedIds[0].toString(),
                 areaname: args.name,
@@ -801,7 +801,7 @@ export async function createWheel(
 ) {
     const db = await DbConnection.Get()
     const Areas = db.collection('areas')
-    const AreaLinks = db.collection('arealinks')
+    const AreaTags = db.collection('arealinks')
     const Views = db.collection('views')
     const Profiles = db.collection('profiles')
     const Wheels = db.collection('wheels')
@@ -872,8 +872,8 @@ export async function createWheel(
 
                 let newAreas = (await Areas.insertMany(insertAreas)).insertedIds //insert all records in one go.
 
-                //Setting up the AreaLink records
-                let insertAreaLinks = newAreas.map(areaid => {
+                //Setting up the AreaTag records
+                let insertAreaTags = newAreas.map(areaid => {
                     return {
                         area: areaid,
                         rootarea: startArea,
@@ -883,7 +883,7 @@ export async function createWheel(
                     }
                 })
 
-                AreaLinks.insert(insertAreaLinks) //inserting in one request
+                AreaTags.insert(insertAreaTags) //inserting in one request
             }
     }
 
@@ -922,7 +922,7 @@ async function copywheel(wheelid, userid) {
     const db = await DbConnection.Get()
     const Wheels = db.collection('wheels')
     const Areas = db.collection('areas')
-    const AreaLinks = db.collection('arealinks')
+    const AreaTags = db.collection('arealinks')
 
     //only using userid as a tag to keep track of the copy.
     //wheel - global
@@ -965,13 +965,13 @@ async function copywheel(wheelid, userid) {
             { _id: ObjectId(newwheelid) },
             { $set: { startarea: newstartareaid } },
         )
-        //arealinks - global
-        let newarealinks = await AreaLinks.find({
+        //areatags - global
+        let newareatags = await AreaTags.find({
             wheelid: wheelid,
         }).toArray()
-        newarealinks.map(arealink => {
+        newareatags.map(arealink => {
             arealink.user = userid //this is just copied as a reference for ease
-            arealink.wheelid = newwheelid //this is the id used for returning arealinks
+            arealink.wheelid = newwheelid //this is the id used for returning areatags
             arealink.rootarea = newareas
                 .find(o => o.copyarea === arealink.rootarea)
                 ._id.toString()
@@ -984,7 +984,7 @@ async function copywheel(wheelid, userid) {
             delete arealink._id
             return arealink
         })
-        AreaLinks.insertMany(newarealinks)
+        AreaTags.insertMany(newareatags)
         //return wheel
         return newwheelid
     }
