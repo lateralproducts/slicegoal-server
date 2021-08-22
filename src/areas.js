@@ -882,8 +882,8 @@ export async function createWheel(
                         serverversion: pjson.version,
                     }
                 })
-
-                AreaLinks.insert(insertAreaLinks) //inserting in one request
+                //check deprecation of insertMany
+                AreaLinks.insertMany(insertAreaLinks) //inserting in one request
             }
     }
 

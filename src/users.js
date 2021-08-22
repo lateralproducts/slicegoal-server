@@ -23,6 +23,9 @@ const oAuth2Client = new OAuth2Client({
     clientId: googleclientId,
 })
 
+const PASSWORD_MAX_LENGTH = 64
+const PASSWORD_MIN_LENGTH = 8
+
 export const typeDefs = `
 
   extend type Query {
@@ -33,6 +36,7 @@ export const typeDefs = `
     updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
     createClient(email: String!, firstname: String, lastname: String): Boolean
     verifyAccount(userid: String, code: String, password: String): User
+    updatePassword(userid: String, oldpassword: String, newpassword: String): User
     login(username: String!, pwd: String!, uiversion: String): User
     setSignUpContext(account: String): Boolean
     signup(email: String, firstname: String, uiversion: String, account: String): Boolean!
@@ -201,7 +205,18 @@ export const resolvers = {
             //This function is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
-            const user = await Users.findOneAndUpdate(
+
+            let user = await Users.findOne({
+                $and: [{ _id: ObjectId(args.userid) }, { code: args.code }],
+            })
+            if (user.state !== 'new')
+                throw new Error(
+                    "Your account didn't verify. If you've signed up before, try logging in.",
+                )
+
+            checkPasswordFormat(args.password)
+
+            user = await Users.findOneAndUpdate(
                 { _id: ObjectId(args.userid), code: args.code, state: 'new' },
                 {
                     $set: {
@@ -210,13 +225,10 @@ export const resolvers = {
                     },
                 },
             )
-            req.session.user = user.value
-            if (user.value) return user.value
-            else {
-                throw new Error(
-                    "Your account didn't verify. If you've signed up before, try logging in.",
-                )
-            }
+            user.value.state = 'verified'
+            //overriding state to verified as it doesn't update in returned value.
+
+            return await login(user.value, args, req)
         },
 
         login: async (parent, args, { req, ip }) => {
@@ -235,8 +247,7 @@ export const resolvers = {
                     throw new Error('Account has not been verified.')
 
                 if (await bcrypt.compareSync(args.pwd, user.password)) {
-                    let loggedinuser = await login(user, args, req)
-                    return loggedinuser
+                    return await login(user, args, req)
                 } else {
                     await Users.updateOne(
                         { _id: ObjectId(user._id) },
@@ -386,6 +397,31 @@ export const resolvers = {
             req.session.destroy()
             return true
         },
+
+        updatePassword: async (parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+
+            let user = await Users.findOne({ _id: ObjectId(args.userid) })
+            if (user.state !== 'verified')
+                throw new Error(
+                    'Password cannot be updated on unverified account',
+                )
+
+            const check = bcrypt.compareSync(args.oldpassword, user.password)
+            if (!check) throw new Error('Incorrect current password')
+
+            user = await Users.findOneAndUpdate(
+                { _id: ObjectId(args.userid) },
+                {
+                    $set: {
+                        password: bcrypt.hashSync(args.newpassword, 10),
+                    },
+                },
+            )
+
+            return user.value
+        },
     },
 }
 
@@ -501,4 +537,34 @@ export const getuserIpAddress = request => {
     const ipAddress = headers['x-forwarded-for']
     if (!ipAddress) return null
     return ipAddress
+}
+
+function checkPasswordFormat(password) {
+    const alpha_char = /[a-z]/i //regex of alphabetical chars
+    const numeric_char = /[0-9]/
+    const special_char = /[!"#$%&'()*+,-.\/:;<=>?@[\]^_`{|}~]/
+    let return_message = ''
+    if (password.length > PASSWORD_MAX_LENGTH)
+        return_message +=
+            `Password must be fewer than ` +
+            `${PASSWORD_MAX_LENGTH} characters ` +
+            `in length `
+    if (password.length < PASSWORD_MIN_LENGTH)
+        return_message +=
+            `Password must be more than ` +
+            `${PASSWORD_MIN_LENGTH} characters ` +
+            `in length `
+    if (!alpha_char.test(password))
+        return_message +=
+            'Password must contain at least ' + 'one alphabetical character'
+    if (!special_char.test(password))
+        return_message +=
+            'Password must contain at least ' +
+            'one of the following characters: ' +
+            '!"#$%&\'()*+,-./:;<=>?@[]^_`{|}~ '
+    if (!numeric_char.test(password))
+        return_message += 'Password must contain at least ' + 'one number'
+
+    if (return_message.length > 0) throw new Error(return_message)
+    return return_message
 }
