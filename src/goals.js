@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb'
 
-import { getprofileid } from './users'
-import { prepare, getuiversion } from '../util/index'
+import { getprofileid, getuserid } from './users'
+import { getuiversion } from '../util/index'
 import DbConnection from './database'
 let pjson = require('../package.json')
 
@@ -448,6 +448,35 @@ export const resolvers = {
                 removefocuslink(req, goalId)
             }
             return goal.value
+        },
+        removeGoal: async(root, { goalid }, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const GoalLinks = db.collection('goallinks')
+            const Goals = db.collection('goals')
+            const Profiles = db.collection('profiles')
+
+            //Check ownership
+            const goal = await Goals.findOne(
+                {_id: ObjectId(goalid)}
+            )
+            const profile = await Profiles.findOne(
+                {_id: ObjectId(goal.profileid)}
+            )
+            if(profile.user !== getuserid(req.session)) 
+                throw new Error('Unauthorised Goal Delete')
+            
+            GoalLinks.deleteMany(
+                {goalid: goalid}, 
+                function(err, obj) {
+                    if (err) throw err
+                })
+            Goals.deleteOne(
+                {_id: ObjectId(goalid)},
+                function(err, obj) {
+                    if (err) throw err
+                })
+            return true
         },
         updateGoalOrder: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')

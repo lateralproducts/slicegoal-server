@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb'
 
 let pjson = require('../package.json')
 import { getuiversion } from '../util/index'
-import { getprofileid } from './users'
+import { getprofileid, getuserid } from './users'
 import DbConnection from './database'
 
 export const typeDefs = `
@@ -21,6 +21,8 @@ export const typeDefs = `
     removeInsightLink(linkid: String): Boolean
     markSpacedYes(insightid: String, datetime: String): Boolean
     markSpacedNo(insightid: String, datetime: String): Boolean
+    createInsight(datetime: String, prompt: String, answer: String, arealinks: [AreaLinkIn]): Spaced
+    removeInsight(insightid: String!): Boolean
   }
 `
 
@@ -314,6 +316,35 @@ export const resolvers = {
                 message: 'new insight created',
             }
         },
+        removeInsight: async(root, { insightid }, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const InsightLinks = db.collection('insightlinks')
+            const Insights = db.collection('insights')
+            const Profiles = db.collection('profiles')
+
+            //Check ownership
+            const insight = await Insights.findOne(
+                {_id: ObjectId(insightid)}
+            )
+            const profile = await Profiles.findOne(
+                {_id: ObjectId(insight.profileid)}
+            )
+            if(profile.user !== getuserid(req.session)) 
+                throw new Error('Unauthorised Insight Delete')
+            
+            InsightLinks.deleteMany(
+                {insightid: insightid}, 
+                function(err, obj) {
+                    if (err) throw err
+                })
+            Insights.deleteOne(
+                {_id: ObjectId(insightid)},
+                function(err, obj) {
+                    if (err) throw err
+                })
+            return true
+        }
     },
 }
 

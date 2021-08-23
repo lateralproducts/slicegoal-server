@@ -145,10 +145,14 @@ export const resolvers = {
 
         createClient: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
+
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const Views = db.collection('views')
             const Profiles = db.collection('profiles')
+
+            if (req.session.view.type !== "multiwheel")
+                throw new Error('Not owner of wheel')
 
             let user = await Users.findOne({ email: args.email.toLowerCase() })
             let userid
@@ -174,6 +178,7 @@ export const resolvers = {
                 name: req.session.view.name,
                 type: 'team',
                 created: new Date(),
+                email: args.email.toLowerCase()
             }
             Views.insertOne(newview)
 

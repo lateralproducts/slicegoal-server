@@ -20,14 +20,17 @@ export const typeDefs = `
         lastgoaltime(areaId: String): GoalTime
         focusLinks(limit: Int, area: String): [Focus]
         focusLink(focuslink: String): Focus
+        viewsOnOwnWheel(viewid: String!): [View]
     }
     
     extend type Mutation {
         setView(viewid: String): View
+        deleteView(viewid: String!): View
+        removeViewFromUser(viewid: String!): Boolean
         createNewWheel(viewtype: String, wheelname: String!, areas: [AreaIn]): View
         removeStartArea: Boolean!
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
-        deleteArea(area: String): Area
+        deleteArea(areaid: String!): Boolean
         updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
         setProfile(profileid: String!): Profile
         copyWheel(wheelid: String!, viewtype: String!): Boolean
@@ -38,7 +41,6 @@ export const typeDefs = `
         createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
     }
-
 `
 
 export const schema = `
@@ -98,6 +100,7 @@ export const schema = `
         type: String
         wheel: Wheel
         name: String
+        email: String
     }
 
     type Wheel {
@@ -278,6 +281,32 @@ export const resolvers = {
                 { sort: { date: -1 } },
             )
         },
+        viewsOnOwnWheel: async (root, { viewid }, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Views = db.collection('views')
+            const wheelid = await isWheelOwner(req, viewid)
+
+            if(!wheelid) throw new Error('Request not from wheel owner')
+
+            const views = await Views.aggregate([
+                {$match: {wheel: wheelid.toString()}},
+                {$lookup: {
+                    from: "users", 
+                    localField: "email",
+                    foreignField: "email",
+                    as: "user"}
+                }
+            ]).toArray()
+
+            return  views.map(view => {
+                return {
+                    name: view.user[0].firstname,
+                    email: view.email,
+                    _id: view._id.toString()
+                }
+            })
+        }
     },
     Wheel: {
         profiles: async (parent, args, { req }) => {
@@ -547,7 +576,6 @@ export const resolvers = {
                 _id: ObjectId(viewid),
                 user: getuserid(req.session), //check that this user own's the view. If not, return error.
             })
-
             let query = new Object()
             query.wheel = view.wheel
             if (view.type === 'team')
@@ -561,6 +589,61 @@ export const resolvers = {
             req.session.profile = profile
 
             return view //need to return the view, area.
+        },
+        deleteView: async (parent, { viewid }, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Views = db.collection('views')
+            const Profiles = db.collection('profiles')
+
+            if(await isViewOwner(req, viewid)) { //Only allowed to remove own views
+                const deletedView = await Views.findOneAndDelete({
+                    _id: ObjectId(viewid)
+                })
+                if(deletedView) {
+                    console.log(getprofileid(req.session))
+                    const profile = await Profiles.findOneAndDelete({
+                        _id: ObjectId(getprofileid(req.session))
+                    })
+                    const alternativeProfiles = await Profiles.aggregate(
+                        {$match: {type: profile.type, user: getuserid(req.session)}},
+                        {$lookup: {
+                            from: "views",
+                            localField: "wheel",
+                            foreignField: "wheel",
+                            as: "view"}
+                        },
+                        {$unwind: "$view"}
+                    ).toArray()
+
+                    if(alternativeProfiles)
+                        return alternativeProfiles[0].view._id
+                }
+            }
+        },
+        removeViewFromUser: async (parent, { viewid }, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Views = db.collection('views')
+
+            //Find the view object that should be deleted
+            const view = await Views.findOne({
+                _id: ObjectId(viewid)
+            })
+
+            //Use view to check if request comes from owner of wheel
+            const isOwner = await isWheelOwner(req, view._id)
+
+            if(!isOwner) throw new Error('Unauthorised Deletion of View')
+
+            Views.removeOne(
+                {_id: ObjectId(viewid)
+                },
+                function(err) {
+                    if (err) throw err
+                }
+            )
+            return true
         },
         createNewWheel: async (
             parent,
@@ -617,23 +700,38 @@ export const resolvers = {
             )
             return focusflag
         },
-        deleteArea: async (root, { rootarea, area }, { req }) => {
+        deleteArea: async (root, { areaid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
             const AreaLinks = db.collection('arealinks')
-            let message = ''
-            AreaLinks.deleteOne(
+            const Wheels = db.collection('wheels')
+
+            //Check for right to delete area
+            const area = await Areas.findOne(
+                {_id: ObjectId(areaid)}
+            )
+            const wheel = await Wheels.findOne(
+                {_id: ObjectId(area.wheelid)}
+            )
+            if(wheel.user !== getuserid(req.session))
+                throw new Error('Unauthorised area delete')
+
+            Areas.deleteOne(
+                {_id: ObjectId(areaid)},
+                function(err, obj) {
+                    if (err) throw err
+                }
+            )
+            AreaLinks.deleteMany(
                 {
-                    rootarea: rootarea,
-                    area: area,
-                    wheelid: getwheelid(req.session),
+                    area: areaid,
                 },
                 function(err, obj) {
                     if (err) throw err
-                    message = obj.deletedCount + ' area(s) deleted'
                 },
             )
-            return { _id: areaId, title: message }
+            return true
         },
         setProfile: async (parent, { profileid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -1017,4 +1115,53 @@ export async function logareaclick(_id, navdirection, req) {
 function getwheelid(session) {
     if (session.view) return session.view.wheel
     else return null
+}
+
+async function isWheelOwner(req, viewid) {
+    const db = await DbConnection.Get()
+    const Views = db.collection('views')
+
+    const result = await Views.aggregate([
+        {$match: {_id: ObjectId(viewid)}},
+        {$project : {
+            wheel : {
+                $toObjectId : "$wheel"
+            }
+        }
+        },
+        {$lookup: {        
+            from: "wheels",
+            localField: "wheel",
+            foreignField: "_id",
+            as: "wheel"
+            }
+        },
+        {$unwind: "$wheel"}
+    ]).toArray()
+
+    //Check if request comes from owner of wheel
+    const view = await Views.findOne({
+        user: getuserid(req.session),
+        wheel: result[0].wheel._id.toString()
+    })
+
+    if(view.type === 'multiwheel' && result[0].wheel.user === getuserid(req.session)){
+        return result[0].wheel._id
+    }
+    else 
+        return null
+}
+
+async function isViewOwner(req, viewid) {
+    const db = await DbConnection.Get()
+    const Views = db.collection('views')
+
+    const view = await Views.findOne(
+        {_id: ObjectId(viewid),
+        user: getuserid(req.session)
+        }
+    )
+    if (view === null)
+        throw new Error('Unauthorised Delete')
+    return true
 }
