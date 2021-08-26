@@ -21,7 +21,6 @@ export const typeDefs = `
     removeInsightLink(linkid: String): Boolean
     markSpacedYes(insightid: String, datetime: String): Boolean
     markSpacedNo(insightid: String, datetime: String): Boolean
-    createInsight(datetime: String, prompt: String, answer: String, arealinks: [AreaLinkIn]): Spaced
     removeInsight(insightid: String!): Boolean
   }
 `

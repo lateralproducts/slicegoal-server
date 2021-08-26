@@ -29,6 +29,7 @@ export const typeDefs = `
         removeViewFromUser(viewid: String!): Boolean
         createNewWheel(viewtype: String, wheelname: String!, areas: [AreaIn]): View
         removeStartArea: Boolean!
+        updateStartArea(areaid: String!): Boolean
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
         deleteArea(areaid: String!): Boolean
         updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
@@ -601,12 +602,14 @@ export const resolvers = {
                     _id: ObjectId(viewid)
                 })
                 if(deletedView) {
-                    console.log(getprofileid(req.session))
                     const profile = await Profiles.findOneAndDelete({
-                        _id: ObjectId(getprofileid(req.session))
+                        wheel: deletedView.value.wheel
                     })
-                    const alternativeProfiles = await Profiles.aggregate(
-                        {$match: {type: profile.type, user: getuserid(req.session)}},
+                    cleanUpView(deletedView, profile.value) //Delete the wheel, areas etc. from DB
+
+                    // Search for more profiles of the same type
+                    const alternate_profiles = await Profiles.aggregate(
+                        {$match: {type: profile.value.type, user: getuserid(req.session)}},
                         {$lookup: {
                             from: "views",
                             localField: "wheel",
@@ -614,10 +617,23 @@ export const resolvers = {
                             as: "view"}
                         },
                         {$unwind: "$view"}
-                    ).toArray()
-
-                    if(alternativeProfiles)
-                        return alternativeProfiles[0].view._id
+                    )
+                    .toArray()
+                        
+                    if(alternate_profiles.length > 0) { //more views on profile?
+                        if(profile.value._id.toString() === getprofileid(req.session)){ //current profile?
+                            return alternate_profiles[0].view[0] //return another view on same profile
+                        }
+                        else {
+                            return alternate_profiles //return current view
+                                    .find(profile => ( 
+                                        profile._id.toString() === getprofileid(req.session)
+                                    )).view[0]
+                        }
+                    }
+                    else {
+                        return null //No more views found on the same profile
+                    }
                 }
             }
         },
@@ -676,6 +692,54 @@ export const resolvers = {
 
             return true
         },
+        updateStartArea: async (parent, { areaid }, { req }) => {
+            if(!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            const AreaLinks = db.collection('arealinks')
+            const Wheels = db.collection('wheels')
+
+            Wheels.findOne(
+                {_id: ObjectId(getwheelid(req.session))},
+            )
+            .then( wheel => {
+                return Areas.findOne( { _id: ObjectId(wheel.startarea) })
+            })
+            .then(previousStartArea => {
+                Areas.updateMany(
+                    { wheelid: getwheelid(req.session) },
+                    { $set: { rootarea: areaid} }
+                )
+                .then(() => {
+                    // Remove rootarea field from new start area
+                    Areas.updateOne(
+                        {_id: ObjectId(areaid)},
+                        { $unset: { rootarea: "" }}
+                    
+                    )
+                    AreaLinks.updateMany(
+                        { area: areaid },
+                        { $set: { 
+                            areaname: previousStartArea.name, 
+                            area: previousStartArea._id.toString()
+                            }
+                        }
+                    )
+                })
+            })
+            
+            AreaLinks.updateMany(
+                { wheelid: getwheelid(req.session) },
+                { $set: { rootarea: areaid.toString()}}
+            )
+
+            Wheels.updateOne(
+                { _id: ObjectId(getwheelid(req.session)) },
+                { $set: { startarea: areaid.toString() } }
+            )
+
+            return true
+        },
         toggleFocusFlag: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
@@ -716,7 +780,7 @@ export const resolvers = {
             )
             if(wheel.user !== getuserid(req.session))
                 throw new Error('Unauthorised area delete')
-
+            
             Areas.deleteOne(
                 {_id: ObjectId(areaid)},
                 function(err, obj) {
@@ -1157,11 +1221,32 @@ async function isViewOwner(req, viewid) {
     const Views = db.collection('views')
 
     const view = await Views.findOne(
-        {_id: ObjectId(viewid),
-        user: getuserid(req.session)
-        }
+        {_id: ObjectId(viewid)}
     )
     if (view === null)
+        throw new Error('View not found')
+    else if(view.user !== getuserid(req.session))
         throw new Error('Unauthorised Delete')
-    return true
+    else {
+        return true
+    }
+}
+
+async function cleanUpView(view, profile) {
+    const db = await DbConnection.Get()
+    const Areas = db.collection('areas')
+    const AreaLinks = db.collection('arealinks')
+    const Goals = db.collection('goals')
+    const GoalLinks = db.collection('goallinks')
+    const Insights = db.collection('insights')
+    const InsightLinks = db.collection('insightlinks')
+    const Wheels = db.collection('wheels')
+
+    Areas.deleteMany({wheelid: view.wheel})
+    AreaLinks.deleteMany({wheelid: view.wheel})
+    Goals.deleteMany({profileid: profile._id.toString()})
+    GoalLinks.deleteMany({profileid: profile._id.toString()})
+    Insights.deleteMany({profileid: profile._id.toString()})
+    InsightLinks.deleteMany({profileid: profile._id.toString()})
+    Wheels.deleteMany({_id: ObjectId(view.wheel)})
 }

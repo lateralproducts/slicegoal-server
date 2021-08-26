@@ -17,6 +17,7 @@ export const typeDefs = `
     extend type Mutation {
         createGoal(datetime: String, goal: String, notes: String, keys:[KeyIn], areatags: [AreaTagIn], links: [String]): Goal
         updateGoal(goalId: String!, goal: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Goal
+        removeGoal(goalid: String!): Boolean
         updateGoalOrder(goals: [String]): Boolean
         savePomodoro(area: String, links: [String], notes: String, goal: String, datetime: String, minutes: Int): Boolean!
         checkKey(goalId: String!, index: Int, check: Boolean): Boolean
