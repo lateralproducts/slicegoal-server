@@ -13,7 +13,7 @@ export const typeDefs = `
         profiles: [Profile]
         area(_id: String!, navdirection: String, readdate: String): Area
         areas (readdate: String): [Area]
-        arealinks(area: String): [AreaLink]
+        arealinks(areaid: String): [AreaLink]
         ranktimes(areaId: String): [RankTime]
         lastranktime(areaId: String): RankTime
         goaltimes(areaId: String): [GoalTime]
@@ -51,7 +51,7 @@ export const schema = `
         linkedarea: Area
     }
 
-    input AreaLinkIn {
+    input AreaTagIn {
         area: AreaId
         name: String
         notes: String
@@ -247,7 +247,7 @@ export const resolvers = {
             const AreaLinks = db.collection('arealinks')
             return await AreaLinks.find({
                 rootarea: { $not: { $eq: null } },
-                area: args.area,
+                area: args.areaid,
                 wheelid: getwheelid(req.session),
             }).toArray()
         },
@@ -690,7 +690,7 @@ export const resolvers = {
             await AreaLinks.insertOne({
                 rootarea: args.rootarea,
                 area: args.area,
-                wheelid: getwheelid(req.session),
+                wheelid: getwheelid(req.session).toString(),
                 created: new Date(),
             })
 

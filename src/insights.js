@@ -8,19 +8,19 @@ import DbConnection from './database'
 export const typeDefs = `
 
   extend type Query {
-    insightLinks(insightid: String): [InsightLink]
     insights(area: String): [InsightLink]
+    insightLinks(insightid: String): [InsightLink]
     searchinsights(search: String, spaced: Boolean): [Insight]
   }
 
   extend type Mutation {
-    markSpacedYes(insightid: String, datetime: String): Boolean
-    markSpacedNo(insightid: String, datetime: String): Boolean
+    createInsight(datetime: String, prompt: String, answer: String, areatags: [AreaTagIn]): Spaced
     updateInsight(insightid: String, datetime: String, prompt: String, answer: String): Spaced 
     createInsightLink(insightid: String!, area: String, areaname: String): Boolean
     updateInsightLink(linkid: String!, notes: String): Boolean
     removeInsightLink(linkid: String): Boolean
-    createInsight(datetime: String, prompt: String, answer: String, arealinks: [AreaLinkIn]): Spaced
+    markSpacedYes(insightid: String, datetime: String): Boolean
+    markSpacedNo(insightid: String, datetime: String): Boolean
   }
 `
 
@@ -325,22 +325,28 @@ async function createinsight(newinsight, req) {
     const insightLinks = db.collection('insightlinks')
 
     try {
+        //first insert the insight into DB
         const result = await Insights.insertOne(newinsight)
 
-        let insight = new Object()
-        insight.insightid = result.insertedId.toString()
-        insight.profileid = newinsight.profileid
-        insight.fib0 = 0
-        insight.fib1 = 1
-        let nextdate = new Date() //set nextdate for tomorrow.
-        if (newinsight.prompt) nextdate.setDate(nextdate.getDate() + 1)
-        insight.datenext = nextdate
-        Spaced.insert(insight)
+        if (newinsight.prompt) {
+            //this is functionality for spaced repetition. Only activated if the insight has a prompt.
+            let spaced = new Object()
+            spaced.insightid = result.insertedId.toString()
+            spaced.profileid = newspaced.profileid
+            spaced.fib0 = 0
+            spaced.fib1 = 1
+            let nextdate = new Date() //set nextdate for tomorrow.
+            nextdate.setDate(nextdate.getDate() + 1)
+            spaced.datenext = nextdate
+            Spaced.insert(spaced)
+        }
 
-        if (newinsight.arealinks)
-            newinsight.arealinks.map(async link => {
+        if (newinsight.areatags)
+            //if there are area tags, save the area tags
+            newinsight.areatags.map(async link => {
                 let areaid = link.area._id
                 if (!areaid) {
+                    //if area doesn't exist, create it.
                     let area = {
                         name: link.name,
                         wheelid: getprofileid(req.session),
@@ -357,7 +363,7 @@ async function createinsight(newinsight, req) {
                 insightlink.insightid = result.insertedId.toString()
                 insightlink.profileid = newinsight.profileid
                 insightlink.area = areaid
-                insightlink.insights = link.insights
+                insightlink.notes = link.notes
                 insightlink.datecreated = new Date()
                 insightLinks.insert(insightlink)
             })
