@@ -731,33 +731,65 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const AreaLinks = db.collection('arealinks')
+            const InsightLinks = db.collection('insightlinks')
+            const GoalLinks = db.collection('goallinks')
+            const Pomodoros = db.collection('pomodoros')
             const Wheels = db.collection('wheels')
 
             //Check for right to delete area
-            const area = await Areas.findOne(
+            Areas.findOne(
                 {_id: ObjectId(areaid)}
             )
-            const wheel = await Wheels.findOne(
-                {_id: ObjectId(area.wheelid)}
-            )
-            if(wheel.user !== getuserid(req.session))
-                throw new Error('Unauthorised area delete')
-            
-            Areas.deleteOne(
-                {_id: ObjectId(areaid)},
-                function(err, obj) {
-                    if (err) throw err
-                }
-            )
-            AreaLinks.deleteMany(
-                {
-                    area: areaid,
-                },
-                function(err, obj) {
-                    if (err) throw err
-                },
-            )
-            return true
+            .then(area => {
+                 Wheels.findOne(
+                    {_id: ObjectId(area.wheelid)}
+                )
+                .then(wheel => {
+                    if(wheel.user !== getuserid(req.session))
+                        throw new Error('Unauthorised area delete')
+                    else {
+                        Areas.deleteOne(
+                            {_id: ObjectId(areaid)},
+                            function(err, obj) {
+                                if (err) throw err
+                            }
+                        )
+                        AreaLinks.deleteMany(
+                            {
+                                area: areaid,
+                            },
+                            function(err, obj) {
+                                if (err) throw err
+                            },
+                        )
+                        InsightLinks.deleteMany(
+                            {
+                                area: areaid
+                            },
+                            function(err, obj) {
+                                if (err) throw err
+                            }
+                        )
+                        GoalLinks.deleteMany(
+                            {
+                                areaid: areaid
+                            },
+                            function(err, obj) {
+                                if (err) throw err
+                            }
+                        )
+                        Pomodoros.deleteMany(
+                            {
+                                araed: areaid
+                            },
+                            function(err, obj) {
+                                if (err) throw err
+                            }
+                        )
+                        return true
+                    }
+                })
+            })
         },
         setProfile: async (parent, { profileid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')

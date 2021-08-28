@@ -458,26 +458,32 @@ export const resolvers = {
             const Profiles = db.collection('profiles')
 
             //Check ownership
-            const goal = await Goals.findOne(
+            Goals.findOne(
                 {_id: ObjectId(goalid)}
             )
-            const profile = await Profiles.findOne(
-                {_id: ObjectId(goal.profileid)}
-            )
-            if(profile.user !== getuserid(req.session)) 
-                throw new Error('Unauthorised Goal Delete')
-            
-            GoalLinks.deleteMany(
-                {goalid: goalid}, 
-                function(err, obj) {
-                    if (err) throw err
+            .then(goal => {
+                Profiles.findOne(
+                    {_id: ObjectId(goal.profileid)}
+                )
+                .then(profile => {
+                    if(profile.user !== getuserid(req.session)) {
+                        throw new Error('Unauthorised Goal Delete')
+                    }
+                    else {
+                        GoalLinks.deleteMany(
+                            {goalid: goalid}, 
+                            function(err, obj) {
+                                if (err) throw err
+                            })
+                        Goals.deleteOne(
+                            {_id: ObjectId(goalid)},
+                            function(err, obj) {
+                                if (err) throw err
+                            })
+                        return true
+                    }
                 })
-            Goals.deleteOne(
-                {_id: ObjectId(goalid)},
-                function(err, obj) {
-                    if (err) throw err
-                })
-            return true
+            })
         },
         updateGoalOrder: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')

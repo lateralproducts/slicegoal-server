@@ -323,26 +323,34 @@ export const resolvers = {
             const Profiles = db.collection('profiles')
 
             //Check ownership
-            const insight = await Insights.findOne(
+            Insights.findOne(
                 {_id: ObjectId(insightid)}
             )
-            const profile = await Profiles.findOne(
-                {_id: ObjectId(insight.profileid)}
-            )
-            if(profile.user !== getuserid(req.session)) 
-                throw new Error('Unauthorised Insight Delete')
-            
-            InsightLinks.deleteMany(
-                {insightid: insightid}, 
-                function(err, obj) {
-                    if (err) throw err
+            .then(insight => {
+                Profiles.findOne(
+                    {_id: ObjectId(insight.profileid)}
+                )
+                .then(profile => {
+                    if(profile.user !== getuserid(req.session)) {
+                        throw new Error('Unauthorised Insight Delete')
+                    }
+                    else {
+                        InsightLinks.deleteMany(
+                            {insightid: insightid}, 
+                            function(err, obj) {
+                                if (err) throw err
+                            }
+                        )
+                        Insights.deleteOne(
+                            {_id: ObjectId(insightid)},
+                            function(err, obj) {
+                                if (err) throw err
+                            }
+                        )
+                        return true
+                    }
                 })
-            Insights.deleteOne(
-                {_id: ObjectId(insightid)},
-                function(err, obj) {
-                    if (err) throw err
-                })
-            return true
+            })
         }
     },
 }
