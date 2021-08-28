@@ -292,6 +292,7 @@ export const resolvers = {
 
             const views = await Views.aggregate([
                 {$match: {wheel: wheelid.toString()}},
+                {$match: {user: {$ne: getuserid(req.session)}}},
                 {$lookup: {
                     from: "users", 
                     localField: "email",
@@ -607,33 +608,9 @@ export const resolvers = {
                     })
                     cleanUpView(deletedView, profile.value) //Delete the wheel, areas etc. from DB
 
-                    // Search for more profiles of the same type
-                    const alternate_profiles = await Profiles.aggregate(
-                        {$match: {type: profile.value.type, user: getuserid(req.session)}},
-                        {$lookup: {
-                            from: "views",
-                            localField: "wheel",
-                            foreignField: "wheel",
-                            as: "view"}
-                        },
-                        {$unwind: "$view"}
+                    return await Views.findOne(
+                        { user: getuserid(req.session) }
                     )
-                    .toArray()
-                        
-                    if(alternate_profiles.length > 0) { //more views on profile?
-                        if(profile.value._id.toString() === getprofileid(req.session)){ //current profile?
-                            return alternate_profiles[0].view[0] //return another view on same profile
-                        }
-                        else {
-                            return alternate_profiles //return current view
-                                    .find(profile => ( 
-                                        profile._id.toString() === getprofileid(req.session)
-                                    )).view[0]
-                        }
-                    }
-                    else {
-                        return null //No more views found on the same profile
-                    }
                 }
             }
         },
@@ -703,40 +680,25 @@ export const resolvers = {
                 {_id: ObjectId(getwheelid(req.session))},
             )
             .then( wheel => {
-                return Areas.findOne( { _id: ObjectId(wheel.startarea) })
+                return Areas.findOne( 
+                    { _id: ObjectId(wheel.startarea) }
+                )
             })
             .then(previousStartArea => {
-                Areas.updateMany(
-                    { wheelid: getwheelid(req.session) },
-                    { $set: { rootarea: areaid} }
-                )
-                .then(() => {
-                    // Remove rootarea field from new start area
-                    Areas.updateOne(
-                        {_id: ObjectId(areaid)},
-                        { $unset: { rootarea: "" }}
-                    
-                    )
-                    AreaLinks.updateMany(
-                        { area: areaid },
-                        { $set: { 
-                            areaname: previousStartArea.name, 
-                            area: previousStartArea._id.toString()
-                            }
-                        }
-                    )
-                })
-            })
-            
-            AreaLinks.updateMany(
-                { wheelid: getwheelid(req.session) },
-                { $set: { rootarea: areaid.toString()}}
-            )
 
-            Wheels.updateOne(
-                { _id: ObjectId(getwheelid(req.session)) },
-                { $set: { startarea: areaid.toString() } }
-            )
+                AreaLinks.insertOne( {
+                    area: previousStartArea._id.toString(),
+                    areaname: previousStartArea.name,
+                    wheelid: getwheelid(req.session),
+                    uiversion: getuiversion(req.session),
+                    serverversion: pjson.version
+                })
+
+                Wheels.updateOne(
+                    {_id: ObjectId(getwheelid(req.session))},
+                    {$set: {startarea: areaid}}
+                )
+            })
 
             return true
         },
