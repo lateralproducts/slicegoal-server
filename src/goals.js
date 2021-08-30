@@ -457,33 +457,29 @@ export const resolvers = {
             const Goals = db.collection('goals')
             const Profiles = db.collection('profiles')
 
-            //Check ownership
-            Goals.findOne(
+            const goal = await Goals.findOne(
                 {_id: ObjectId(goalid)}
             )
-            .then(goal => {
-                Profiles.findOne(
-                    {_id: ObjectId(goal.profileid)}
+            const profile = await Profiles.findOne(
+                {_id: ObjectId(goal.profileid)}
+            )
+            if(profile.user !== getuserid(req.session)) {
+                throw new Error('Unauthorised Goal Delete')
+            }
+            else {
+                const goalLinksDeleted = GoalLinks.deleteMany(
+                    { goalid: goalid }
                 )
-                .then(profile => {
-                    if(profile.user !== getuserid(req.session)) {
-                        throw new Error('Unauthorised Goal Delete')
-                    }
-                    else {
-                        GoalLinks.deleteMany(
-                            {goalid: goalid}, 
-                            function(err, obj) {
-                                if (err) throw err
-                            })
-                        Goals.deleteOne(
-                            {_id: ObjectId(goalid)},
-                            function(err, obj) {
-                                if (err) throw err
-                            })
-                        return true
-                    }
-                })
-            })
+                const goalsDeleted = Goals.deleteOne(
+                    { _id: ObjectId(goalid) }
+                )
+                const result = await Promise.all([
+                    goalLinksDeleted, 
+                    goalsDeleted
+                ])
+                if(result) return true
+                else return false
+            }
         },
         updateGoalOrder: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
