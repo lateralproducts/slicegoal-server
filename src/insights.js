@@ -241,6 +241,14 @@ export const resolvers = {
                 areaid = inserted.insertedId.toString()
             } else {
                 areaid = args.area
+
+                Areas.updateOne(
+                    {
+                        wheelid: getwheelid(req.session),
+                        _id: ObjectId(areaid),
+                    },
+                    { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
+                )
             }
 
             const link = await InsightLinks.insertOne({
@@ -315,7 +323,7 @@ export const resolvers = {
                 message: 'new insight created',
             }
         },
-        removeInsight: async(root, { insightid }, { req }) => {
+        removeInsight: async (root, { insightid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
@@ -323,36 +331,36 @@ export const resolvers = {
             const Profiles = db.collection('profiles')
 
             //Check ownership
-            Insights.findOne(
-                {_id: ObjectId(insightid)}
-            )
-            .then(insight => {
-                Profiles.findOne(
-                    {_id: ObjectId(insight.profileid)}
+            Insights.findOne({ _id: ObjectId(insightid) }).then(insight => {
+                Profiles.findOne({ _id: ObjectId(insight.profileid) }).then(
+                    profile => {
+                        if (profile.user !== getuserid(req.session)) {
+                            throw new Error('Unauthorised Insight Delete')
+                        } else {
+                            InsightLinks.deleteMany(
+                                { insightid: insightid },
+                                function(err, obj) {
+                                    if (err) throw err
+                                },
+                            )
+                            Insights.deleteOne(
+                                { _id: ObjectId(insightid) },
+                                function(err, obj) {
+                                    if (err) throw err
+                                },
+                            )
+                            return true
+                        }
+                    },
                 )
-                .then(profile => {
-                    if(profile.user !== getuserid(req.session)) {
-                        throw new Error('Unauthorised Insight Delete')
-                    }
-                    else {
-                        InsightLinks.deleteMany(
-                            {insightid: insightid}, 
-                            function(err, obj) {
-                                if (err) throw err
-                            }
-                        )
-                        Insights.deleteOne(
-                            {_id: ObjectId(insightid)},
-                            function(err, obj) {
-                                if (err) throw err
-                            }
-                        )
-                        return true
-                    }
-                })
             })
-        }
+        },
     },
+}
+
+function getwheelid(session) {
+    if (session.view) return session.view.wheel
+    else return null
 }
 
 async function createinsight(newinsight, req) {
@@ -404,6 +412,14 @@ async function createinsight(newinsight, req) {
                 insightlink.notes = link.notes
                 insightlink.datecreated = new Date()
                 insightLinks.insert(insightlink)
+
+                Areas.updateOne(
+                    {
+                        wheelid: getwheelid(req.session),
+                        _id: ObjectId(areaid),
+                    },
+                    { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
+                )
             })
     } catch (error) {
         console.log(error)
