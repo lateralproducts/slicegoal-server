@@ -8,10 +8,6 @@ import {
     newUserNotificationEmail,
 } from './emails'
 
-import { getuiversion } from '../util/index'
-
-import { createWheel } from './areas'
-
 let pjson = require('../package.json')
 import DbConnection from './database'
 
@@ -68,34 +64,17 @@ export const resolvers = {
             //this is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
-            const Logins = db.collection('logins')
 
             if (!req.session.url) req.session.url = args.url //set the URL string to send back once logged in to load state. rerank. mostly for google auth.
             if (req.session.user) {
+                sessiontrack(req, args, 'app', 'arrived refresh success')
                 const user = await Users.findOne({
                     _id: ObjectId(getuserid(req.session)),
                 })
-
-                await Logins.insertOne({
-                    email: req.session.user.email,
-                    url: args.url,
-                    lastip: getuserIpAddress(req),
-                    result: 'success',
-                    type: 'loggedin refresh',
-                    lastlogin: new Date(),
-                })
                 return user
             } else {
-                await Logins.insertOne({
-                    email: 'session removed',
-                    url: args.url,
-                    lastip: getuserIpAddress(req),
-                    result: 'failed',
-                    type: 'loggedin refresh',
-                    lastlogin: new Date(),
-                })
-
-                throw new Error('User not logged in')
+                sessiontrack(req, args, 'app', 'arrived')
+                return null
             }
         },
     },
@@ -151,7 +130,7 @@ export const resolvers = {
             const Views = db.collection('views')
             const Profiles = db.collection('profiles')
 
-            if (req.session.view.type !== "multiwheel")
+            if (req.session.view.type !== 'multiwheel')
                 throw new Error('Not owner of wheel')
 
             let user = await Users.findOne({ email: args.email.toLowerCase() })
@@ -178,7 +157,7 @@ export const resolvers = {
                 name: req.session.view.name,
                 type: 'team',
                 created: new Date(),
-                email: args.email.toLowerCase()
+                email: args.email.toLowerCase(),
             }
             Views.insertOne(newview)
 
@@ -214,10 +193,12 @@ export const resolvers = {
             let user = await Users.findOne({
                 $and: [{ _id: ObjectId(args.userid) }, { code: args.code }],
             })
-            if (user.state !== 'new')
+            if (user.state !== 'new') {
+                sessiontrack(req, args, 'verify', 'already registered')
                 throw new Error(
                     "Your account didn't verify. If you've signed up before, try logging in.",
                 )
+            }
 
             checkPasswordFormat(args.password)
 
@@ -232,7 +213,7 @@ export const resolvers = {
             )
             user.value.state = 'verified'
             //overriding state to verified as it doesn't update in returned value.
-
+            sessiontrack(req, args, 'verify', 'success')
             return await login(user.value, args, req)
         },
 
@@ -240,7 +221,6 @@ export const resolvers = {
             //public function
             const db = await DbConnection.Get()
             const Users = db.collection('users')
-            const Logins = db.collection('logins')
 
             const user = await Users.findOne({
                 email: args.username.toLowerCase(),
@@ -266,35 +246,12 @@ export const resolvers = {
                         },
                     )
 
-                    await Logins.insertOne({
-                        email: user.email,
-                        lastip: getuserIpAddress(req),
-                        result: 'failed',
-                        type: 'username login',
-                        lastlogin: new Date(),
-                    })
-
+                    sessiontrack(req, args, 'login', 'failed')
                     throw new Error('Incorrect password.')
                 }
             }
 
-            await Logins.insertOne({
-                email: args.username,
-                lastip: getuserIpAddress(req),
-                result: 'not registered',
-                type: 'username login',
-                lastlogin: new Date(),
-            })
-
-            /*           await Users.insertOne({
-          email: args.username,
-          password: bcrypt.hashSync(args.pwd, 10),
-          uiversion: args.uiversion,
-          serverversion: pjson.version,
-          state: "new",
-          profile: "client",
-          created: new Date()
-        }); */
+            sessiontrack(req, args, 'login', 'not registered')
             throw new Error('Email not registered')
         },
 
@@ -311,6 +268,12 @@ export const resolvers = {
                 email: args.email.toLowerCase(),
             })
             if (user) {
+                sessiontrack(
+                    req,
+                    args,
+                    'signup',
+                    'failed, profile already exists',
+                )
                 throw new Error(
                     'If you already have a Cavestep profile with this email you can log in.',
                 )
@@ -333,6 +296,7 @@ export const resolvers = {
 
             if (args.account === 'coach') emailNewCoach(emailuser)
             else emailNewPersonal(emailuser)
+            sessiontrack(req, args, 'signup', 'success')
 
             return true
         },
@@ -341,7 +305,6 @@ export const resolvers = {
             //This is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
-            const Logins = db.collection('logins')
             const tokenInfo = await oAuth2Client.getTokenInfo(args.token)
             if ((tokenInfo.email = args.email)) {
                 //check token authentication...
@@ -361,6 +324,7 @@ export const resolvers = {
                     args.created = new Date()
                     user = args
                     let newuser = await signup(user, args, req) //automatically sign up google login.
+                    sessiontrack(req, args, 'googlesignup', 'success')
                     return await login(newuser, args, req)
                 } else {
                     if (user.state !== 'verified') {
@@ -374,16 +338,11 @@ export const resolvers = {
                             },
                         )
                     }
+                    sessiontrack(req, args, 'googlelogin', 'success')
                     return await login(user, args, req)
                 }
             }
-            await Logins.insertOne({
-                email: args.email,
-                result: 'failed',
-                type: 'google login',
-                ip: getuserIpAddress(req),
-                lastlogin: new Date(),
-            })
+            sessiontrack(req, args, 'googlelogin', 'failed')
             throw new Error('Error authenticating with google')
 
             // https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
@@ -447,7 +406,6 @@ export function getuserid(session) {
 async function login(user, args, req) {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
-    const Logins = db.collection('logins')
     const Views = db.collection('views')
     const Profiles = db.collection('profiles')
     if (
@@ -472,18 +430,8 @@ async function login(user, args, req) {
             })
 
             if (profile) req.session.profile = profile
-        } else {
-            //createWheel(user, user._id.toString(), "personal");
-            //this was causing problems with google logins creating two wheels.
         }
-
-        await Logins.insertOne({
-            email: user.email,
-            lastip: getuserIpAddress(req),
-            result: 'success',
-            type: 'username login',
-            lastlogin: new Date(),
-        })
+        sessiontrack(req, args, 'emaillogin', 'success')
 
         await Users.updateOne(
             { _id: ObjectId(user._id) },
@@ -498,14 +446,7 @@ async function login(user, args, req) {
         user.url = req.session.url
         return user
     }
-
-    await Logins.insertOne({
-        email: args.username,
-        lastip: getuserIpAddress(req),
-        result: 'failed',
-        type: 'username login',
-        lastlogin: new Date(),
-    })
+    sessiontrack(req, args, 'emaillogin', 'failed')
 
     await Users.updateOne(
         { _id: ObjectId(user._id) },
@@ -533,6 +474,60 @@ async function signup(newuser, args, req) {
         throw new Error(
             'Sign up failed for some reason. Sorry. Please try again.',
         )
+    }
+}
+
+export async function sessiontrack(req, args, page, result) {
+    const db = await DbConnection.Get()
+    const Sessions = db.collection('sessions')
+    const Session = await Sessions.findOne({
+        session: req.session.id,
+    })
+
+    if (Session) {
+        let update = { lastrequest: new Date() }
+        if (args.username) update.email = args.username //if email, update session email
+        if (args.email) update.email = args.email
+        if (page === 'signup' || page === 'googlesignup')
+            update.signedup = { email: update.email, time: new Date() }
+
+        Sessions.updateOne(
+            {
+                session: req.session.id,
+            },
+            {
+                $set: update,
+                $push: {
+                    pages: {
+                        page: page,
+                        result: result,
+                        time: new Date(),
+                        query: args.url,
+                        ip: getuserIpAddress(req),
+                        email: args.username,
+                    },
+                },
+            },
+        )
+    } else {
+        Sessions.insertOne({
+            session: req.session.id,
+            email: args.username,
+            landed: new Date(),
+            lastrequest: new Date(),
+            searchstring: args.url,
+            landedip: getuserIpAddress(req),
+            pages: [
+                {
+                    page: page,
+                    time: new Date(),
+                    query: args.url,
+                    ip: getuserIpAddress(req),
+                    email: args.username,
+                    result: result,
+                },
+            ],
+        })
     }
 }
 

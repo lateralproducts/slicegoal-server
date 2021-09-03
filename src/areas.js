@@ -2,7 +2,8 @@ import { ObjectId } from 'mongodb'
 
 import DbConnection from './database'
 import { getuiversion } from '../util/index'
-import { getuserid, getprofileid, getname } from './users'
+import { sessiontrack, getuserid, getprofileid, getname } from './users'
+
 let pjson = require('../package.json')
 
 export const typeDefs = `
@@ -153,7 +154,7 @@ export const resolvers = {
             return await Views.find(query).toArray()
         },
         wheels: async (parent, args, { req }) => {
-            //This is a publicly accessible call.
+            //This is a **publicly** accessible call, used on the website. Don't need to login to retrieve.
             //Could potentially have a completely different server running this in the future.
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
@@ -652,6 +653,7 @@ export const resolvers = {
             )
             req.session.view = newview
             req.session.profile = newprofile
+            sessiontrack(req, { username: null }, 'createwheel', 'success')
 
             return newview //need to return the view, area.
         },
