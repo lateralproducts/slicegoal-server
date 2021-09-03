@@ -39,9 +39,9 @@ export const resolvers = {
                 Sessions.insertOne({
                     session: req.session.id,
                     email: null,
+                    landpage: args.page,
                     landed: new Date(),
                     lastrequest: new Date(),
-                    landpage: args.page,
                     campaignquery: args.search,
                     campaign: args.search ? querytojson(args.search) : null,
                     landedip: getuserIpAddress(req),

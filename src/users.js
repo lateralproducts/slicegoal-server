@@ -513,6 +513,7 @@ export async function sessiontrack(req, args, page, result) {
         Sessions.insertOne({
             session: req.session.id,
             email: args.username,
+            landpage: 'app',
             landed: new Date(),
             lastrequest: new Date(),
             searchstring: args.url,
