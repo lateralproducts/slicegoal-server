@@ -33,7 +33,7 @@ export const typeDefs = `
     createClient(email: String!, firstname: String, lastname: String): Boolean
     verifyAccount(userid: String, code: String, password: String): User
     updatePassword(userid: String, oldpassword: String, newpassword: String): User
-    login(username: String!, pwd: String!, uiversion: String): User
+    login(email: String!, pwd: String!, uiversion: String): User
     setSignUpContext(account: String): Boolean
     signup(email: String, firstname: String, uiversion: String, account: String): Boolean!
     googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
@@ -223,9 +223,9 @@ export const resolvers = {
             const Users = db.collection('users')
 
             const user = await Users.findOne({
-                email: args.username.toLowerCase(),
+                email: args.email.toLowerCase(),
             })
-            //const user = data[username];
+            //const user = data[email];
 
             if (user) {
                 if (!user.password)
@@ -486,7 +486,6 @@ export async function sessiontrack(req, args, page, result) {
 
     if (Session) {
         let update = { lastrequest: new Date() }
-        if (args.username) update.email = args.username //if email, update session email
         if (args.email) update.email = args.email
         if (page === 'signup' || page === 'googlesignup')
             update.signedup = { email: update.email, time: new Date() }
@@ -504,7 +503,7 @@ export async function sessiontrack(req, args, page, result) {
                         time: new Date(),
                         query: args.url,
                         ip: getuserIpAddress(req),
-                        email: args.username,
+                        email: args.email,
                     },
                 },
             },
@@ -512,7 +511,7 @@ export async function sessiontrack(req, args, page, result) {
     } else {
         Sessions.insertOne({
             session: req.session.id,
-            email: args.username,
+            email: args.email,
             landpage: 'app',
             landed: new Date(),
             lastrequest: new Date(),
@@ -524,7 +523,7 @@ export async function sessiontrack(req, args, page, result) {
                     time: new Date(),
                     query: args.url,
                     ip: getuserIpAddress(req),
-                    email: args.username,
+                    email: args.email,
                     result: result,
                 },
             ],

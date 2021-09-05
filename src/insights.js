@@ -395,7 +395,7 @@ async function createinsight(newinsight, req) {
                     //if area doesn't exist, create it.
                     let area = {
                         name: link.name,
-                        wheelid: getprofileid(req.session),
+                        wheelid: getwheelid(req.session),
                         serverversion: pjson.version,
                         uiversion: getuiversion(req.session),
                         created: new Date(),

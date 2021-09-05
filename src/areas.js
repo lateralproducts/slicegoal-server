@@ -653,7 +653,7 @@ export const resolvers = {
             )
             req.session.view = newview
             req.session.profile = newprofile
-            sessiontrack(req, { username: null }, 'createwheel', 'success')
+            sessiontrack(req, { email: null }, 'createwheel', 'success')
 
             return newview //need to return the view, area.
         },

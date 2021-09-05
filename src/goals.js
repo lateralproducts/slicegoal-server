@@ -450,34 +450,29 @@ export const resolvers = {
             }
             return goal.value
         },
-        removeGoal: async(root, { goalid }, { req }) => {
+        removeGoal: async (root, { goalid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
             const Goals = db.collection('goals')
             const Profiles = db.collection('profiles')
 
-            const goal = await Goals.findOne(
-                {_id: ObjectId(goalid)}
-            )
-            const profile = await Profiles.findOne(
-                {_id: ObjectId(goal.profileid)}
-            )
-            if(profile.user !== getuserid(req.session)) {
+            const goal = await Goals.findOne({ _id: ObjectId(goalid) })
+            const profile = await Profiles.findOne({
+                _id: ObjectId(goal.profileid),
+            })
+            if (profile.user !== getuserid(req.session)) {
                 throw new Error('Unauthorised Goal Delete')
-            }
-            else {
-                const goalLinksDeleted = GoalLinks.deleteMany(
-                    { goalid: goalid }
-                )
-                const goalsDeleted = Goals.deleteOne(
-                    { _id: ObjectId(goalid) }
-                )
+            } else {
+                const goalLinksDeleted = GoalLinks.deleteMany({
+                    goalid: goalid,
+                })
+                const goalsDeleted = Goals.deleteOne({ _id: ObjectId(goalid) })
                 const result = await Promise.all([
-                    goalLinksDeleted, 
-                    goalsDeleted
+                    goalLinksDeleted,
+                    goalsDeleted,
                 ])
-                if(result) return true
+                if (result) return true
                 else return false
             }
         },
@@ -607,7 +602,7 @@ async function creategoal(newgoal, req) {
                     if (!areaid) {
                         let area = {
                             name: link.name,
-                            wheelid: getprofileid(req.session),
+                            wheelid: getwheelid(req.session),
                             serverversion: pjson.version,
                             uiversion: getuiversion(req.session),
                             created: new Date(),
