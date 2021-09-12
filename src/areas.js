@@ -9,7 +9,8 @@ let pjson = require('../package.json')
 export const typeDefs = `
 
     extend type Query {
-        wheels:[Wheel]
+        wheel(wheelid: String):[Wheel]
+        wheels(tag: String):[Wheel]
         views: [View]
         profiles: [Profile]
         area(_id: String!, navdirection: String, readdate: String): Area
@@ -158,12 +159,22 @@ export const resolvers = {
             //if (args.default) query._id = ObjectId(args.defaultview) //if asking for default profile only return the default.
             return await Views.find(query).toArray()
         },
-        wheels: async (parent, args, { req }) => {
+        wheel: async (parent, { wheelid }, { req }) => {
             //This is a **publicly** accessible call, used on the website. Don't need to login to retrieve.
             //Could potentially have a completely different server running this in the future.
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
-            return await Wheels.find({ global: true })
+            return await Wheels.findOne({ _id: ObjectId(wheelid), global:true })
+        },
+        wheels: async (parent, { tag }, { req }) => {
+            //This is a **publicly** accessible call, used on the website. Don't need to login to retrieve.
+            //Could potentially have a completely different server running this in the future.
+            const db = await DbConnection.Get()
+            const Wheels = db.collection('wheels')
+            const query = new Object()
+            query.global = true
+            if (tag) query.tag = tag
+            return await Wheels.find(query)
                 .sort({ templateorder: -1 })
                 .toArray()
         },
