@@ -85,7 +85,7 @@ export async function emailGoalNudge(user, links, goals) {
                 )
             })
             .join('') +
-        "<br/><img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>"
+        "<br/><img width='100' src='https://www.cavestep.com/static/media/cavesteplong.d8a54789.png'/>"
 
     sendEmail(to, subject, email)
 }
