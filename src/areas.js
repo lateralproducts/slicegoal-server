@@ -29,7 +29,7 @@ export const typeDefs = `
         setView(viewid: String): View
         deleteView(viewid: String!): View
         removeViewFromUser(viewid: String!): Boolean
-        createNewWheel(viewtype: String, wheelname: String!, areas: [AreaIn]): View
+        createNewWheel(wheelname: String!, areas: [AreaIn]): View
         removeStartArea: Boolean!
         updateStartArea(areaid: String!): Boolean
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
@@ -645,17 +645,13 @@ export const resolvers = {
             })
             return true
         },
-        createNewWheel: async (
-            parent,
-            { viewtype, wheelname, areas },
-            { req },
-        ) => {
+        createNewWheel: async (parent, { wheelname, areas }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             //set wheel, view, and profile to the context.
             let { newview, newprofile } = await createWheel(
                 req.session.user,
                 req.session.user._id.toString(),
-                viewtype,
+                'multiwheel',
                 wheelname,
                 areas,
                 getuiversion(req.session),
