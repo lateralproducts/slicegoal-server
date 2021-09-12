@@ -11,10 +11,10 @@ export const typeDefs = `
     extend type Query {
         wheel(wheelid: String):[Wheel]
         wheels(tag: String):[Wheel]
-        views: [View]
+        views (type: String): [View]
         profiles: [Profile]
         area(_id: String!, navdirection: String, readdate: String): Area
-        areas (readdate: String): [Area]
+        areas (wheelid: String, readdate: String): [Area]
         arealinks(areaid: String): [AreaLink]
         ranktimes(areaId: String): [RankTime]
         lastranktime(areaId: String): RankTime
@@ -36,7 +36,7 @@ export const typeDefs = `
         deleteArea(areaid: String!): Boolean
         updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
         setProfile(profileid: String!): Profile
-        copyWheel(wheelid: String!, viewtype: String!): Boolean
+        copyWheel(wheelid: String!): Boolean
         createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
         deleteAreaLink(rootarea: String, area: String): Area
         createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
@@ -156,7 +156,9 @@ export const resolvers = {
             const Views = db.collection('views')
             let query = new Object()
             query.user = getuserid(req.session)
-            //if (args.default) query._id = ObjectId(args.defaultview) //if asking for default profile only return the default.
+            if (args.type === 'notcurrent')
+                query.wheel = { $ne: getwheelid(req.session) }
+            if (args.type === 'default') query.default = true //defaultview //if asking for default profile only return the default.
             return await Views.find(query).toArray()
         },
         wheel: async (parent, { wheelid }, { req }) => {
@@ -164,7 +166,10 @@ export const resolvers = {
             //Could potentially have a completely different server running this in the future.
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
-            return await Wheels.findOne({ _id: ObjectId(wheelid), global:true })
+            return await Wheels.findOne({
+                _id: ObjectId(wheelid),
+                global: true,
+            })
         },
         wheels: async (parent, { tag }, { req }) => {
             //This is a **publicly** accessible call, used on the website. Don't need to login to retrieve.
@@ -207,8 +212,9 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
+            const wheel = !args.wheelid ? getwheelid(req.session) : args.wheelid
             let areas = await Areas.find({
-                wheelid: getwheelid(req.session), // , $or: [{ { global: true }, wheelid: getwheelid(req.session)] if we want to use global areas to define wheels. Needs more thought.
+                wheelid: wheel, // , $or: [{ { global: true }, wheelid: getwheelid(req.session)] if we want to use global areas to define wheels. Needs more thought.
             })
                 .sort({ lasttagged: -1, lastclicked: -1 })
                 .toArray()
@@ -777,21 +783,10 @@ export const resolvers = {
             req.session.profile = profile
             return profile
         },
-        copyWheel: async (parent, { wheelid, viewtype }, { req }) => {
+        copyWheel: async (parent, { wheelid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const Users = db.collection('users')
-            let user = await Users.findOne({
-                _id: ObjectId(getuserid(req.session)),
-            })
-            if (user)
-                createWheel(
-                    user,
-                    user._id.toString(),
-                    viewtype,
-                    wheelid,
-                    getuiversion(req.session),
-                )
+            copywheel(wheelid, getuserid(req.session))
             return true
         },
         deleteAreaLink: async (root, { rootarea, area }, { req }) => {
@@ -935,84 +930,57 @@ export async function createWheel(
     const Wheels = db.collection('wheels')
     let wheelid
 
-    switch (viewtype) {
-        case 'coach': //currently not copying wheel for coach. Just creating a blank wheel.
-            let startareaid = (await Areas.insertOne({
-                name: 'Coaching Wheel',
-                email: user.email,
+    //First area passed is root/start area
+    const startArea = (await Areas.insertOne({
+        user: userid,
+        name: wheelname,
+        email: user.email,
+        created: new Date(),
+    })).insertedId.toString()
+
+    //Create wheel object
+    wheelid = (await Wheels.insertOne({
+        user: userid,
+        created: new Date(),
+        startarea: startArea,
+        name: wheelname,
+    })).insertedId.toString()
+
+    //Update startarea to have correct wheelid
+    Areas.updateOne(
+        { _id: ObjectId(startArea) },
+        { $set: { wheelid: wheelid } },
+    )
+
+    //Setting up the Area records
+    if (areas.length > 0) {
+        //Blank wheel will have zero attached areas.
+        let insertAreas = areas.map(area => {
+            return {
+                name: area.name,
+                wheelid: wheelid,
+                definition: area.definition,
+                rootarea: startArea,
+                uiversion: uiversion,
                 created: new Date(),
-            })).insertedId.toString()
-
-            wheelid = (await Wheels.insertOne({
-                name: user.email + "'s new coach wheel",
-                startarea: startareaid,
-            })).insertedId.toString()
-
-            Areas.updateOne(
-                { _id: ObjectId(startareaid) },
-                {
-                    $set: {
-                        wheelid: wheelid,
-                    },
-                },
-            )
-            break
-        case 'client':
-        default:
-            viewtype = 'multiwheel'
-
-            //First area passed is root/start area
-            const startArea = (await Areas.insertOne({
-                user: userid,
-                name: wheelname,
-                email: user.email,
-                created: new Date(),
-            })).insertedId.toString()
-
-            //Create wheel object
-            wheelid = (await Wheels.insertOne({
-                user: userid,
-                created: new Date(),
-                startarea: startArea,
-                name: wheelname,
-            })).insertedId.toString()
-
-            //Update startarea to have correct wheelid
-            Areas.updateOne(
-                { _id: ObjectId(startArea) },
-                { $set: { wheelid: wheelid } },
-            )
-
-            //Setting up the Area records
-            if (areas.length > 0) {
-                //Blank wheel will have zero attached areas.
-                let insertAreas = areas.map(area => {
-                    return {
-                        name: area.name,
-                        wheelid: wheelid,
-                        definition: area.definition,
-                        rootarea: startArea,
-                        uiversion: uiversion,
-                        created: new Date(),
-                        serverversion: pjson.version,
-                    }
-                })
-
-                let newAreas = (await Areas.insertMany(insertAreas)).insertedIds //insert all records in one go.
-
-                //Setting up the AreaLink records
-                let insertAreaLinks = newAreas.map(areaid => {
-                    return {
-                        area: areaid,
-                        rootarea: startArea,
-                        wheelid: wheelid,
-                        uiversion: uiversion,
-                        serverversion: pjson.version,
-                    }
-                })
-
-                AreaLinks.insert(insertAreaLinks) //inserting in one request
+                serverversion: pjson.version,
             }
+        })
+
+        let newAreas = (await Areas.insertMany(insertAreas)).insertedIds //insert all records in one go.
+
+        //Setting up the AreaLink records
+        let insertAreaLinks = newAreas.map(areaid => {
+            return {
+                area: areaid,
+                rootarea: startArea,
+                wheelid: wheelid,
+                uiversion: uiversion,
+                serverversion: pjson.version,
+            }
+        })
+
+        AreaLinks.insert(insertAreaLinks) //inserting in one request
     }
 
     //create new view
@@ -1021,10 +989,7 @@ export async function createWheel(
         email: user.email,
         wheel: wheelid, //req.session.view.wheel,
         created: new Date(),
-        name:
-            viewtype === 'coach'
-                ? getname(user.firstname, '', user.email) + "'s Coaching"
-                : wheelname,
+        name: wheelname,
         type: viewtype,
     }
     Views.insertOne(newview)
@@ -1035,10 +1000,7 @@ export async function createWheel(
         wheel: wheelid,
         email: user.email,
         created: new Date(),
-        name:
-            viewtype === 'coach'
-                ? 'Team Profile'
-                : getname(user.firstname, user.lastname, user.email),
+        name: getname(user.firstname, user.lastname, user.email),
         type: 'team', //create the first team profile.
     }
     Profiles.insertOne(newprofile)
@@ -1051,6 +1013,9 @@ async function copywheel(wheelid, userid) {
     const Wheels = db.collection('wheels')
     const Areas = db.collection('areas')
     const AreaLinks = db.collection('arealinks')
+    const Views = db.collection('views')
+    const Profiles = db.collection('profiles')
+    const viewtype = 'multiwheel'
 
     //only using userid as a tag to keep track of the copy.
     //wheel - global
@@ -1071,6 +1036,7 @@ async function copywheel(wheelid, userid) {
             newwheel,
         )).insertedId.toString()
         //areas - global
+
         let newareas = await Areas.find({ wheelid: wheelid }).toArray()
         newareas.map(area => {
             area.user = userid
@@ -1081,13 +1047,11 @@ async function copywheel(wheelid, userid) {
             delete area._id
             return area
         })
+        let insertedareas = (await Areas.insertMany(newareas)).ops
 
-        await Areas.insertMany(newareas)
-        let newstartareaid = (await Areas.findOne({
-            user: userid,
-            copyarea: newwheel.startarea,
-            wheelid: newwheelid, //this is the id used for returning wheels
-        }))._id.toString()
+        let newstartareaid = insertedareas
+            .find(o => o.copyarea === newwheel.startarea)
+            ._id.toString()
 
         Wheels.updateOne(
             { _id: ObjectId(newwheelid) },
@@ -1097,22 +1061,47 @@ async function copywheel(wheelid, userid) {
         let newarealinks = await AreaLinks.find({
             wheelid: wheelid,
         }).toArray()
+
         newarealinks.map(arealink => {
+            const newarea = insertedareas.find(
+                area => area.copyarea === arealink.area,
+            )
+            const newrootarea = insertedareas.find(
+                o => o.copyarea === arealink.rootarea,
+            )
             arealink.user = userid //this is just copied as a reference for ease
             arealink.wheelid = newwheelid //this is the id used for returning arealinks
-            arealink.rootarea = newareas
-                .find(o => o.copyarea === arealink.rootarea)
-                ._id.toString()
-            arealink.area = newareas
-                .find(o => o.copyarea === arealink.area)
-                ._id.toString()
+            arealink.rootarea = newrootarea._id.toString()
+            arealink.area = newarea._id.toString()
             arealink.copywheel = wheelid
             arealink.copylink = arealink._id.toString()
             arealink.created = new Date()
             delete arealink._id
             return arealink
         })
+
         AreaLinks.insertMany(newarealinks)
+
+        //create new profile
+        let newprofile = {
+            user: userid,
+            wheel: newwheelid,
+            created: new Date(),
+            name: newwheel.name,
+            type: 'team', //create the first team profile.
+        }
+        Profiles.insertOne(newprofile)
+
+        //create new view
+        let newview = {
+            user: userid,
+            wheel: newwheelid, //req.session.view.wheel,
+            created: new Date(),
+            name: newwheel.name,
+            type: viewtype,
+        }
+        Views.insertOne(newview)
+
         //return wheel
         return newwheelid
     }

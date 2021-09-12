@@ -14,9 +14,9 @@ export const typeDefs = `
   }
 
   extend type Mutation {
-    createInsight(datetime: String, prompt: String, answer: String, areatags: [AreaTagIn]): Spaced
+    createInsight(datetime: String, profileid: String, prompt: String, answer: String, areatags: [AreaTagIn]): Spaced
     updateInsight(insightid: String, datetime: String, prompt: String, answer: String): Spaced 
-    createInsightLink(insightid: String!, area: String, areaname: String): Boolean
+    createInsightLink(insightid: String!, profileid: String, area: String, areaname: String): Boolean
     updateInsightLink(linkid: String!, notes: String): Boolean
     removeInsightLink(linkid: String): Boolean
     markSpacedYes(insightid: String, datetime: String): Boolean
@@ -227,7 +227,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
             const Areas = db.collection('areas')
-            args.profileid = getprofileid(req.session)
+            if (!args.profileid) args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
             args.datecreated = new Date()
@@ -235,7 +235,7 @@ export const resolvers = {
             let areaid
             if (!args.area) {
                 let newarea = new Object() //create new area.
-                newarea.wheelid = getprofileid(req.session) //update: check to see if this should be profileid, not wheelid...
+                newarea.wheelid = args.profileid //update: check to see if this should be profileid, not wheelid...
                 newarea.name = args.areaname
                 const inserted = await Areas.insertOne(newarea) //only creating new area if "areaname is added"
                 areaid = inserted.insertedId.toString()
@@ -254,7 +254,7 @@ export const resolvers = {
             const link = await InsightLinks.insertOne({
                 //insert the link to connect insight and new area.
                 insightid: args.insightid,
-                profileid: getprofileid(req.session),
+                profileid: args.profileid,
                 area: areaid,
                 datecreated: new Date(),
             })
@@ -311,15 +311,14 @@ export const resolvers = {
         }, */
         createInsight: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
-            args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
             args.datecreated = new Date(args.datetime)
             args.lastedited = new Date(args.datetime)
-            createinsight(args, req)
+            const insertedId = await createinsight(args, req)
 
             return {
-                _id: 1,
+                _id: insertedId,
                 message: 'new insight created',
             }
         },
@@ -364,11 +363,23 @@ function getwheelid(session) {
 }
 
 async function createinsight(newinsight, req) {
+    //passing wheelid and profileid on newinsight object.
     const db = await DbConnection.Get()
     const Insights = db.collection('insights')
     const Spaced = db.collection('spaced')
     const Areas = db.collection('areas')
     const insightLinks = db.collection('insightlinks')
+
+    const Profiles = db.collection('profiles')
+
+    if (newinsight.profileid) {
+        //get wheelid from profile.
+        const profile = await Profiles.findOne({
+            _id: ObjectId(newinsight.profileid),
+        })
+        if (profile) newinsight.wheelid = profile.wheel
+    }
+    if (!newinsight.profileid) newinsight.profileid = getprofileid(req.session)
 
     try {
         //first insert the insight into DB
@@ -395,7 +406,9 @@ async function createinsight(newinsight, req) {
                     //if area doesn't exist, create it.
                     let area = {
                         name: link.name,
-                        wheelid: getwheelid(req.session),
+                        wheelid: newinsight.wheelid
+                            ? newinsight.wheelid
+                            : getwheelid(req.session),
                         serverversion: pjson.version,
                         uiversion: getuiversion(req.session),
                         created: new Date(),
@@ -415,12 +428,15 @@ async function createinsight(newinsight, req) {
 
                 Areas.updateOne(
                     {
-                        wheelid: getwheelid(req.session),
+                        wheelid: newinsight.wheelid
+                            ? newinsight.wheelid
+                            : getwheelid(req.session),
                         _id: ObjectId(areaid),
                     },
                     { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
                 )
             })
+        return result.insertedId.toString()
     } catch (error) {
         console.log(error)
     }
