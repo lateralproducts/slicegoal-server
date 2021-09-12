@@ -21,7 +21,7 @@ export const typeDefs = `
         lastgoaltime(areaId: String): GoalTime
         focusLinks(limit: Int, area: String): [Focus]
         focusLink(focuslink: String): Focus
-        viewsOnOwnWheel(viewid: String!): [View]
+        viewsOnOwnWheel(wheelid: String!): [View]
     }
     
     extend type Mutation {
@@ -101,9 +101,14 @@ export const schema = `
         _id: String
         type: String
         wheel: Wheel
+        user: ViewUser
         name: String
         email: String
     }
+
+    type ViewUser {
+        firstname: String
+      }
 
     type Wheel {
         _id: String
@@ -283,34 +288,25 @@ export const resolvers = {
                 { sort: { date: -1 } },
             )
         },
-        viewsOnOwnWheel: async (root, { viewid }, { req }) => {
+        viewsOnOwnWheel: async (root, { wheelid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Views = db.collection('views')
-            const wheelid = await isWheelOwner(req, viewid)
+            const views = await Views.find({
+                wheel: wheelid,
+            }).toArray()
 
-            if (!wheelid) throw new Error('Request not from wheel owner')
+            const ownersview = views.find(
+                view =>
+                    view.user === getuserid(req.session) &&
+                    view.type === 'multiwheel',
+            )
 
-            const views = await Views.aggregate([
-                { $match: { wheel: wheelid.toString() } },
-                { $match: { user: { $ne: getuserid(req.session) } } },
-                {
-                    $lookup: {
-                        from: 'users',
-                        localField: 'email',
-                        foreignField: 'email',
-                        as: 'user',
-                    },
-                },
-            ]).toArray()
+            const owner = await isWheelOwner(req, ownersview._id)
+            if (!owner) throw new Error('Request not from wheel owner')
 
-            return views.map(view => {
-                return {
-                    name: view.user[0].firstname,
-                    email: view.email,
-                    _id: view._id.toString(),
-                }
-            })
+            views.splice(ownersview, 1) //remove owners view from the list
+            return views
         },
     },
     Wheel: {
@@ -368,13 +364,13 @@ export const resolvers = {
             if (wheel) wheel.view = obj
             return wheel
         },
-        //user: async (view, args, { req }) => {
-        //    return (
-        //      await Users.findOne({
-        //        _id: ObjectId(view.user)
-        //     })
-        //    );
-        //}
+        user: async (view, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            return await Users.findOne({
+                _id: ObjectId(view.user),
+            })
+        },
     },
     Area: {
         clicks: async ({ _id }, args, { req }) => {
@@ -1143,13 +1139,15 @@ function getwheelid(session) {
 async function isWheelOwner(req, viewid) {
     const db = await DbConnection.Get()
     const Views = db.collection('views')
+    const view = await Views.findOne({ _id: ObjectId(viewid) }) //find view to get wheel.
 
     let query = new Object()
-    query._id = ObjectId(viewid)
+    query.wheel = view.wheel
     query.user = getuserid(req.session)
-    query.type = 'multiwheel'
-    const view = await Views.findOne(query) //if the view is "multiwheel", then this person is the owner. Will probably change multiwheel to "Owner" at some point.
-    if (view === null) return false
+    query.type = 'multiwheel' //if the userview is "multiwheel", then this person is the owner. Will probably change multiwheel to "Owner" at some point.
+    const userview = await Views.findOne(query)
+
+    if (userview === null) return false
     else return true
 }
 

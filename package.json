@@ -1,5 +1,5 @@
 {
-    "name": "graphql-mongodb-example",
+    "name": "cavestep-server",
     "version": "8.0.0",
     "description": "",
     "main": "dist/index.js",
@@ -15,7 +15,7 @@
         "release-minor": "yarn version --minor --message",
         "release-major": "yarn version --major --message"
     },
-    "author": "Nicola Marcacci Rossi <nicolamr@gmail.com> (http://nmr.io)",
+    "author": "Daniel Schrader <daniel@cavestep.com> (https://www.cavestep.com/app)",
     "license": "ISC",
     "devDependencies": {
         "babel-cli": "^6.18.0",
