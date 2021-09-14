@@ -12,6 +12,7 @@ export const typeDefs = `
     insightLinks(insightid: String): [InsightLink]
     searchinsights(search: String, spaced: Boolean): [Insight]
     newsharedinsights: Boolean
+    getSharedInsights: [SharedInsight]
   }
 
   extend type Mutation {
@@ -36,8 +37,13 @@ export const schema = `
         answer: String
         spaced: Spaced
         insightlink: String
+        sharedfrom: String
+        datetimeshared: String
     }
-
+    type SharedInsight {
+        name: String
+        insights: [Insight]
+    }
     type InsightLink {
         _id: String
         insightid: String
@@ -46,7 +52,6 @@ export const schema = `
         insight: Insight
         notes: String 
     }
-
     type Spaced {
         _id: String
         insightid: String
@@ -115,6 +120,20 @@ export const resolvers = {
             if (found) return true
             else return false
         },
+        getSharedInsights: async (parent, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+            const Users = db.collection('users')
+            const user = await Users.findOne({
+                _id: ObjectId(getuserid(req.session)),
+            })
+
+            return await Insights.distinct('sharedfrom', {
+                email: user.email,
+                status: 'newshared',
+            })
+        },
         insightLinks: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
@@ -147,6 +166,29 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             return await Insights.findOne({ _id: ObjectId(parent.insightid) })
+        },
+    },
+    SharedInsight: {
+        name: async (userid, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+
+            const user = await Users.findOne({
+                _id: ObjectId(userid),
+            })
+
+            return user.lastname
+                ? user.firstname + ' ' + user.lastname
+                : user.firstname
+        },
+        insights: async (userid, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+
+            return await Insights.find({
+                status: 'newshared',
+                sharedfrom: userid,
+            }).toArray()
         },
     },
     Mutation: {
