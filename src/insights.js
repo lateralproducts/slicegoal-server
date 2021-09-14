@@ -22,6 +22,7 @@ export const typeDefs = `
     markSpacedYes(insightid: String, datetime: String): Boolean
     markSpacedNo(insightid: String, datetime: String): Boolean
     removeInsight(insightid: String!): Boolean
+    shareInsight(insightid: String!, targetUser: String!): Boolean
   }
 `
 
@@ -269,7 +270,7 @@ export const resolvers = {
             InsightLinks.updateOne(
                 { _id: ObjectId(args.linkid) },
                 { $set: { notes: args.notes } },
-                function(err, obj) {
+                function (err, obj) {
                     if (err) throw err
                 },
             )
@@ -285,7 +286,7 @@ export const resolvers = {
                     _id: ObjectId(args.linkid),
                     profileid: args.profileid,
                 },
-                function(err, obj) {
+                function (err, obj) {
                     if (err) throw err
                 },
             )
@@ -330,21 +331,21 @@ export const resolvers = {
             const Profiles = db.collection('profiles')
 
             //Check ownership
-            Insights.findOne({ _id: ObjectId(insightid) }).then(insight => {
+            Insights.findOne({ _id: ObjectId(insightid) }).then((insight) => {
                 Profiles.findOne({ _id: ObjectId(insight.profileid) }).then(
-                    profile => {
+                    (profile) => {
                         if (profile.user !== getuserid(req.session)) {
                             throw new Error('Unauthorised Insight Delete')
                         } else {
                             InsightLinks.deleteMany(
                                 { insightid: insightid },
-                                function(err, obj) {
+                                function (err, obj) {
                                     if (err) throw err
                                 },
                             )
                             Insights.deleteOne(
                                 { _id: ObjectId(insightid) },
-                                function(err, obj) {
+                                function (err, obj) {
                                     if (err) throw err
                                 },
                             )
@@ -353,6 +354,31 @@ export const resolvers = {
                     },
                 )
             })
+        },
+        shareInsight: async (root, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+
+            // Find insight being copied from
+            const insight = await Insights.findOne({
+                _id: ObjectId(args.insightid),
+            })
+
+            return Insights.insertOne({
+                sharedfrom: getuserid(req.session),
+                status: 'newshared',
+                datetimeshared: new Date(),
+                email: args.targetUser,
+                datecreated: insight.datecreated,
+                answer: insight.answer,
+            })
+                .then(() => {
+                    return true
+                })
+                .catch((err) => {
+                    throw err
+                })
         },
     },
 }
@@ -400,7 +426,7 @@ async function createinsight(newinsight, req) {
 
         if (newinsight.areatags)
             //if there are area tags, save the area tags
-            newinsight.areatags.map(async link => {
+            newinsight.areatags.map(async (link) => {
                 let areaid = link.area._id
                 if (!areaid) {
                     //if area doesn't exist, create it.
