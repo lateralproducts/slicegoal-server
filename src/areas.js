@@ -2,8 +2,8 @@ import { ObjectId } from 'mongodb'
 
 import DbConnection from './database'
 import { getuiversion } from '../util/index'
-import { sessiontrack, getuserid, getprofileid, getname } from './users'
-
+import { getuserid, getprofileid, getname } from './users'
+import { sessiontrack } from './website'
 let pjson = require('../package.json')
 
 export const typeDefs = `
@@ -645,20 +645,20 @@ export const resolvers = {
             })
             return true
         },
-        createNewWheel: async (parent, { wheelname, areas }, { req }) => {
+        createNewWheel: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             //set wheel, view, and profile to the context.
             let { newview, newprofile } = await createWheel(
                 req.session.user,
                 req.session.user._id.toString(),
                 'multiwheel',
-                wheelname,
-                areas,
+                args.wheelname,
+                args.areas,
                 getuiversion(req.session),
             )
             req.session.view = newview
             req.session.profile = newprofile
-            sessiontrack(req, { email: null }, 'createwheel', 'success')
+            sessiontrack(req, args, 'app', 'createwheel', 'success')
 
             return newview //need to return the view, area.
         },

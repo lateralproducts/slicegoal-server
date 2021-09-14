@@ -3,70 +3,117 @@ import { getuserIpAddress } from './users'
 
 export const typeDefs = `   
     extend type Mutation {
-        trackpage(page: String, search: String): Boolean
+        trackpage(page: String, search: String, action: String, actioninfo: String, abconfig: String, pagetrack: String): Boolean
     }
 `
 export const resolvers = {
     Mutation: {
         trackpage: async (root, args, { req }) => {
-            const db = await DbConnection.Get()
-            const Sessions = db.collection('sessions')
-
-            const Session = await Sessions.findOne({
-                session: req.session.id,
-            })
-
-            if (Session) {
-                Sessions.updateOne(
-                    {
-                        session: req.session.id,
-                    },
-                    {
-                        $set: {
-                            lastrequest: new Date(),
-                        },
-                        $push: {
-                            pages: {
-                                page: args.page,
-                                time: new Date(),
-                                ip: getuserIpAddress(req),
-                                query: args.search,
-                            },
-                        },
-                    },
-                )
-            } else {
-                Sessions.insertOne({
-                    session: req.session.id,
-                    email: null,
-                    landpage: args.page,
-                    landed: new Date(),
-                    lastrequest: new Date(),
-                    campaignquery: args.search,
-                    campaign: args.search ? querytojson(args.search) : null,
-                    landedip: getuserIpAddress(req),
-                    pages: [
-                        {
-                            page: args.page,
-                            time: new Date(),
-                            ip: getuserIpAddress(req),
-                            query: args.search,
-                        },
-                    ],
-                })
-            }
+            //action: click, update, delete, etc
+            //actioninfo: pass parameters (like wheel name, etc)
+            //abconfig: pass parameter to log for A/B testing
+            //pagetrack: if loading a webpage with a unique identifer, to track over sessions
+            sessiontrack(
+                req,
+                args,
+                args.page,
+                args.action,
+                args.result,
+                args.actioninfo,
+                args.abconfig,
+            )
         },
     },
 }
 
+export async function sessiontrack(
+    req,
+    args,
+    page,
+    action,
+    result,
+    actioninfo,
+    abconfig,
+) {
+    const db = await DbConnection.Get()
+    const Sessions = db.collection('sessions')
+    const Session = await Sessions.findOne({
+        session: req.session.id,
+    })
+    //currently query string coming through as different fields on website and app.
+    const query = args.search ? args.search : args.url
+    let update = { lastrequest: new Date() }
+    if (args.email)
+        update.email = req.session.user ? req.session.user.email : args.email
+    if (page === 'signup' || page === 'googlesignup')
+        update.signedup = { email: update.email, time: new Date() }
+
+    if (Session) {
+        const pageentry = new Object()
+        pageentry.time = new Date()
+        pageentry.page = page
+        if (abconfig) pageentry.abconfig = querytojson(abconfig)
+        if (action) pageentry.action = action
+        if (actioninfo) pageentry.actioninfo = actioninfo
+        if (result) pageentry.result = result
+        if (query) pageentry.query = query
+        pageentry.ip = getuserIpAddress(req)
+        pageentry.email = update.email
+
+        Sessions.updateOne(
+            {
+                session: req.session.id,
+            },
+            {
+                $set: update,
+                $push: {
+                    pages: pageentry,
+                },
+            },
+        )
+    } else {
+        const newsession = new Object()
+        newsession.session = req.session.id
+        newsession.landedip = getuserIpAddress(req)
+        if (args.email) newsession.email = args.email
+        newsession.landpage = 'app'
+        if (abconfig) pageentry.abconfig = querytojson(abconfig)
+        newsession.landed = new Date()
+        newsession.lastrequest = new Date()
+        if (query) {
+            newsession.campaignquery = query
+            newsession.campaign = querytojson(query)
+        }
+
+        const pageentry = new Object()
+        pageentry.time = new Date()
+        pageentry.page = page
+        if (abconfig) pageentry.abconfig = querytojson(abconfig)
+        if (action) pageentry.action = action
+        if (actioninfo) pageentry.actioninfo = actioninfo
+        if (result) pageentry.result = result
+        if (query) pageentry.query = query
+        pageentry.ip = getuserIpAddress(req)
+        pageentry.email = args.email
+
+        newsession.pages = [pageentry]
+
+        Sessions.insertOne(newsession)
+    }
+}
+
 function querytojson(search) {
-    const json = JSON.parse(
-        '{"' +
-            decodeURI(search)
-                .replace(/"/g, '\\"')
-                .replace(/&/g, '","')
-                .replace(/=/g, '":"') +
-            '"}',
-    )
-    return json
+    try {
+        const json = JSON.parse(
+            '{"' +
+                decodeURI(search)
+                    .replace(/"/g, '\\"')
+                    .replace(/&/g, '","')
+                    .replace(/=/g, '":"') +
+                '"}',
+        )
+        return json
+    } catch (error) {
+        return error
+    }
 }
