@@ -25,6 +25,7 @@ export const typeDefs = `
     markSpacedNo(insightid: String, datetime: String): Boolean
     removeInsight(insightid: String!): Boolean
     shareInsight(insightid: String!, targetUser: String!): Boolean
+    popSharedInsight(insightid: String!): Boolean
   }
 `
 
@@ -440,6 +441,30 @@ export const resolvers = {
                 .catch((err) => {
                     throw err
                 })
+        },
+        popSharedInsight: async (root, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+            const Users = db.collection('users')
+
+            const user = await Users.findOne({
+                _id: ObjectId(getuserid(req.session)),
+            })
+
+            const insight = await Insights.findOne({
+                _id: ObjectId(args.insightid),
+            })
+
+            if (insight.email !== user.email)
+                throw new Error('Unauthorised Operation')
+            else {
+                const result = await Insights.deleteOne({
+                    _id: ObjectId(args.insightid),
+                })
+                if (result.result.ok === 1) return true
+                else return false
+            }
         },
     },
 }
