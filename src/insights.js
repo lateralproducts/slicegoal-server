@@ -11,7 +11,7 @@ export const typeDefs = `
     insights(area: String): [InsightLink]
     insightLinks(insightid: String): [InsightLink]
     searchinsights(search: String, spaced: Boolean): [Insight]
-    newsharedinsights: Boolean
+    newsharedinsights: Int
     getSharedInsights: [SharedInsight]
   }
 
@@ -113,13 +113,13 @@ export const resolvers = {
                 _id: ObjectId(getuserid(req.session)),
             })
 
-            const found = await Insights.findOne({
+            const found = await Insights.find({
                 email: user.email,
                 status: 'newshared',
-            })
+            }).toArray()
 
-            if (found) return true
-            else return false
+            if (found) return found.length
+            else return 0
         },
         getSharedInsights: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
