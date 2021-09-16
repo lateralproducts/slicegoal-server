@@ -47,8 +47,8 @@ async function sendEmail(to, subject, email) {
         subject: subject,
         html: email,
     }
-    let response = await new Promise(function(resolve, reject) {
-        transporter.sendMail(mailOptions, function(error, info) {
+    let response = await new Promise(function (resolve, reject) {
+        transporter.sendMail(mailOptions, function (error, info) {
             if (error) {
                 mailOptions.error = error
                 console.log('email error: ' + error)
@@ -73,7 +73,7 @@ export async function emailGoalNudge(user, links, goals) {
         user.firstname +
         ', here are your top goals for today!</div>' +
         goals
-            .map(function(obj) {
+            .map(function (obj) {
                 return (
                     "<div class='goal'>• <a href='" +
                     PATH_URL +
@@ -116,7 +116,6 @@ export async function emailNewClient(client, coach, viewname) {
         '</div>'
 
     sendEmail(to, subject, email)
-
     to = 'daniel@cavestep.com'
     subject = 'New User!' //to Cavestep🦶
     email =

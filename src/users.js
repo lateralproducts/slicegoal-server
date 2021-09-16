@@ -32,7 +32,7 @@ export const typeDefs = `
 
   extend type Mutation {
     updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
-    createClient(email: String!, firstname: String, lastname: String): Boolean
+    createClient(email: String!, firstname: String, lastname: String): createClientResponse
     verifyAccount(userid: String, code: String, password: String): User
     updatePassword(userid: String, oldpassword: String, newpassword: String): User
     login(email: String!, pwd: String!, uiversion: String): User
@@ -57,6 +57,11 @@ export const schema = `
     views: [View]
     currentview: View
     url: String
+  }
+
+  type createClientResponse {
+      success: Boolean
+      message: String
   }
 `
 
@@ -130,61 +135,86 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const Views = db.collection('views')
-            const Profiles = db.collection('profiles')
 
             if (req.session.view.type !== 'multiwheel')
                 throw new Error('Not owner of wheel')
+            else {
+                const user = await Users.findOne({
+                    email: args.email.toLowerCase(),
+                })
 
-            let user = await Users.findOne({ email: args.email.toLowerCase() })
-            let userid
-            if (user) {
-                userid = user._id.toString()
-            } else {
-                //args.profile = "client"; //this belongs on the view now
-                args.state = 'new'
-                args.code = bcrypt.hashSync('verifythisyo', 7)
-                args.created = new Date()
+                let userid
+                if (user) {
+                    userid = user._id.toString()
+                    args.code = user.code
+                    args._id = userid
+                    if (userid === getuserid(req.session)) {
+                        return {
+                            success: false,
+                            message: 'Cannot share wheel with yourself!',
+                        }
+                    } else {
+                        //Find if this user has already been invited/a view added
+                        const currentView = await Views.findOne({
+                            wheel: req.session.view.wheel,
+                            email: args.email.toLowerCase(),
+                        })
 
-                let newuser = await Users.insertOne(args) //create record to return id
-                args._id = newuser.insertedId.toString() //use args to pass new user id for email link
-                emailNewClient(args, req.session.user, req.session.view.name)
+                        //If user already invited, resend email
+                        if (currentView) {
+                            return await emailNewClient(
+                                args,
+                                req.session.user,
+                                req.session.view.name,
+                            ).then(() => {
+                                return {
+                                    success: true,
+                                    message: 'email invite re-sent',
+                                }
+                            })
+                        } else {
+                            //Current Cavestep user, hasn't been invited to this wheel
+                            return await createNewViewProfile(args, userid, req)
+                                .then(() => {
+                                    emailNewClient(
+                                        args,
+                                        req.session.user,
+                                        req.session.view.name,
+                                    )
+                                })
+                                .then(() => {
+                                    return {
+                                        success: true,
+                                        message: 'email invite sent',
+                                    }
+                                })
+                        }
+                    }
+                } else {
+                    //Completely new Cavestep user
+                    args.state = 'new'
+                    args.code = bcrypt.hashSync('verifythisyo', 7)
+                    args.created = new Date()
+                    let newuser = await Users.insertOne(args) //create record to return id
+                    args._id = newuser.insertedId.toString() //use args to pass new user id for email link
+                    userid = newuser.insertedId.toString() //pass id for creating view and profiles
 
-                userid = newuser.insertedId.toString() //pass id for creating view and profiles
-            }
-
-            //create new view
-            let newview = {
-                user: userid,
-                wheel: req.session.view.wheel,
-                name: req.session.view.name,
-                type: 'team',
-                created: new Date(),
-                email: args.email.toLowerCase(),
-            }
-            Views.insertOne(newview)
-
-            //create new profile
-            const profiles = await Profiles.find({
-                wheel: req.session.view.wheel,
-            })
-            if (profiles.length === 1)
-                Profiles.updateOne(
-                    { wheel: req.session.view.wheel },
-                    { $set: { type: 'team' } },
-                )
-
-            if (args.profile) {
-                //need to implement this as an option in the front end.
-                let newprofile = {
-                    user: userid,
-                    wheel: req.session.view.wheel,
-                    name: getname(args.firstname, args.lastname, args.email),
-                    type: 'member',
-                    created: new Date(),
+                    return await createNewViewProfile(args, userid, req)
+                        .then(() => {
+                            emailNewClient(
+                                args,
+                                req.session.user,
+                                req.session.view.name,
+                            )
+                        })
+                        .then(() => {
+                            return {
+                                success: true,
+                                message: 'email invite sent',
+                            }
+                        })
                 }
-                Profiles.insertOne(newprofile)
             }
-            return true
         },
 
         verifyAccount: async (parent, args, { req }) => {
@@ -483,6 +513,43 @@ async function login(user, args, req) {
     throw new Error('Login Failed.')
 }
 
+async function createNewViewProfile(args, userid, req) {
+    const db = await DbConnection.Get()
+    const Views = db.collection('views')
+    const Profiles = db.collection('profiles')
+    //create new view
+    let newview = {
+        user: userid,
+        wheel: req.session.view.wheel,
+        name: req.session.view.name,
+        type: 'team',
+        created: new Date(),
+        email: args.email.toLowerCase(),
+    }
+    const view = await Views.insertOne(newview)
+    const profiles = await Profiles.find({
+        wheel: req.session.view.wheel,
+    })
+    if (profiles.length === 1)
+        Profiles.updateOne(
+            { wheel: req.session.view.wheel },
+            { $set: { type: 'team' } },
+        )
+    if (args.profile) {
+        //need to implement this as an option in the front end.
+        let newprofile = {
+            user: userid,
+            wheel: req.session.view.wheel,
+            name: getname(args.firstname, args.lastname, args.email),
+            type: 'member',
+            created: new Date(),
+        }
+        const profile = await Profiles.insertOne(newprofile)
+
+        if (profile && view) return true
+    } else if (view) return true
+}
+
 async function signup(newuser, args, req) {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
@@ -499,7 +566,7 @@ async function signup(newuser, args, req) {
     }
 }
 
-export const getuserIpAddress = request => {
+export const getuserIpAddress = (request) => {
     const headers = request.headers
     if (!headers) return null
     const ipAddress = headers['x-forwarded-for']
