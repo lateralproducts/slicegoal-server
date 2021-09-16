@@ -24,7 +24,7 @@ export const typeDefs = `
     markSpacedYes(insightid: String, datetime: String): Boolean
     markSpacedNo(insightid: String, datetime: String): Boolean
     removeInsight(insightid: String!): Boolean
-    shareInsight(insightid: String!, targetUser: String!): Boolean
+    shareInsight(insightid: String!, targetUser: String!): ShareResponse
     popSharedInsight(insightid: String!): Boolean
   }
 `
@@ -63,6 +63,10 @@ export const schema = `
         fib0: String
         fib1: String
         datenext: String
+    }
+    type ShareResponse {
+        success: Boolean
+        message: String
     }
 `
 
@@ -421,26 +425,44 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
+            const Users = db.collection('users')
 
-            // Find insight being copied from
-            const insight = await Insights.findOne({
-                _id: ObjectId(args.insightid),
+            const user = await Users.findOne({
+                _id: ObjectId(getuserid(req.session)),
             })
 
-            return Insights.insertOne({
-                sharedfrom: getuserid(req.session),
-                status: 'newshared',
-                datetimeshared: new Date(),
-                email: args.targetUser,
-                datecreated: insight.datecreated,
-                answer: insight.answer,
-            })
-                .then(() => {
-                    return true
+            if (args.targetUser === user.email)
+                return {
+                    success: false,
+                    message: 'Cannot share with yourself - try duplicating',
+                }
+            else {
+                // Find insight being copied from
+                const insight = await Insights.findOne({
+                    _id: ObjectId(args.insightid),
                 })
-                .catch((err) => {
-                    throw err
+
+                return await Insights.insertOne({
+                    sharedfrom: getuserid(req.session),
+                    status: 'newshared',
+                    datetimeshared: new Date(),
+                    email: args.targetUser,
+                    datecreated: insight.datecreated,
+                    answer: insight.answer,
                 })
+                    .then(() => {
+                        return {
+                            success: true,
+                            message: 'Insight shared',
+                        }
+                    })
+                    .catch((err) => {
+                        return {
+                            success: false,
+                            message: err.message,
+                        }
+                    })
+            }
         },
         popSharedInsight: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
