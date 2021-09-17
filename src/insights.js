@@ -207,10 +207,16 @@ export const resolvers = {
         insights: async (userid, args, { req }) => {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
+            const Users = db.collection('users')
+
+            const user = await Users.findOne({
+                _id: ObjectId(getuserid(req.session)),
+            })
 
             return await Insights.find({
                 status: 'newshared',
                 sharedfrom: userid,
+                email: user.email,
             }).toArray()
         },
     },
