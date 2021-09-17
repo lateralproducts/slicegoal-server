@@ -12,7 +12,7 @@ export const typeDefs = `
     insightLinks(insightid: String): [InsightLink]
     searchinsights(search: String, spaced: Boolean): [Insight]
     newsharedinsights: Int
-    getSharedInsights: [SharedInsight]
+    getSharedInsights: SharedInsightList
   }
 
   extend type Mutation {
@@ -40,6 +40,10 @@ export const schema = `
         insightlink: String
         sharedfrom: String
         datetimeshared: String
+    }
+    type SharedInsightList {
+        numberOfInsights: Int
+        insightsGroupBySharer: [SharedInsight]
     }
     type SharedInsight {
         name: String
@@ -134,10 +138,19 @@ export const resolvers = {
                 _id: ObjectId(getuserid(req.session)),
             })
 
-            return await Insights.distinct('sharedfrom', {
+            const totalSharedInsights = await Insights.find({
+                email: user.email,
+                status: 'newshared',
+            }).toArray()
+
+            const distinctSharers = await Insights.distinct('sharedfrom', {
                 email: user.email,
                 status: 'newshared',
             })
+            return {
+                numberOfInsights: totalSharedInsights.length,
+                distinctSharers: distinctSharers,
+            }
         },
         insightLinks: async (parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -171,6 +184,11 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             return await Insights.findOne({ _id: ObjectId(parent.insightid) })
+        },
+    },
+    SharedInsightList: {
+        insightsGroupBySharer: async (parent, args, { req }) => {
+            return parent.distinctSharers
         },
     },
     SharedInsight: {
