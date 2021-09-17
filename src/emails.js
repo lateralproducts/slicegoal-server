@@ -83,7 +83,7 @@ export async function emailGoalNudge(user, links, goals) {
                     PATH_URL +
                     '?goal=' +
                     obj._id +
-                    "'>" +
+                    "&email=GoalNudge'>" +
                     obj.goal +
                     '</a></div>'
                 )
@@ -91,7 +91,7 @@ export async function emailGoalNudge(user, links, goals) {
             .join('') +
         '<br/><a href=' +
         LOGO_PATH_URL +
-        "><img width='100' src='" +
+        "?email=GoalNudge'><img width='100' src='" +
         logopath +
         "'/></a>"
 
@@ -115,16 +115,16 @@ export async function emailNewClient(client, coach, viewname) {
         client._id +
         '&code=' +
         client.code +
-        "'>" +
+        "&email=NewClient'>" +
         'get set up' + //start your Cavestep journey
         '</a>' + //cavestep
         '<br/>' +
         '<br/>' +
         '<a href=' +
         LOGO_PATH_URL +
-        "><img width='100' src='" +
+        "'><img width='100' src='" +
         logopath +
-        "'/></a>" +
+        "?email=NewClient'/></a>" +
         '</div>'
 
     sendEmail(to, subject, email)
@@ -164,7 +164,7 @@ export async function emailNewClient(client, coach, viewname) {
         '<br/>' +
         '<a href=' +
         LOGO_PATH_URL +
-        "><img width='100' src='" +
+        "'><img width='100' src='" +
         logopath +
         "'/></a>" +
         '</div>'
@@ -217,7 +217,7 @@ export async function emailNewCoach(coach) {
         coach._id +
         '&code=' +
         coach.code +
-        "'>" +
+        "&email=NewCoach'>" +
         'start my Cavestep journey' + //start your Cavestep journey
         '</a>' +
         '<br/>' +
@@ -230,7 +230,7 @@ export async function emailNewCoach(coach) {
         '<br/>' +
         '<a href=' +
         LOGO_PATH_URL +
-        "><img width='100' src='" +
+        "?email=NewCoach'><img width='100' src='" +
         logopath +
         "'/></a>"
     sendEmail(to, subject, email)
