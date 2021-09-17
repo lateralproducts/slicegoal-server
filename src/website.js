@@ -75,7 +75,7 @@ export async function sessiontrack(
         const newsession = new Object()
         newsession.session = req.session.id
         newsession.landedip = getuserIpAddress(req)
-        if (args.email) newsession.email = args.email
+        newsession.email = args.email
         newsession.landpage = 'app'
         if (abconfig) pageentry.abconfig = querytojson(abconfig)
         newsession.landed = new Date()

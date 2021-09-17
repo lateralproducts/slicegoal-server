@@ -38,6 +38,9 @@ let newUserTemplate = fs
     .readFileSync(__dirname + '/emailtemplates/newUserNotificationEmail.html')
     .toString()
 
+const logopath =
+    'https://www.cavestep.com/static/media/cavesteplong.d8a54789.png'
+
 async function sendEmail(to, subject, email) {
     const db = await DbConnection.Get()
     const Emails = db.collection('emails')
@@ -47,8 +50,8 @@ async function sendEmail(to, subject, email) {
         subject: subject,
         html: email,
     }
-    let response = await new Promise(function (resolve, reject) {
-        transporter.sendMail(mailOptions, function (error, info) {
+    let response = await new Promise(function(resolve, reject) {
+        transporter.sendMail(mailOptions, function(error, info) {
             if (error) {
                 mailOptions.error = error
                 console.log('email error: ' + error)
@@ -73,7 +76,7 @@ export async function emailGoalNudge(user, links, goals) {
         user.firstname +
         ', here are your top goals for today!</div>' +
         goals
-            .map(function (obj) {
+            .map(function(obj) {
                 return (
                     "<div class='goal'>• <a href='" +
                     PATH_URL +
@@ -85,7 +88,9 @@ export async function emailGoalNudge(user, links, goals) {
                 )
             })
             .join('') +
-        "<br/><img width='100' src='https://www.cavestep.com/static/media/cavesteplong.d8a54789.png'/>"
+        "<br/><img width='100' src='" +
+        logopath +
+        "'/>"
 
     sendEmail(to, subject, email)
 }
@@ -112,7 +117,9 @@ export async function emailNewClient(client, coach, viewname) {
         '</a>' + //cavestep
         '<br/>' +
         '<br/>' +
-        "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>" +
+        "<img width='100' src='" +
+        logopath +
+        "'/>" +
         '</div>'
 
     sendEmail(to, subject, email)
@@ -150,7 +157,9 @@ export async function emailNewClient(client, coach, viewname) {
         client.code +
         '<br/>' +
         '<br/>' +
-        "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>" +
+        "<img width='100' src='" +
+        logopath +
+        "'/>" +
         '</div>'
     sendEmail(to, subject, email)
 }
@@ -163,6 +172,7 @@ export async function emailNewPersonal(personal) {
         PATH_URL: PATH_URL,
         personalid: personal._id,
         personalcode: personal.code,
+        logo: logopath,
     })
 
     sendEmail(to, subject, email)
@@ -175,6 +185,7 @@ export async function emailRerankNudge(user) {
     let email = Mustache.render(rerank, {
         name: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
         PATH_URL: PATH_URL,
+        logo: logopath,
     })
 
     return await sendEmail(to, subject, email)
@@ -208,7 +219,9 @@ export async function emailNewCoach(coach) {
         '<br/>' +
         'Founder' +
         '<br/>' +
-        "<img width='100' src='https://www.cavestep.com/static/media/cavesteplong.67b5763d.png'/>"
+        "<img width='100' src='" +
+        logopath +
+        "'/>"
     sendEmail(to, subject, email)
 }
 
