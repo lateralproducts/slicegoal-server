@@ -89,7 +89,7 @@ export async function emailGoalNudge(user, links, goals) {
                 )
             })
             .join('') +
-        '<br/><a href=' +
+        "<br/><a href='" +
         LOGO_PATH_URL +
         "?email=GoalNudge'><img width='100' src='" +
         logopath +
@@ -120,11 +120,11 @@ export async function emailNewClient(client, coach, viewname) {
         '</a>' + //cavestep
         '<br/>' +
         '<br/>' +
-        '<a href=' +
+        "<a href='" +
         LOGO_PATH_URL +
-        "'><img width='100' src='" +
+        "?email=NewClient'><img width='100' src='" +
         logopath +
-        "?email=NewClient'/></a>" +
+        "'/></a>" +
         '</div>'
 
     sendEmail(to, subject, email)
@@ -228,7 +228,7 @@ export async function emailNewCoach(coach) {
         '<br/>' +
         'Founder' +
         '<br/>' +
-        '<a href=' +
+        "<a href='" +
         LOGO_PATH_URL +
         "?email=NewCoach'><img width='100' src='" +
         logopath +
