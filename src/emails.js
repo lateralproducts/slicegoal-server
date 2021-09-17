@@ -14,6 +14,7 @@ let auth = {
 let sender = 'CAVESTEP<' + auth.user + '>'
 
 let PATH_URL = `${process.env.PATH_URL}`
+let LOGO_PATH_URL = PATH_URL
 
 let transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -88,9 +89,11 @@ export async function emailGoalNudge(user, links, goals) {
                 )
             })
             .join('') +
-        "<br/><img width='100' src='" +
+        '<br/><a href=' +
+        LOGO_PATH_URL +
+        "><img width='100' src='" +
         logopath +
-        "'/>"
+        "'/></a>"
 
     sendEmail(to, subject, email)
 }
@@ -117,9 +120,11 @@ export async function emailNewClient(client, coach, viewname) {
         '</a>' + //cavestep
         '<br/>' +
         '<br/>' +
-        "<img width='100' src='" +
+        '<a href=' +
+        LOGO_PATH_URL +
+        "><img width='100' src='" +
         logopath +
-        "'/>" +
+        "'/></a>" +
         '</div>'
 
     sendEmail(to, subject, email)
@@ -157,9 +162,11 @@ export async function emailNewClient(client, coach, viewname) {
         client.code +
         '<br/>' +
         '<br/>' +
-        "<img width='100' src='" +
+        '<a href=' +
+        LOGO_PATH_URL +
+        "><img width='100' src='" +
         logopath +
-        "'/>" +
+        "'/></a>" +
         '</div>'
     sendEmail(to, subject, email)
 }
@@ -170,6 +177,7 @@ export async function emailNewPersonal(personal) {
     let email = Mustache.render(newpersonal, {
         name: personal.firstname ? ' ' + personal.firstname : '', //using space in front here to manage formatting.
         PATH_URL: PATH_URL,
+        LOGO_PATH_URL: LOGO_PATH_URL,
         personalid: personal._id,
         personalcode: personal.code,
         logo: logopath,
@@ -185,6 +193,7 @@ export async function emailRerankNudge(user) {
     let email = Mustache.render(rerank, {
         name: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
         PATH_URL: PATH_URL,
+        LOGO_PATH_URL: LOGO_PATH_URL,
         logo: logopath,
     })
 
@@ -219,9 +228,11 @@ export async function emailNewCoach(coach) {
         '<br/>' +
         'Founder' +
         '<br/>' +
-        "<img width='100' src='" +
+        '<a href=' +
+        LOGO_PATH_URL +
+        "><img width='100' src='" +
         logopath +
-        "'/>"
+        "'/></a>"
     sendEmail(to, subject, email)
 }
 
