@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb'
 
-import { getprofileid, getuserid } from './users'
+import { getprofileid, getuserid, getwheelid } from './users'
 import { getuiversion } from '../util/index'
 import DbConnection from './database'
 let pjson = require('../package.json')
@@ -387,7 +387,7 @@ export const resolvers = {
             let areaid
             if (!args.areaid) {
                 let newarea = new Object() //create new area.
-                newarea.wheelid = getprofileid(req.session)
+                newarea.wheelid = getwheelid(req.session)
                 newarea.name = args.areaname
                 const inserted = await Areas.insertOne(newarea) //only creating new area if "areaname is added"
                 areaid = inserted.insertedId.toString()

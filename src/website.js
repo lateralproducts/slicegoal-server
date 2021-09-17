@@ -3,7 +3,7 @@ import { getuserIpAddress } from './users'
 
 export const typeDefs = `   
     extend type Mutation {
-        trackpage(page: String, search: String, action: String, actioninfo: String, abconfig: String, pagetrack: String): Boolean
+        trackpage(page: String, search: String, action: String, actioninfo: String, abconfig: String, pagetrack: String, screenwidth: Int): Boolean
     }
 `
 export const resolvers = {
@@ -21,6 +21,7 @@ export const resolvers = {
                 args.result,
                 args.actioninfo,
                 args.abconfig,
+                args.screenwidth,
             )
         },
     },
@@ -34,6 +35,7 @@ export async function sessiontrack(
     result,
     actioninfo,
     abconfig,
+    screenwidth,
 ) {
     const db = await DbConnection.Get()
     const Sessions = db.collection('sessions')
@@ -76,8 +78,9 @@ export async function sessiontrack(
         newsession.session = req.session.id
         newsession.landedip = getuserIpAddress(req)
         newsession.email = args.email
-        newsession.landpage = 'app'
-        if (abconfig) pageentry.abconfig = querytojson(abconfig)
+        newsession.landpage = page ? page : 'app'
+        if (screenwidth) newsession.screenwidth = screenwidth
+        if (abconfig) newsession.abconfig = querytojson(abconfig)
         newsession.landed = new Date()
         newsession.lastrequest = new Date()
         if (query) {

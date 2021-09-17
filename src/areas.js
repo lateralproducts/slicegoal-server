@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb'
 
 import DbConnection from './database'
 import { getuiversion } from '../util/index'
-import { getuserid, getprofileid, getname } from './users'
+import { getuserid, getprofileid, getwheelid, getname } from './users'
 import { sessiontrack } from './website'
 let pjson = require('../package.json')
 
@@ -1126,10 +1126,6 @@ export async function logareaclick(_id, navdirection, req) {
     } catch (error) {
         console.log(error)
     }
-}
-function getwheelid(session) {
-    if (session.view) return session.view.wheel
-    else return null
 }
 
 async function isWheelOwner(req, viewid) {
