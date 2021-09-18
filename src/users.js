@@ -455,6 +455,11 @@ export function getuserid(session) {
     else return null
 }
 
+export function getwheelid(session) {
+    if (session.view) return session.view.wheel
+    else return null
+}
+
 async function login(user, args, req) {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
@@ -566,7 +571,7 @@ async function signup(newuser, args, req) {
     }
 }
 
-export const getuserIpAddress = (request) => {
+export const getuserIpAddress = request => {
     const headers = request.headers
     if (!headers) return null
     const ipAddress = headers['x-forwarded-for']

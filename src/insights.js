@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb'
 
 let pjson = require('../package.json')
 import { getuiversion } from '../util/index'
-import { getprofileid, getuserid } from './users'
+import { getprofileid, getuserid, getwheelid } from './users'
 import DbConnection from './database'
 
 export const typeDefs = `
@@ -326,7 +326,7 @@ export const resolvers = {
             let areaid
             if (!args.area) {
                 let newarea = new Object() //create new area.
-                newarea.wheelid = args.profileid //update: check to see if this should be profileid, not wheelid...
+                newarea.wheelid = getwheelid(req.session) //update: check to see if this should be profileid, not wheelid...
                 newarea.name = args.areaname
                 const inserted = await Areas.insertOne(newarea) //only creating new area if "areaname is added"
                 areaid = inserted.insertedId.toString()
@@ -360,7 +360,7 @@ export const resolvers = {
             InsightLinks.updateOne(
                 { _id: ObjectId(args.linkid) },
                 { $set: { notes: args.notes } },
-                function (err, obj) {
+                function(err, obj) {
                     if (err) throw err
                 },
             )
@@ -376,7 +376,7 @@ export const resolvers = {
                     _id: ObjectId(args.linkid),
                     profileid: args.profileid,
                 },
-                function (err, obj) {
+                function(err, obj) {
                     if (err) throw err
                 },
             )
@@ -421,21 +421,21 @@ export const resolvers = {
             const Profiles = db.collection('profiles')
 
             //Check ownership
-            Insights.findOne({ _id: ObjectId(insightid) }).then((insight) => {
+            Insights.findOne({ _id: ObjectId(insightid) }).then(insight => {
                 Profiles.findOne({ _id: ObjectId(insight.profileid) }).then(
-                    (profile) => {
+                    profile => {
                         if (profile.user !== getuserid(req.session)) {
                             throw new Error('Unauthorised Insight Delete')
                         } else {
                             InsightLinks.deleteMany(
                                 { insightid: insightid },
-                                function (err, obj) {
+                                function(err, obj) {
                                     if (err) throw err
                                 },
                             )
                             Insights.deleteOne(
                                 { _id: ObjectId(insightid) },
-                                function (err, obj) {
+                                function(err, obj) {
                                     if (err) throw err
                                 },
                             )
@@ -480,7 +480,7 @@ export const resolvers = {
                             message: 'Insight shared',
                         }
                     })
-                    .catch((err) => {
+                    .catch(err => {
                         return {
                             success: false,
                             message: err.message,
@@ -513,11 +513,6 @@ export const resolvers = {
             }
         },
     },
-}
-
-function getwheelid(session) {
-    if (session.view) return session.view.wheel
-    else return null
 }
 
 async function createinsight(newinsight, req) {
@@ -558,7 +553,7 @@ async function createinsight(newinsight, req) {
 
         if (newinsight.areatags)
             //if there are area tags, save the area tags
-            newinsight.areatags.map(async (link) => {
+            newinsight.areatags.map(async link => {
                 let areaid = link.area._id
                 if (!areaid) {
                     //if area doesn't exist, create it.
