@@ -18,7 +18,7 @@ export const typeDefs = `
   extend type Mutation {
     createInsight(datetime: String, profileid: String, prompt: String, answer: String, areatags: [AreaTagIn]): Spaced
     updateInsight(insightid: String, datetime: String, prompt: String, answer: String): Spaced 
-    createInsightLink(insightid: String!, profileid: String, area: String, areaname: String): Boolean
+    createInsightLink(insightid: String!, profileid: String, area: String, areaname: String): String
     updateInsightLink(linkid: String!, notes: String): Boolean
     removeInsightLink(linkid: String): Boolean
     markSpacedYes(insightid: String, datetime: String): Boolean
@@ -326,7 +326,7 @@ export const resolvers = {
             let areaid
             if (!args.area) {
                 let newarea = new Object() //create new area.
-                newarea.wheelid = getwheelid(req.session) //update: check to see if this should be profileid, not wheelid...
+                newarea.wheelid = getwheelid(req.session)
                 newarea.name = args.areaname
                 const inserted = await Areas.insertOne(newarea) //only creating new area if "areaname is added"
                 areaid = inserted.insertedId.toString()
@@ -350,7 +350,7 @@ export const resolvers = {
                 datecreated: new Date(),
             })
 
-            return link.insertedId ? true : false
+            return link.insertedId
         },
         updateInsightLink: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
