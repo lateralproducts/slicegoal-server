@@ -18,6 +18,7 @@ import { schema as userSchema } from './users'
 import { schema as areaSchema } from './areas'
 import { schema as insightSchema } from './insights'
 import { schema as goalSchema } from './goals'
+import { schema as tagSchema } from './tags'
 
 //import queries and mutations
 import { typeDefs as userQueryMutation } from './users'
@@ -237,6 +238,7 @@ export const start = async () => {
                 areaSchema,
                 insightSchema,
                 goalSchema,
+                tagSchema,
                 paymentQueryMutation,
                 userQueryMutation,
                 insightQueryMutation,

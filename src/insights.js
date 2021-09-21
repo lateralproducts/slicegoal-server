@@ -18,7 +18,7 @@ export const typeDefs = `
   extend type Mutation {
     createInsight(datetime: String, profileid: String, prompt: String, answer: String, areatags: [AreaTagIn]): Spaced
     updateInsight(insightid: String, datetime: String, prompt: String, answer: String): Spaced 
-    createInsightLink(insightid: String!, profileid: String, area: String, areaname: String): String
+    createInsightLink(insightid: String!, profileid: String, area: String, areaname: String): Tag
     updateInsightLink(linkid: String!, notes: String): Boolean
     removeInsightLink(linkid: String): Boolean
     markSpacedYes(insightid: String, datetime: String): Boolean
@@ -350,7 +350,10 @@ export const resolvers = {
                 datecreated: new Date(),
             })
 
-            return link.insertedId
+            return {
+                tagid: link.insertedId,
+                tagname: args.areaname,
+            }
         },
         updateInsightLink: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')

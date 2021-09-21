@@ -24,7 +24,7 @@ export const typeDefs = `
     }
     
     extend type Mutation {
-        createGoalLink(goalid: String, areaid: String, areaname: String): String
+        createGoalLink(goalid: String, areaid: String, areaname: String): Tag
         updateGoalLink(linkid: String!, notes: String, snooze: String): Boolean
         removeGoalLink(linkid: String!): Boolean
         snoozeGoalLink(goalid: String!, snooze: String!): Boolean
@@ -402,7 +402,10 @@ export const resolvers = {
                 areaid: areaid,
                 datecreated: new Date(),
             })
-            return link.insertedId.toString()
+            return {
+                tagid: link.insertedId.toString(),
+                tagname: args.areaname,
+            }
         },
         removeGoalLink: async (root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
