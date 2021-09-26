@@ -177,7 +177,7 @@ export async function emailNewClient(
         logopath +
         "'/></a>" +
         '</div>'
-    //    sendEmail(to, subject, email)
+        sendEmail(to, subject, email)
 }
 
 export async function emailNewPersonal(personal) {
