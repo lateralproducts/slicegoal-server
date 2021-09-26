@@ -5,7 +5,7 @@ import {
     emailNewClient,
     emailNewPersonal,
     emailNewCoach,
-    newUserNotificationEmail,
+    newUserNotificationEmail
 } from './emails'
 
 import { sessiontrack } from './website'
@@ -18,7 +18,7 @@ const { OAuth2Client } = require('google-auth-library')
 
 let googleclientId = `${process.env.GOOGLE_CLIENTID}`
 const oAuth2Client = new OAuth2Client({
-    clientId: googleclientId,
+    clientId: googleclientId
 })
 
 const PASSWORD_MAX_LENGTH = 64
@@ -33,9 +33,9 @@ export const typeDefs = `
   extend type Mutation {
     updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
     createClient(email: String!, firstname: String, lastname: String): createClientResponse
-    verifyAccount(userid: String, code: String, password: String): User
+    verifyAccount(userid: String, code: String, setView: String, password: String): User
     updatePassword(userid: String, oldpassword: String, newpassword: String): User
-    login(email: String!, pwd: String!, uiversion: String): User
+    login(email: String!, pwd: String!, setView: String, uiversion: String): User
     setSignUpContext(account: String): Boolean
     signup(email: String, firstname: String, uiversion: String, account: String): Boolean!
     googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
@@ -67,7 +67,7 @@ export const schema = `
 
 export const resolvers = {
     Query: {
-        isLoggedin: async (root, args, { req, ip }) => {
+        isLoggedin: async(_, args, { req }) => {
             //this is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
@@ -76,33 +76,33 @@ export const resolvers = {
             if (req.session.user) {
                 sessiontrack(req, args, 'app', 'arrived', 'session refresh')
                 const user = await Users.findOne({
-                    _id: ObjectId(getuserid(req.session)),
+                    _id: ObjectId(getuserid(req.session))
                 })
                 return user
             } else {
                 sessiontrack(req, args, 'app', 'arrived')
                 return null
             }
-        },
+        }
     },
     User: {
-        area: async ({ startarea }, args, { req }) => {
+        area: async({ startarea }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            const Views = db.collection('views')
             return startarea
                 ? await Areas.findOne({ _id: ObjectId(startarea) })
                 : null
         },
-        views: async (parent, args, { req }) => {
+        views: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Views = db.collection('views')
             let query = new Object()
             query.user = getuserid(req.session)
             return await Views.find(query).toArray()
         },
-        currentview: async (parent, args, { req }) => {
-            if (req.session.view) return req.session.view
+        currentview: async(parent, __, { req }) => {
+            if (parent.newView) return parent.newView
+            else if (req.session.view) return req.session.view
             else {
                 const db = await DbConnection.Get()
                 const Views = db.collection('views')
@@ -113,10 +113,10 @@ export const resolvers = {
                     .limit(1)
                     .toArray()
             }
-        },
+        }
     },
     Mutation: {
-        updateProfile: async (parent, args, { req }) => {
+        updateProfile: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Users = db.collection('users')
@@ -129,18 +129,19 @@ export const resolvers = {
             return user.value
         },
 
-        createClient: async (parent, args, { req }) => {
+        createClient: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
 
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const Views = db.collection('views')
+            const Profiles = db.collection('profiles')
 
             if (req.session.view.type !== 'multiwheel')
                 throw new Error('Not owner of wheel')
             else {
                 const user = await Users.findOne({
-                    email: args.email.toLowerCase(),
+                    email: args.email.toLowerCase()
                 })
 
                 let userid
@@ -151,79 +152,94 @@ export const resolvers = {
                     if (userid === getuserid(req.session)) {
                         return {
                             success: false,
-                            message: 'Cannot share wheel with yourself!',
+                            message: 'Cannot share wheel with yourself!'
                         }
                     } else {
                         //Find if this user has already been invited/a view added
-                        const currentView = await Views.findOne({
+                        const currentView = Views.findOne({
                             wheel: req.session.view.wheel,
-                            email: args.email.toLowerCase(),
+                            email: args.email.toLowerCase()
                         })
 
-                        //If user already invited, resend email
-                        if (currentView) {
-                            return await emailNewClient(
-                                args,
-                                req.session.user,
-                                req.session.view.name,
-                            ).then(() => {
-                                return {
-                                    success: true,
-                                    message: 'email invite re-sent',
-                                }
-                            })
-                        } else {
-                            //Current Cavestep user, hasn't been invited to this wheel
-                            return await createNewViewProfile(args, userid, req)
-                                .then(() => {
+                        const currentProfile = Profiles.findOne({
+                            wheel: req.session.profile.wheel,
+                            user: userid
+                        })
+
+                        return Promise.all([currentView, currentProfile])
+                            .then(result => {
+                                // User exists and has already been invited
+                                if(result[0] && result[1]){
                                     emailNewClient(
                                         args,
                                         req.session.user,
-                                        req.session.view.name,
+                                        req.session.view,
+                                        result[0]._id.toString(),
+                                        'accept'
                                     )
-                                })
-                                .then(() => {
                                     return {
                                         success: true,
-                                        message: 'email invite sent',
+                                        message: 'email invite re-sent'
                                     }
-                                })
+                                } else {
+                                    // User exists but hasn't been invited to this wheel
+                                    return createNewViewProfile(args, userid, req)
+                                        .then(result => {
+                                            emailNewClient(
+                                                args,
+                                                req.session.user,
+                                                req.session.view.name,
+                                                result.insertedId,
+                                                'accept',
+                                            )
+                                            return {
+                                                success: true,
+                                                message: 'email invite sent'
+                                            }
+                                        })
+                                }
+                            })
+                            .catch(err => {
+                                throw err
+                            })
                         }
-                    }
-                } else {
-                    //Completely new Cavestep user
-                    args.state = 'new'
-                    args.code = bcrypt.hashSync('verifythisyo', 7)
-                    args.created = new Date()
-                    let newuser = await Users.insertOne(args) //create record to return id
-                    args._id = newuser.insertedId.toString() //use args to pass new user id for email link
-                    userid = newuser.insertedId.toString() //pass id for creating view and profiles
+                    } else {
 
-                    return await createNewViewProfile(args, userid, req)
-                        .then(() => {
-                            emailNewClient(
-                                args,
-                                req.session.user,
-                                req.session.view.name,
-                            )
-                        })
-                        .then(() => {
-                            return {
-                                success: true,
-                                message: 'email invite sent',
-                            }
-                        })
+                        //Completely new Cavestep user
+                        args.state = 'new'
+                        args.code = bcrypt.hashSync('verifythisyo', 7)
+                        args.created = new Date()
+                        let newuser = await Users.insertOne(args) //create record to return id
+                        args._id = newuser.insertedId.toString() //use args to pass new user id for email link
+                        userid = newuser.insertedId.toString() //pass id for creating view and profiles
+
+                        return createNewViewProfile(args, userid, req)
+                            .then(result => {
+                                emailNewClient(
+                                    args,
+                                    req.session.user,
+                                    req.session.view.name,
+                                    result.insertedId,
+                                    'verify'
+                                )
+                            })
+                            .then(() => {
+                                return {
+                                    success: true,
+                                    message: 'email invite sent'
+                                }
+                            })
                 }
             }
         },
 
-        verifyAccount: async (parent, args, { req }) => {
+        verifyAccount: async(_, args, { req }) => {
             //This function is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
             let user = await Users.findOne({
-                $and: [{ _id: ObjectId(args.userid) }, { code: args.code }],
+                $and: [{ _id: ObjectId(args.userid) }, { code: args.code }]
             })
             if (user.state !== 'new') {
                 sessiontrack(req, args, 'app', 'verify', 'already registered')
@@ -239,8 +255,8 @@ export const resolvers = {
                 {
                     $set: {
                         state: 'verified',
-                        password: bcrypt.hashSync(args.password, 10),
-                    },
+                        password: bcrypt.hashSync(args.password, 10)
+                    }
                 },
             )
             user.value.state = 'verified'
@@ -249,13 +265,13 @@ export const resolvers = {
             return await login(user.value, args, req)
         },
 
-        login: async (parent, args, { req, ip }) => {
+        login: async(_, args, { req }) => {
             //public function
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
             const user = await Users.findOne({
-                email: args.email.toLowerCase(),
+                email: args.email.toLowerCase()
             })
             //const user = data[email];
 
@@ -273,8 +289,8 @@ export const resolvers = {
                                 incorrecttries:
                                     (user.incorrecttries
                                         ? user.incorrecttries
-                                        : 0) + 1,
-                            },
+                                        : 0) + 1
+                            }
                         },
                     )
 
@@ -287,17 +303,17 @@ export const resolvers = {
             throw new Error('Email not registered')
         },
 
-        setSignUpContext: async (parent, { account }, { req }) => {
+        setSignUpContext: async(_, { account }, { req }) => {
             req.session.signupcontext = account
             return true
         },
 
-        signup: async (parent, args, { req }) => {
+        signup: async(_, args, { req }) => {
             //This is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const user = await Users.findOne({
-                email: args.email.toLowerCase(),
+                email: args.email.toLowerCase()
             })
             if (user) {
                 sessiontrack(
@@ -323,7 +339,7 @@ export const resolvers = {
                 state: 'new',
                 profile: args.account,
                 created: date,
-                createdip: getuserIpAddress(req),
+                createdip: getuserIpAddress(req)
             }
             let emailuser = await signup(newuser, args, req)
 
@@ -334,7 +350,7 @@ export const resolvers = {
             return true
         },
 
-        googleLogin: async (parent, args, { req, ip }) => {
+        googleLogin: async(_, args, { req }) => {
             //This is publicly accessible
             const db = await DbConnection.Get()
             const Users = db.collection('users')
@@ -343,7 +359,7 @@ export const resolvers = {
                 //check token authentication...
 
                 let user = await Users.findOne({
-                    email: args.email.toLowerCase(),
+                    email: args.email.toLowerCase()
                 })
                 if (!user) {
                     //sign up new google user.
@@ -366,8 +382,8 @@ export const resolvers = {
                             { _id: user._id },
                             {
                                 $set: {
-                                    state: 'verified',
-                                },
+                                    state: 'verified'
+                                }
                             },
                         )
                     }
@@ -382,24 +398,24 @@ export const resolvers = {
             // https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
         },
 
-        logout: async (parent, args, { req }) => {
+        logout: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Sessions = db.collection('sessions')
             Sessions.updateOne(
                 {
-                    session: req.session.id,
+                    session: req.session.id
                 },
                 {
                     $set: {
-                        lastrequest: new Date(),
+                        lastrequest: new Date()
                     },
                     $push: {
                         pages: {
                             page: 'logout',
                             time: new Date(),
-                            ip: getuserIpAddress(req),
-                        },
-                    },
+                            ip: getuserIpAddress(req)
+                        }
+                    }
                 },
             )
             if (req.session.user)
@@ -414,7 +430,7 @@ export const resolvers = {
             return true
         },
 
-        updatePassword: async (parent, args, { req }) => {
+        updatePassword: async(_, args) => {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
@@ -431,14 +447,14 @@ export const resolvers = {
                 { _id: ObjectId(args.userid) },
                 {
                     $set: {
-                        password: bcrypt.hashSync(args.newpassword, 10),
-                    },
+                        password: bcrypt.hashSync(args.newpassword, 10)
+                    }
                 },
             )
 
             return user.value
-        },
-    },
+        }
+    }
 }
 
 export function getname(firstname, lastname, email) {
@@ -472,8 +488,14 @@ async function login(user, args, req) {
         user.serverversion = pjson.version
         req.session.user = user
 
-        const view = await Views.findOne({
-            user: user._id.toString(),
+        let view
+        if(args.setView) {
+            view = await Views.findOne({
+                _id: ObjectId(args.setView)
+            })
+        } else 
+            view = await Views.findOne({
+                user: user._id.toString()
         })
 
         if (view) {
@@ -483,7 +505,7 @@ async function login(user, args, req) {
             if (view.type !== 'coach') query.user = user._id.toString()
             query.wheel = view.wheel
             const profile = await Profiles.findOne(query, {
-                sort: { type: -1 },
+                sort: { type: -1 }
             })
 
             if (profile) req.session.profile = profile
@@ -496,8 +518,8 @@ async function login(user, args, req) {
                 $set: {
                     uiversion: args.uiversion,
                     lastip: getuserIpAddress(req),
-                    lastlogin: new Date(),
-                },
+                    lastlogin: new Date()
+                }
             },
         )
         user.url = req.session.url
@@ -510,8 +532,8 @@ async function login(user, args, req) {
         {
             $set: {
                 incorrecttries:
-                    (user.incorrecttries ? user.incorrecttries : 0) + 1,
-            },
+                    (user.incorrecttries ? user.incorrecttries : 0) + 1
+            }
         },
     )
 
@@ -529,11 +551,11 @@ async function createNewViewProfile(args, userid, req) {
         name: req.session.view.name,
         type: 'team',
         created: new Date(),
-        email: args.email.toLowerCase(),
+        email: args.email.toLowerCase()
     }
     const view = await Views.insertOne(newview)
     const profiles = await Profiles.find({
-        wheel: req.session.view.wheel,
+        wheel: req.session.view.wheel
     })
     if (profiles.length === 1)
         Profiles.updateOne(
@@ -547,15 +569,15 @@ async function createNewViewProfile(args, userid, req) {
             wheel: req.session.view.wheel,
             name: getname(args.firstname, args.lastname, args.email),
             type: 'member',
-            created: new Date(),
+            created: new Date()
         }
-        const profile = await Profiles.insertOne(newprofile)
+        Profiles.insertOne(newprofile)
+    } 
 
-        if (profile && view) return true
-    } else if (view) return true
+    return view
 }
 
-async function signup(newuser, args, req) {
+async function signup(newuser, __, req) {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
     newuser.lastip = getuserIpAddress(req)
@@ -582,18 +604,19 @@ export const getuserIpAddress = request => {
 function checkPasswordFormat(password) {
     const alpha_char = /[a-z]/i //regex of alphabetical chars
     const numeric_char = /[0-9]/
+    // eslint-disable-next-line no-useless-escape
     const special_char = /[!"#$%&'()*+,-.\/:;<=>?@[\]^_`{|}~]/
     let return_message = ''
     if (password.length > PASSWORD_MAX_LENGTH)
         return_message +=
-            `Password must be fewer than ` +
+            'Password must be fewer than ' +
             `${PASSWORD_MAX_LENGTH} characters ` +
-            `in length `
+            'in length '
     if (password.length < PASSWORD_MIN_LENGTH)
         return_message +=
-            `Password must be more than ` +
+            'Password must be more than ' +
             `${PASSWORD_MIN_LENGTH} characters ` +
-            `in length `
+            'in length '
     if (!alpha_char.test(password))
         return_message +=
             'Password must contain at least ' + 'one alphabetical character'

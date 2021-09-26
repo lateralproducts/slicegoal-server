@@ -8,7 +8,7 @@ export const typeDefs = `
 `
 export const resolvers = {
     Mutation: {
-        trackpage: async (root, args, { req }) => {
+        trackpage: async(_, args, { req }) => {
             //action: click, update, delete, etc
             //actioninfo: pass parameters (like wheel name, etc)
             //abconfig: pass parameter to log for A/B testing
@@ -23,8 +23,8 @@ export const resolvers = {
                 args.abconfig,
                 args.screenwidth,
             )
-        },
-    },
+        }
+    }
 }
 
 export async function sessiontrack(
@@ -40,7 +40,7 @@ export async function sessiontrack(
     const db = await DbConnection.Get()
     const Sessions = db.collection('sessions')
     const Session = await Sessions.findOne({
-        session: req.session.id,
+        session: req.session.id
     })
     //currently query string coming through as different fields on website and app.
     const query = args.search ? args.search : args.url
@@ -64,13 +64,13 @@ export async function sessiontrack(
 
         Sessions.updateOne(
             {
-                session: req.session.id,
+                session: req.session.id
             },
             {
                 $set: update,
                 $push: {
-                    pages: pageentry,
-                },
+                    pages: pageentry
+                }
             },
         )
     } else {

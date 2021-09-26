@@ -76,7 +76,7 @@ export const schema = `
 
 export const resolvers = {
     Query: {
-        insights: async (parent, args, { req }) => {
+        insights: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
@@ -86,15 +86,15 @@ export const resolvers = {
                     profileid: getprofileid(req.session),
                     $or: [
                         { nextdate: null },
-                        { nextdate: { $lte: new Date() } },
-                    ],
+                        { nextdate: { $lte: new Date() } }
+                    ]
                 },
                 { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
             ).toArray()
 
             return insightlinks
         },
-        searchinsights: async (parent, args, { req }) => {
+        searchinsights: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
@@ -102,126 +102,126 @@ export const resolvers = {
                 {
                     $or: [
                         { answer: new RegExp(args.search, 'i') },
-                        { prompt: new RegExp(args.search, 'i') },
+                        { prompt: new RegExp(args.search, 'i') }
                     ],
-                    profileid: getprofileid(req.session),
+                    profileid: getprofileid(req.session)
                 },
                 { sort: { datecreated: -1 } }, //return reverse chron. Last note created at top of list.
             ).toArray()
 
             return insights
         },
-        newsharedinsights: async (parent, args, { req }) => {
+        newsharedinsights: async(_, __, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const Users = db.collection('users')
 
             const user = await Users.findOne({
-                _id: ObjectId(getuserid(req.session)),
+                _id: ObjectId(getuserid(req.session))
             })
 
             const found = await Insights.find({
                 email: user.email,
-                status: 'newshared',
+                status: 'newshared'
             }).toArray()
 
             if (found) return found.length
             else return 0
         },
-        getSharedInsights: async (parent, args, { req }) => {
+        getSharedInsights: async(_, __, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const Users = db.collection('users')
             const user = await Users.findOne({
-                _id: ObjectId(getuserid(req.session)),
+                _id: ObjectId(getuserid(req.session))
             })
 
             const totalSharedInsights = await Insights.find({
                 email: user.email,
-                status: 'newshared',
+                status: 'newshared'
             }).toArray()
 
             const distinctSharers = await Insights.distinct('sharedfrom', {
                 email: user.email,
-                status: 'newshared',
+                status: 'newshared'
             })
             return {
                 numberOfInsights: totalSharedInsights.length,
-                distinctSharers: distinctSharers,
+                distinctSharers: distinctSharers
             }
         },
-        insightLinks: async (parent, args, { req }) => {
+        insightLinks: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
             const insightlinks = await InsightLinks.find({
                 insightid: args.insightid,
-                profileid: getprofileid(req.session),
+                profileid: getprofileid(req.session)
             }).toArray()
             return insightlinks
-        },
+        }
     },
     Insight: {
-        spaced: async (parent, args, { req }) => {
+        spaced: async(parent, __, { req }) => {
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
             let spaced = await Spaced.findOne({
                 insightid: parent._id.toString(),
-                userid: getprofileid(req.session),
+                userid: getprofileid(req.session)
             })
             return spaced
-        },
+        }
     },
     InsightLink: {
-        area: async (parent, args, { req }) => {
+        area: async parent => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             return await Areas.findOne({ _id: ObjectId(parent.area) })
         },
-        insight: async (parent, args, { req }) => {
+        insight: async parent => {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             return await Insights.findOne({ _id: ObjectId(parent.insightid) })
-        },
+        }
     },
     SharedInsightList: {
-        insightsGroupBySharer: async (parent, args, { req }) => {
+        insightsGroupBySharer: async parent => {
             return parent.distinctSharers
-        },
+        }
     },
     SharedInsight: {
-        name: async (userid, args, { req }) => {
+        name: async userid => {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
             const user = await Users.findOne({
-                _id: ObjectId(userid),
+                _id: ObjectId(userid)
             })
 
             return user.lastname
                 ? user.firstname + ' ' + user.lastname
                 : user.firstname
         },
-        insights: async (userid, args, { req }) => {
+        insights: async(userid, __, { req }) => {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const Users = db.collection('users')
 
             const user = await Users.findOne({
-                _id: ObjectId(getuserid(req.session)),
+                _id: ObjectId(getuserid(req.session))
             })
 
             return await Insights.find({
                 status: 'newshared',
                 sharedfrom: userid,
-                email: user.email,
+                email: user.email
             }).toArray()
-        },
+        }
     },
     Mutation: {
-        markSpacedYes: async (root, args, { req }) => {
+        markSpacedYes: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
@@ -231,7 +231,7 @@ export const resolvers = {
             delete args.insightId
             const spaced = await Spaced.findOne({
                 insightid: insightId,
-                userid: getprofileid(req.session),
+                userid: getprofileid(req.session)
             })
             if (spaced.fib1) {
                 args.fib1 = spaced.fib0 + spaced.fib1
@@ -247,7 +247,7 @@ export const resolvers = {
             InsightLinks.update(
                 { insightid: insightId, profileid: getprofileid(req.session) },
                 {
-                    $set: { nextdate: nextdate },
+                    $set: { nextdate: nextdate }
                 },
                 { multi: true },
             )
@@ -255,12 +255,12 @@ export const resolvers = {
             Spaced.update(
                 { insightid: insightId, userid: getprofileid(req.session) },
                 {
-                    $set: args,
+                    $set: args
                 },
             )
             return true
         },
-        markSpacedNo: async (root, args, { req }) => {
+        markSpacedNo: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
@@ -276,13 +276,13 @@ export const resolvers = {
 
             const spaced = await Spaced.findOne({
                 insightid: insightId,
-                userid: getprofileid(req.session),
+                userid: getprofileid(req.session)
             })
 
             await InsightLinks.update(
                 { insightid: insightId, profileid: getprofileid(req.session) },
                 {
-                    $set: { nextdate: nextdate },
+                    $set: { nextdate: nextdate }
                 },
                 { multi: true },
             )
@@ -292,28 +292,28 @@ export const resolvers = {
             await Spaced.update(
                 { insightid: insightId, userid: getprofileid(req.session) },
                 {
-                    $set: args,
+                    $set: args
                 },
             )
             return true
         },
-        updateInsight: async (root, args, { req }) => {
+        updateInsight: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             args.lastedited = new Date(args.datetime)
             let insightid = args.insightid
             delete args.insightid
-            const res = await Insights.updateOne(
+            Insights.updateOne(
                 { _id: ObjectId(insightid) },
                 { $set: args },
             )
             return {
                 _id: insightid,
-                message: 'insight updated',
+                message: 'insight updated'
             }
         },
-        createInsightLink: async (root, args, { req }) => {
+        createInsightLink: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
@@ -336,7 +336,7 @@ export const resolvers = {
                 Areas.updateOne(
                     {
                         wheelid: getwheelid(req.session),
-                        _id: ObjectId(areaid),
+                        _id: ObjectId(areaid)
                     },
                     { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
                 )
@@ -347,15 +347,15 @@ export const resolvers = {
                 insightid: args.insightid,
                 profileid: args.profileid,
                 area: areaid,
-                datecreated: new Date(),
+                datecreated: new Date()
             })
 
             return {
                 tagid: link.insertedId,
-                tagname: args.areaname,
+                tagname: args.areaname
             }
         },
-        updateInsightLink: async (root, args, { req }) => {
+        updateInsightLink: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
@@ -363,13 +363,13 @@ export const resolvers = {
             InsightLinks.updateOne(
                 { _id: ObjectId(args.linkid) },
                 { $set: { notes: args.notes } },
-                function(err, obj) {
+                function(err) {
                     if (err) throw err
                 },
             )
             return true
         },
-        removeInsightLink: async (root, args, { req }) => {
+        removeInsightLink: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
@@ -377,9 +377,9 @@ export const resolvers = {
             InsightLinks.deleteOne(
                 {
                     _id: ObjectId(args.linkid),
-                    profileid: args.profileid,
+                    profileid: args.profileid
                 },
-                function(err, obj) {
+                function(err) {
                     if (err) throw err
                 },
             )
@@ -403,7 +403,7 @@ export const resolvers = {
             })
             return res.insertedIds[1] ? true : false
         }, */
-        createInsight: async (root, args, { req }) => {
+        createInsight: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
@@ -413,10 +413,10 @@ export const resolvers = {
 
             return {
                 _id: insertedId,
-                message: 'new insight created',
+                message: 'new insight created'
             }
         },
-        removeInsight: async (root, { insightid }, { req }) => {
+        removeInsight: async(_, { insightid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
@@ -432,13 +432,13 @@ export const resolvers = {
                         } else {
                             InsightLinks.deleteMany(
                                 { insightid: insightid },
-                                function(err, obj) {
+                                function(err) {
                                     if (err) throw err
                                 },
                             )
                             Insights.deleteOne(
                                 { _id: ObjectId(insightid) },
-                                function(err, obj) {
+                                function(err) {
                                     if (err) throw err
                                 },
                             )
@@ -448,25 +448,25 @@ export const resolvers = {
                 )
             })
         },
-        shareInsight: async (root, args, { req }) => {
+        shareInsight: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const Users = db.collection('users')
 
             const user = await Users.findOne({
-                _id: ObjectId(getuserid(req.session)),
+                _id: ObjectId(getuserid(req.session))
             })
 
             if (args.targetUser === user.email)
                 return {
                     success: false,
-                    message: 'Cannot share with yourself - try duplicating',
+                    message: 'Cannot share with yourself - try duplicating'
                 }
             else {
                 // Find insight being copied from
                 const insight = await Insights.findOne({
-                    _id: ObjectId(args.insightid),
+                    _id: ObjectId(args.insightid)
                 })
 
                 return await Insights.insertOne({
@@ -475,47 +475,47 @@ export const resolvers = {
                     datetimeshared: new Date(),
                     email: args.targetUser,
                     datecreated: insight.datecreated,
-                    answer: insight.answer,
+                    answer: insight.answer
                 })
                     .then(() => {
                         return {
                             success: true,
-                            message: 'Insight shared',
+                            message: 'Insight shared'
                         }
                     })
                     .catch(err => {
                         return {
                             success: false,
-                            message: err.message,
+                            message: err.message
                         }
                     })
             }
         },
-        popSharedInsight: async (root, args, { req }) => {
+        popSharedInsight: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const Users = db.collection('users')
 
             const user = await Users.findOne({
-                _id: ObjectId(getuserid(req.session)),
+                _id: ObjectId(getuserid(req.session))
             })
 
             const insight = await Insights.findOne({
-                _id: ObjectId(args.insightid),
+                _id: ObjectId(args.insightid)
             })
 
             if (insight.email !== user.email)
                 throw new Error('Unauthorised Operation')
             else {
                 const result = await Insights.deleteOne({
-                    _id: ObjectId(args.insightid),
+                    _id: ObjectId(args.insightid)
                 })
                 if (result.result.ok === 1) return true
                 else return false
             }
-        },
-    },
+        }
+    }
 }
 
 async function createinsight(newinsight, req) {
@@ -531,7 +531,7 @@ async function createinsight(newinsight, req) {
     if (newinsight.profileid) {
         //get wheelid from profile.
         const profile = await Profiles.findOne({
-            _id: ObjectId(newinsight.profileid),
+            _id: ObjectId(newinsight.profileid)
         })
         if (profile) newinsight.wheelid = profile.wheel
     }
@@ -567,7 +567,7 @@ async function createinsight(newinsight, req) {
                             : getwheelid(req.session),
                         serverversion: pjson.version,
                         uiversion: getuiversion(req.session),
-                        created: new Date(),
+                        created: new Date()
                     }
 
                     const res = await Areas.insert(area)
@@ -587,7 +587,7 @@ async function createinsight(newinsight, req) {
                         wheelid: newinsight.wheelid
                             ? newinsight.wheelid
                             : getwheelid(req.session),
-                        _id: ObjectId(areaid),
+                        _id: ObjectId(areaid)
                     },
                     { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
                 )

@@ -150,7 +150,7 @@ export const schema = `
 
 export const resolvers = {
     Query: {
-        views: async (parent, args, { req }) => {
+        views: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Views = db.collection('views')
@@ -161,17 +161,17 @@ export const resolvers = {
             if (args.type === 'default') query.default = true //defaultview //if asking for default profile only return the default.
             return await Views.find(query).toArray()
         },
-        wheel: async (parent, { wheelid }, { req }) => {
+        wheel: async(_, { wheelid }) => {
             //This is a **publicly** accessible call, used on the website. Don't need to login to retrieve.
             //Could potentially have a completely different server running this in the future.
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
             return await Wheels.findOne({
                 _id: ObjectId(wheelid),
-                global: true,
+                global: true
             })
         },
-        wheels: async (parent, { tag }, { req }) => {
+        wheels: async(_, { tag }) => {
             //This is a **publicly** accessible call, used on the website. Don't need to login to retrieve.
             //Could potentially have a completely different server running this in the future.
             const db = await DbConnection.Get()
@@ -183,51 +183,51 @@ export const resolvers = {
                 .sort({ templateorder: -1 })
                 .toArray()
         },
-        focusLinks: async (parent, args, { req }) => {
+        focusLinks: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const FocusLinks = db.collection('focuslinks')
             return await FocusLinks.find({
                 userid: getprofileid(req.session),
                 $or: [{ snooze: null }, { snooze: { $lt: new Date() } }],
-                links: args.area,
+                links: args.area
             }) //update sort at some stage.
                 .sort({ orderrank: 1 })
                 .limit(args.limit)
                 .toArray()
         },
-        focusLink: async (parent, args, { req }) => {
+        focusLink: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const FocusLinks = db.collection('focuslinks')
             return await FocusLinks.findOne(
                 {
                     userid: getprofileid(req.session),
-                    _id: ObjectId(args.focuslink),
+                    _id: ObjectId(args.focuslink)
                 },
                 { sort: { date: -1 } }, //update sort at some stage.
             )
         },
-        areas: async (parent, args, { req }) => {
+        areas: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const wheel = !args.wheelid ? getwheelid(req.session) : args.wheelid
             let areas = await Areas.find({
-                wheelid: wheel, // , $or: [{ { global: true }, wheelid: getwheelid(req.session)] if we want to use global areas to define wheels. Needs more thought.
+                wheelid: wheel // , $or: [{ { global: true }, wheelid: getwheelid(req.session)] if we want to use global areas to define wheels. Needs more thought.
             })
                 .sort({ lasttagged: -1, lastclicked: -1 })
                 .toArray()
 
             return areas
         },
-        profiles: async (parent, args, { req }) => {
+        profiles: async(_, __, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Profiles = db.collection('profiles')
             if (req.session.view.type === 'coach') {
                 const profiles = await Profiles.find({
-                    wheel: getwheelid(req.session), //return all profiles on wheel
+                    wheel: getwheelid(req.session) //return all profiles on wheel
                 })
                     .sort({ type: -1, name: 1 })
                     .toArray() //.map(function(client) {return client._id;})
@@ -239,13 +239,13 @@ export const resolvers = {
                 $or: [
                     { user: getuserid(req.session) },
                     { type: 'team' },
-                    { type: 'average' },
-                ], //return both personal profile and team wheels
+                    { type: 'average' }
+                ] //return both personal profile and team wheels
             })
                 .sort({ type: -1, name: 1 })
                 .toArray()
         },
-        area: async (root, { _id, navdirection }, { req }) => {
+        area: async(_, { _id, navdirection }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -253,32 +253,32 @@ export const resolvers = {
 
             let area = await Areas.findOne({
                 _id: ObjectId(_id),
-                $or: [{ wheelid: getwheelid(req.session) }, { global: true }],
+                $or: [{ wheelid: getwheelid(req.session) }, { global: true }]
             })
             return area
         },
-        ranktimes: async (root, { areaId }, { req }) => {
+        ranktimes: async(_, { areaId }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const RankTimes = db.collection('ranktimes')
             return await RankTimes.find({
                 areaId: areaId,
-                profileid: getprofileid(req.session),
+                profileid: getprofileid(req.session)
             })
                 .sort({ date: -1 })
                 .toArray()
         },
-        arealinks: async (root, args, { req }) => {
+        arealinks: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const AreaLinks = db.collection('arealinks')
             return await AreaLinks.find({
                 rootarea: { $not: { $eq: null } },
                 area: args.areaid,
-                wheelid: getwheelid(req.session),
+                wheelid: getwheelid(req.session)
             }).toArray()
         },
-        goaltimes: async (root, { _id }, { req }) => {
+        goaltimes: async(_, __, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
@@ -286,7 +286,7 @@ export const resolvers = {
                 .sort({ date: -1 })
                 .toArray()
         },
-        lastranktime: async (root, { areaId }, { req }) => {
+        lastranktime: async(_, { areaId }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const RankTimes = db.collection('ranktimes')
@@ -296,7 +296,7 @@ export const resolvers = {
                 { sort: { date: -1 } },
             )
         },
-        lastgoaltime: async (root, { areaId }, { req }) => {
+        lastgoaltime: async(_, { areaId }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
@@ -305,12 +305,12 @@ export const resolvers = {
                 { sort: { date: -1 } },
             )
         },
-        viewsOnOwnWheel: async (root, { wheelid }, { req }) => {
+        viewsOnOwnWheel: async(_, { wheelid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Views = db.collection('views')
             const views = await Views.find({
-                wheel: wheelid,
+                wheel: wheelid
             }).toArray()
 
             const ownersview = views.find(
@@ -324,10 +324,10 @@ export const resolvers = {
 
             views.splice(ownersview, 1) //remove owners view from the list
             return views
-        },
+        }
     },
     Wheel: {
-        profiles: async (parent, args, { req }) => {
+        profiles: async(parent, __, { req }) => {
             const db = await DbConnection.Get()
             const Profiles = db.collection('profiles')
             let query = new Object()
@@ -336,81 +336,81 @@ export const resolvers = {
                 query.$or = [
                     { user: getuserid(req.session) },
                     { type: 'team' },
-                    { type: 'average' },
+                    { type: 'average' }
                 ]
             //if (args.default) query._id = ObjectId(parent.view.defaultprofile); //if asking for default profile only return the default.
             return await Profiles.find(query)
                 .sort({ type: -1, name: 1 })
                 .toArray()
         },
-        startarea: async (parent, args, { req }) => {
+        startarea: async parent => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             let query = new Object()
             query._id = ObjectId(parent.startarea)
             return await Areas.findOne(query)
-        },
+        }
     },
     Profile: {
-        wheel: async (parent, args, { req }) => {
+        wheel: async parent => {
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
             return await Wheels.findOne({
-                _id: ObjectId(parent.wheel),
+                _id: ObjectId(parent.wheel)
             })
-        },
+        }
     },
     AreaLink: {
-        linkedarea: async (parent, args, { req }) => {
+        linkedarea: async parent => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             return parent.rootarea
                 ? await Areas.findOne({
-                      _id: ObjectId(parent.rootarea),
+                      _id: ObjectId(parent.rootarea)
                   })
                 : { _id: ObjectId(parent.area), name: null }
-        },
+        }
     },
     View: {
-        wheel: async (obj, args, context, info) => {
+        wheel: async obj => {
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
             let wheel = await Wheels.findOne({
-                _id: ObjectId(obj.wheel),
+                _id: ObjectId(obj.wheel)
             })
             if (wheel) wheel.view = obj
             return wheel
         },
-        user: async (view, args, { req }) => {
+        user: async view => {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             return await Users.findOne({
-                _id: ObjectId(view.user),
+                _id: ObjectId(view.user)
             })
-        },
+        }
     },
     Area: {
-        clicks: async ({ _id }, args, { req }) => {
+        clicks: async({ _id }, __, { req }) => {
             const db = await DbConnection.Get()
             const Clicks = db.collection('clicks')
             let currentDate = new Date()
             currentDate.setDate(currentDate.getDate() - 7) //currently reading one week's trailing data.
-            return new Promise(function(resolve, reject) {
+            return new Promise(function(resolve) {
                 Clicks.aggregate(
                     {
                         $match: {
                             areaid: _id.toString(),
                             userid: getuserid(req.session),
                             date: {
-                                $gte: currentDate,
-                            },
-                        },
+                                $gte: currentDate
+                            }
+                        }
                     },
                     {
                         $group: {
                             _id: null,
-                            clicks: { $sum: 1 },
-                        },
+                            clicks: { $sum: 1 }
+                        }
                     },
 
                     function(err, data) {
@@ -420,13 +420,13 @@ export const resolvers = {
                 )
             })
         },
-        areas: async (parent, args, { req }, info) => {
+        areas: async(parent, __, { req }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const AreaLinks = db.collection('arealinks')
             const query = {
                 rootarea: parent._id.toString(), //using parent ID from Area object on Graph. No need for global boolean on AreaLink for now.
-                wheelid: parent.wheelid,
+                wheelid: parent.wheelid
             }
             const arealinks = await AreaLinks.distinct('area', query)
 
@@ -434,19 +434,19 @@ export const resolvers = {
                 _id: {
                     $in: arealinks.map(function(id) {
                         return ObjectId(id)
-                    }),
+                    })
                 },
                 $or: [
                     {
                         wheelid: req.session.view
                             ? getwheelid(req.session)
-                            : 'public', //placeholder, to stop error calling.
+                            : 'public' //placeholder, to stop error calling.
                     },
-                    { global: true },
-                ], //need to return areas where global: true.
+                    { global: true }
+                ] //need to return areas where global: true.
             }).toArray()
         },
-        rank: async ({ _id, coach }, args, { req }) => {
+        rank: async({ _id }, __, { req }) => {
             const db = await DbConnection.Get()
             const Profiles = db.collection('profiles')
             const RankTimes = db.collection('ranktimes')
@@ -454,10 +454,10 @@ export const resolvers = {
                 if (req.session.profile.type === 'average') {
                     //was previously using "coach" in area to decide to aggregate rank
                     const profiles = await Profiles.find({
-                        wheel: req.session.profile.wheel,
+                        wheel: req.session.profile.wheel
                     }).toArray()
 
-                    return new Promise(function(resolve, reject) {
+                    return new Promise(function(resolve) {
                         //returning the average of the area for coaching
                         RankTimes.aggregate(
                             {
@@ -467,27 +467,27 @@ export const resolvers = {
                                     profileid: {
                                         $in: profiles.map(profile => {
                                             return profile._id.toString()
-                                        }),
-                                    },
-                                },
+                                        })
+                                    }
+                                }
                             },
                             {
                                 $group: {
                                     _id: {
                                         area: '$area',
-                                        profileid: '$userid',
+                                        profileid: '$userid'
                                     },
                                     date: {
-                                        $last: '$date',
+                                        $last: '$date'
                                     },
-                                    rank: { $last: '$rank' },
-                                },
+                                    rank: { $last: '$rank' }
+                                }
                             },
                             {
                                 $group: {
                                     _id: '$*_*id.area',
-                                    rank: { $avg: '$rank' },
-                                },
+                                    rank: { $avg: '$rank' }
+                                }
                             },
 
                             function(err, data) {
@@ -496,7 +496,7 @@ export const resolvers = {
                                     data[0]
                                         ? {
                                               rank: parseInt(data[0].rank),
-                                              note: 'team average',
+                                              note: 'team average'
                                           }
                                         : null,
                                 )
@@ -507,14 +507,14 @@ export const resolvers = {
                     const rank = await RankTimes.findOne(
                         {
                             area: _id.toString(),
-                            profileid: getprofileid(req.session),
+                            profileid: getprofileid(req.session)
                         },
                         { sort: { date: -1 } },
                     )
                     return rank ? rank : null
                 }
         },
-        goal: async ({ _id }, args, { req }) => {
+        goal: async({ _id }, __, { req }) => {
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
             const goal = await GoalTimes.findOne(
@@ -523,12 +523,11 @@ export const resolvers = {
             )
             return goal ? goal : null
         },
-        time: async ({ _id }, args, { req }, query) => {
+        time: async({ _id }, args, { req }) => {
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
-            if (args || item) {
-            }
-            return new Promise(function(resolve, reject) {
+
+            return new Promise(function(resolve) {
                 let currentDate = new Date()
                 currentDate.setDate(currentDate.getDate() - 7) //currently reading one week's trailing data.
                 Pomodoros.aggregate(
@@ -536,17 +535,17 @@ export const resolvers = {
                         $match: {
                             userid: getprofileid(req.session),
                             date: {
-                                $gte: currentDate,
+                                $gte: currentDate
                             },
                             $or: [
                                 /*{
                                     area: _id,
                                 }, */
                                 {
-                                    links: _id.toString(),
-                                },
-                            ],
-                        },
+                                    links: _id.toString()
+                                }
+                            ]
+                        }
                     },
                     {
                         $group: {
@@ -558,20 +557,20 @@ export const resolvers = {
                                     $cond: {
                                         if: { $eq: ['$area', _id.toString()] },
                                         then: 1,
-                                        else: 0,
-                                    },
-                                },
+                                        else: 0
+                                    }
+                                }
                             },
                             countdirect: {
                                 $sum: {
                                     $cond: {
                                         if: { $eq: ['$area', _id.toString()] },
                                         then: '$minutes',
-                                        else: 0,
-                                    },
-                                },
-                            },
-                        },
+                                        else: 0
+                                    }
+                                }
+                            }
+                        }
                     },
 
                     function(err, data) {
@@ -580,10 +579,10 @@ export const resolvers = {
                     },
                 )
             })
-        },
+        }
     },
     Mutation: {
-        setView: async (parent, { viewid }, { req }) => {
+        setView: async(_, { viewid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Views = db.collection('views')
@@ -592,7 +591,7 @@ export const resolvers = {
             //set wheel, view, and profile to the context.
             const view = await Views.findOne({
                 _id: ObjectId(viewid),
-                user: getuserid(req.session), //check that this user own's the view. If not, return error.
+                user: getuserid(req.session) //check that this user own's the view. If not, return error.
             })
             let query = new Object()
             query.wheel = view.wheel
@@ -608,7 +607,7 @@ export const resolvers = {
 
             return view //need to return the view, area.
         },
-        deleteView: async (parent, { viewid }, { req }) => {
+        deleteView: async(_, { viewid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Views = db.collection('views')
@@ -620,19 +619,19 @@ export const resolvers = {
                 //if not owner, just delete the view
                 await Views.findOneAndDelete({
                     _id: ObjectId(viewid),
-                    user: getuserid(req.session),
+                    user: getuserid(req.session)
                 })
             }
             return await Views.findOne({ user: getuserid(req.session) })
         },
-        removeViewFromUser: async (parent, { viewid }, { req }) => {
+        removeViewFromUser: async(_, { viewid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Views = db.collection('views')
 
             //Find the view object that should be deleted
             const view = await Views.findOne({
-                _id: ObjectId(viewid),
+                _id: ObjectId(viewid)
             })
 
             //Use view to check if request comes from owner of wheel
@@ -645,7 +644,7 @@ export const resolvers = {
             })
             return true
         },
-        createNewWheel: async (parent, args, { req }) => {
+        createNewWheel: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             //set wheel, view, and profile to the context.
             let { newview, newprofile } = await createWheel(
@@ -662,7 +661,7 @@ export const resolvers = {
 
             return newview //need to return the view, area.
         },
-        removeStartArea: async (parent, args, { req }) => {
+        removeStartArea: async(_, __, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Users = db.collection('users')
@@ -673,7 +672,7 @@ export const resolvers = {
 
             return true
         },
-        updateStartArea: async (parent, { areaid }, { req }) => {
+        updateStartArea: async(_, { areaid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -690,7 +689,7 @@ export const resolvers = {
                         areaname: previousStartArea.name,
                         wheelid: getwheelid(req.session),
                         uiversion: getuiversion(req.session),
-                        serverversion: pjson.version,
+                        serverversion: pjson.version
                     })
 
                     Wheels.updateOne(
@@ -701,14 +700,14 @@ export const resolvers = {
 
             return true
         },
-        toggleFocusFlag: async (parent, args, { req }) => {
+        toggleFocusFlag: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const AreaLinks = db.collection('arealinks')
             const Areas = db.collection('areas')
             const area = await AreaLinks.findOne({
                 rootarea: args.rootarea,
-                area: args.area,
+                area: args.area
             })
             let focusflag
 
@@ -725,7 +724,7 @@ export const resolvers = {
             )
             return focusflag
         },
-        deleteArea: async (root, { areaid }, { req }) => {
+        deleteArea: async(_, { areaid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -743,35 +742,35 @@ export const resolvers = {
             else {
                 const areaDel = Areas.deleteOne({ _id: ObjectId(areaid) })
                 const areaLinksDel = AreaLinks.deleteMany({
-                    area: areaid,
+                    area: areaid
                 })
                 const insightLinksDel = InsightLinks.deleteMany({
-                    area: areaid,
+                    area: areaid
                 })
                 const goalLinksDel = GoalLinks.deleteMany({
-                    areaid: areaid,
+                    areaid: areaid
                 })
                 const pomodorosDel = Pomodoros.deleteMany({
-                    araed: areaid,
+                    araed: areaid
                 })
                 const result = await Promise.all([
                     areaDel,
                     areaLinksDel,
                     insightLinksDel,
                     goalLinksDel,
-                    pomodorosDel,
+                    pomodorosDel
                 ])
                 if (result) return true
                 else return false
             }
         },
-        setProfile: async (parent, { profileid }, { req }) => {
+        setProfile: async(_, { profileid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Profiles = db.collection('profiles')
             const profile = await Profiles.findOne({
                 _id: ObjectId(profileid),
-                wheel: req.session.view.wheel,
+                wheel: req.session.view.wheel
             })
 
             if (!profile) throw new Error('user could not be retrieved.')
@@ -779,13 +778,12 @@ export const resolvers = {
             req.session.profile = profile
             return profile
         },
-        copyWheel: async (parent, { wheelid }, { req }) => {
+        copyWheel: async(_, { wheelid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
             copywheel(wheelid, getuserid(req.session))
             return true
         },
-        deleteAreaLink: async (root, { rootarea, area }, { req }) => {
+        deleteAreaLink: async(_, { rootarea, area }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const AreaLinks = db.collection('arealinks')
@@ -793,13 +791,13 @@ export const resolvers = {
                 {
                     rootarea: rootarea,
                     area: area,
-                    wheelid: getwheelid(req.session),
+                    wheelid: getwheelid(req.session)
                 },
                 { $set: { arealink: null } },
             )
             return res
         },
-        createAreaLink: async (root, args, { req }) => {
+        createAreaLink: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const AreaLinks = db.collection('arealinks')
@@ -810,12 +808,12 @@ export const resolvers = {
                 rootarea: args.rootarea,
                 area: args.area,
                 wheelid: getwheelid(req.session).toString(),
-                created: new Date(),
+                created: new Date()
             })
 
             return true
         },
-        createArea: async (root, args, { req }) => {
+        createArea: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -833,14 +831,14 @@ export const resolvers = {
                 areaname: args.name,
                 wheelid: getwheelid(req.session),
                 serverversion: pjson.version,
-                uiversion: getuiversion(req.session),
+                uiversion: getuiversion(req.session)
             })
             return await Areas.findOne({
                 _id: res.insertedIds[0],
-                wheelid: getwheelid(req.session),
+                wheelid: getwheelid(req.session)
             })
         },
-        createCoachArea: async (root, args, { req }) => {
+        createCoachArea: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -859,17 +857,17 @@ export const resolvers = {
                 areaname: args.name,
                 wheelid: getwheelid(req.session),
                 serverversion: pjson.version,
-                uiversion: getuiversion(req.session),
+                uiversion: getuiversion(req.session)
             })
 
             const area = await Areas.findOne({
                 _id: res.insertedIds[0],
-                wheelid: getwheelid(req.session),
+                wheelid: getwheelid(req.session)
             })
 
             return area
         },
-        createRankTime: async (root, args, { req }) => {
+        createRankTime: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const RankTimes = db.collection('ranktimes')
@@ -878,10 +876,10 @@ export const resolvers = {
             const res = await RankTimes.insert(args)
             return {
                 _id: res.insertedIds[1],
-                message: 'new rank entry created',
+                message: 'new rank entry created'
             }
         },
-        createGoalTime: async (root, args, { req }) => {
+        createGoalTime: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
@@ -893,10 +891,10 @@ export const resolvers = {
             const res = await GoalTimes.insert(args)
             return {
                 _id: res.insertedIds[1],
-                message: 'new goal entry created',
+                message: 'new goal entry created'
             }
         },
-        updateArea: async (root, args, { req }) => {
+        updateArea: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -906,8 +904,8 @@ export const resolvers = {
             )
             args._id = args.area
             return args
-        },
-    },
+        }
+    }
 }
 
 export async function createWheel(
@@ -931,7 +929,7 @@ export async function createWheel(
         user: userid,
         name: wheelname,
         email: user.email,
-        created: new Date(),
+        created: new Date()
     })).insertedId.toString()
 
     //Create wheel object
@@ -939,7 +937,7 @@ export async function createWheel(
         user: userid,
         created: new Date(),
         startarea: startArea,
-        name: wheelname,
+        name: wheelname
     })).insertedId.toString()
 
     //Update startarea to have correct wheelid
@@ -959,7 +957,7 @@ export async function createWheel(
                 rootarea: startArea,
                 uiversion: uiversion,
                 created: new Date(),
-                serverversion: pjson.version,
+                serverversion: pjson.version
             }
         })
 
@@ -972,7 +970,7 @@ export async function createWheel(
                 rootarea: startArea,
                 wheelid: wheelid,
                 uiversion: uiversion,
-                serverversion: pjson.version,
+                serverversion: pjson.version
             }
         })
 
@@ -986,7 +984,7 @@ export async function createWheel(
         wheel: wheelid, //req.session.view.wheel,
         created: new Date(),
         name: wheelname,
-        type: viewtype,
+        type: viewtype
     }
     Views.insertOne(newview)
 
@@ -997,7 +995,7 @@ export async function createWheel(
         email: user.email,
         created: new Date(),
         name: getname(user.firstname, user.lastname, user.email),
-        type: 'team', //create the first team profile.
+        type: 'team' //create the first team profile.
     }
     Profiles.insertOne(newprofile)
 
@@ -1016,7 +1014,7 @@ async function copywheel(wheelid, userid) {
     //only using userid as a tag to keep track of the copy.
     //wheel - global
     let newwheel = await Wheels.findOne({
-        _id: ObjectId(wheelid),
+        _id: ObjectId(wheelid)
         //need to work out security here.
     })
 
@@ -1055,7 +1053,7 @@ async function copywheel(wheelid, userid) {
         )
         //arealinks - global
         let newarealinks = await AreaLinks.find({
-            wheelid: wheelid,
+            wheelid: wheelid
         }).toArray()
 
         newarealinks.map(arealink => {
@@ -1084,7 +1082,7 @@ async function copywheel(wheelid, userid) {
             wheel: newwheelid,
             created: new Date(),
             name: newwheel.name,
-            type: 'team', //create the first team profile.
+            type: 'team' //create the first team profile.
         }
         Profiles.insertOne(newprofile)
 
@@ -1094,7 +1092,7 @@ async function copywheel(wheelid, userid) {
             wheel: newwheelid, //req.session.view.wheel,
             created: new Date(),
             name: newwheel.name,
-            type: viewtype,
+            type: viewtype
         }
         Views.insertOne(newview)
 
@@ -1112,13 +1110,13 @@ export async function logareaclick(_id, navdirection, req) {
             Clicks.insertOne({
                 userid: getuserid(req.session),
                 date: new Date(),
-                areaid: _id,
+                areaid: _id
             })
 
             Areas.updateOne(
                 {
                     wheelid: getprofileid(req.session),
-                    _id: ObjectId(_id),
+                    _id: ObjectId(_id)
                 },
                 { $inc: { clicks: 1 }, $set: { lastclicked: new Date() } },
             )
@@ -1159,14 +1157,14 @@ async function deleteWheelAll(req, viewid) {
 
     const view = await Views.findOne({
         _id: ObjectId(viewid),
-        user: getuserid(req.session),
+        user: getuserid(req.session)
     })
 
     const deleteprofiles = await Profiles.find({
-        wheel: view.wheel,
+        wheel: view.wheel
     }).toArray()
 
-    deleteprofiles.map(function({ _id }, count) {
+    deleteprofiles.map(function({ _id }) {
         Goals.deleteMany({ profileid: _id })
         GoalLinks.deleteMany({ profileid: _id })
         Insights.deleteMany({ profileid: _id })

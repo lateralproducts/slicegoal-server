@@ -32,7 +32,7 @@ export const typeDefs = `
 
 export const resolvers = {
     Query: {
-        transactionStatus: async (root, { accessCode }, { req }) => {
+        transactionStatus: async(_, { accessCode }, { req }) => {
             const db = await DbConnection.Get()
             const Transactions = db.collection('transactions')
             const Users = db.collection('users')
@@ -61,8 +61,8 @@ export const resolvers = {
                         {
                             $set: {
                                 response: transaction,
-                                responsetimestamp: new Date(),
-                            },
+                                responsetimestamp: new Date()
+                            }
                         },
                     )
 
@@ -83,13 +83,13 @@ export const resolvers = {
             )
         },
 
-        lastNameRecorded: async (root, args, { req }) => {
+        lastNameRecorded: async(_, __, { req }) => {
             if (req.session.lastname == null) return false
             return true
-        },
+        }
     },
     Mutation: {
-        getAccessCode: async (root, args, { req }) => {
+        getAccessCode: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Transactions = db.collection('transactions')
 
@@ -101,15 +101,15 @@ export const resolvers = {
                     Customer: {
                         FirstName: firstname,
                         LastName: lastname,
-                        Country: 'au',
+                        Country: 'au'
                     },
                     Payment: {
-                        TotalAmount: 1900, //to get the access code, we just send 0
+                        TotalAmount: 1900 //to get the access code, we just send 0
                     },
                     RedirectUrl: `${process.env.PAYMENT_REDIRECT_URL}`,
                     Method: 'ProcessPayment',
                     TransactionType: 'Purchase',
-                    SaveCustomer: true,
+                    SaveCustomer: true
                 })
                 .then(function(response) {
                     let result = response.attributes
@@ -118,7 +118,7 @@ export const resolvers = {
                         initiated: new Date(),
                         ipaddress: getuserIpAddress(req),
                         user: getuserid(req.session),
-                        accessCode: result.AccessCode,
+                        accessCode: result.AccessCode
                     })
 
                     return {
@@ -126,7 +126,7 @@ export const resolvers = {
                         firstname: firstname,
                         lastname: lastname,
                         accessCode: result.AccessCode,
-                        formActionUrl: result.FormActionURL,
+                        formActionUrl: result.FormActionURL
                     }
                 })
         },
@@ -166,7 +166,7 @@ export const resolvers = {
             )
         }, */
 
-        addLastNameToUser: async (root, { lastname }, { req }) => {
+        addLastNameToUser: async(_, { lastname }, { req }) => {
             const user_id = getuserid(req.session)
             const db = await DbConnection.Get()
             const Users = db.collection('users')
@@ -175,8 +175,8 @@ export const resolvers = {
                 { $set: { lastname: lastname } },
             )
             return true
-        },
-    },
+        }
+    }
 }
 
 function responseMessage(responseCode) {
@@ -195,7 +195,7 @@ function responseMessage(responseCode) {
         '14': 'Please ensure card details are correct',
         '51':
             'Your card issuer has declined the transaction \
-        on basis of insufficient funds',
+        on basis of insufficient funds'
     }[responseCode]
 
     return result === undefined ? responseCode : result

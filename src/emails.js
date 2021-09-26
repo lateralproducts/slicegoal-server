@@ -9,7 +9,7 @@ import DbConnection from './database'
 
 let auth = {
     user: `${process.env.EMAILCLIENT_USR}`,
-    pass: `${process.env.EMAILCLIENT_PWD}`,
+    pass: `${process.env.EMAILCLIENT_PWD}`
 }
 let sender = 'CAVESTEP<' + auth.user + '>'
 
@@ -18,7 +18,7 @@ let LOGO_PATH_URL = PATH_URL
 
 let transporter = nodemailer.createTransport({
     service: 'gmail',
-    auth,
+    auth
 })
 
 let Mustache = require('mustache')
@@ -49,9 +49,9 @@ async function sendEmail(to, subject, email) {
         from: sender,
         to: to,
         subject: subject,
-        html: email,
+        html: email
     }
-    let response = await new Promise(function(resolve, reject) {
+    let response = await new Promise(function(resolve) {
         transporter.sendMail(mailOptions, function(error, info) {
             if (error) {
                 mailOptions.error = error
@@ -98,7 +98,13 @@ export async function emailGoalNudge(user, links, goals) {
     sendEmail(to, subject, email)
 }
 
-export async function emailNewClient(client, coach, viewname) {
+export async function emailNewClient(
+    client,
+    coach,
+    view,
+    newView,
+    page,
+) {
     let to = client.email
     let subject = 'You’ve been invited to Cavestep' //to Cavestep🦶
     let email =
@@ -111,10 +117,13 @@ export async function emailNewClient(client, coach, viewname) {
         '<br/>' +
         "Click here to start your journey: <a href='" +
         PATH_URL +
-        '?page=verify&user=' +
+        '?page=' +
+        page +
+        '&user=' +
         client._id +
         '&code=' +
         client.code +
+        (newView ? '&view=' + newView : '') +
         "&email=NewClient'>" +
         'get set up' + //start your Cavestep journey
         '</a>' + //cavestep
@@ -151,7 +160,7 @@ export async function emailNewClient(client, coach, viewname) {
         '<br/>' +
         '<br/>' +
         'view name: ' +
-        viewname +
+        view.name +
         '<br/>' +
         '<br/>' +
         'verify link: ' + //cavestep
@@ -168,7 +177,7 @@ export async function emailNewClient(client, coach, viewname) {
         logopath +
         "'/></a>" +
         '</div>'
-    sendEmail(to, subject, email)
+    //    sendEmail(to, subject, email)
 }
 
 export async function emailNewPersonal(personal) {
@@ -180,21 +189,20 @@ export async function emailNewPersonal(personal) {
         LOGO_PATH_URL: LOGO_PATH_URL,
         personalid: personal._id,
         personalcode: personal.code,
-        logo: logopath,
+        logo: logopath
     })
 
     sendEmail(to, subject, email)
 }
 
 export async function emailRerankNudge(user) {
-    let from = sender
     let to = user.email
     let subject = 'Time to rank your wheel'
     let email = Mustache.render(rerank, {
         name: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
         PATH_URL: PATH_URL,
         LOGO_PATH_URL: LOGO_PATH_URL,
-        logo: logopath,
+        logo: logopath
     })
 
     return await sendEmail(to, subject, email)
@@ -243,7 +251,7 @@ export async function emailFeedback(user, feedback) {
         from: `${user.firstname} ${user.lastname || ''}`,
         email: `${user.email}`,
         time: new Date(),
-        feedback: feedback,
+        feedback: feedback
     })
     return await sendEmail(to, subject, email)
 }
@@ -253,7 +261,7 @@ export async function newUserNotificationEmail(user) {
     let subject = `New Cavestep user! ${user.firstname} ${user.lastname || ''}`
     let email = Mustache.render(newUserTemplate, {
         name: `${user.firstname} ${user.lastname || ''}`,
-        email: `${user.email}`,
+        email: `${user.email}`
     })
     return await sendEmail(to, subject, email)
 }

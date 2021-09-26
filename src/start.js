@@ -47,7 +47,7 @@ console.log('environment: ' + process.env.npm_lifecycle_event)
 const app = express()
 app.use(cors())
 
-export const start = async () => {
+export const start = async() => {
     try {
         //const Signup = db.collection("signup");
 
@@ -218,15 +218,15 @@ export const start = async () => {
                     'https://www.cavestep.com.au',
                     'https://www.lateralproducts.com',
                     'https://localhost:8000',
-                    'https://localhost:3000',
-                ], //your frontend url.
-            },
+                    'https://localhost:3000'
+                ] //your frontend url.
+            }
         }
 
         // context
         const context = req => ({
             req: req.request,
-            version: pjson.version,
+            version: pjson.version
         })
 
         // server
@@ -245,7 +245,7 @@ export const start = async () => {
                 areaQueryMutation,
                 goalQueryMutation,
                 feedbackQueryMutation,
-                webQueryMutation,
+                webQueryMutation
             ],
 
             resolvers: merge(
@@ -257,7 +257,7 @@ export const start = async () => {
                 feedbackResolvers,
                 webResolvers,
             ),
-            context,
+            context
         })
 
         /* function loggingMiddleware(req, res, next) {
@@ -271,14 +271,14 @@ export const start = async () => {
         server.express.use(
             session({
                 name: 'qid',
-                secret: `whale-schradernator`, //random secret
+                secret: 'whale-schradernator', //random secret
                 resave: true,
                 saveUninitialized: true,
                 rolling: true,
                 cookie: {
                     secure: false, //if this is true it is not working in production. cookies don't work at all in dev with apache on http.
-                    maxAge: ms('1d'),
-                },
+                    maxAge: ms('1d')
+                }
             }),
         )
 
