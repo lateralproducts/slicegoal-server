@@ -39,6 +39,10 @@ let newUserTemplate = fs
     .readFileSync(__dirname + '/emailtemplates/newUserNotificationEmail.html')
     .toString()
 
+let shareInsightTemplate = fs
+    .readFileSync(__dirname + '/emailtemplates/shareInsight.html')
+    .toString()
+
 const logopath =
     'https://www.cavestep.com/static/media/cavesteplong.d8a54789.png'
 
@@ -265,3 +269,21 @@ export async function newUserNotificationEmail(user) {
     })
     return await sendEmail(to, subject, email)
 }
+
+export async function shareInsightExistingUserEmail( 
+    insight,
+    sharer,
+    receiverEmail,
+    acceptLink
+    ) { 
+        const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
+        const subject = `${sharerName} shared an insight with you - Cavestep`
+        const email = Mustache.render(shareInsightTemplate, {
+            insightText: insight.answer,
+            sharerName: sharerName,
+            sharerEmail: `${sharer.email}`,
+            logoPath: logopath,
+            acceptLink: acceptLink
+        })
+        return await sendEmail(receiverEmail, subject, email)
+    }

@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb'
 let pjson = require('../package.json')
 import { getuiversion } from '../util/index'
 import { getprofileid, getuserid, getwheelid } from './users'
+import { shareInsightExistingUserEmail } from './emails'
 import DbConnection from './database'
 
 export const typeDefs = `
@@ -454,30 +455,41 @@ export const resolvers = {
             const Insights = db.collection('insights')
             const Users = db.collection('users')
 
-            const user = await Users.findOne({
+            const currentUser = await Users.findOne({
                 _id: ObjectId(getuserid(req.session))
             })
 
-            if (args.targetUser === user.email)
+            if (args.targetUser === currentUser.email)
                 return {
                     success: false,
                     message: 'Cannot share with yourself - try duplicating'
                 }
             else {
-                // Find insight being copied from
-                const insight = await Insights.findOne({
+
+                return await Insights.findOne({
                     _id: ObjectId(args.insightid)
                 })
-
-                return await Insights.insertOne({
-                    sharedfrom: getuserid(req.session),
-                    status: 'newshared',
-                    datetimeshared: new Date(),
-                    email: args.targetUser,
-                    datecreated: insight.datecreated,
-                    answer: insight.answer
-                })
-                    .then(() => {
+                .then(insight => {
+                    return Insights.insertOne({
+                        sharedfrom: getuserid(req.session),
+                        status: 'newshared',
+                        datetimeshared: new Date(),
+                        email: args.targetUser,
+                        datecreated: insight.datecreated,
+                        answer: insight.answer
+                    })
+                    .then(result => {
+                        Insights.findOne({_id: ObjectId(result.insertedId)})
+                        .then(result => { 
+                            shareInsightExistingUserEmail(
+                                    result,
+                                    currentUser,
+                                    args.targetUser,
+                                    `${process.env.PATH_URL}?sharedinsights=active`
+                                )
+                            }
+                        )
+  
                         return {
                             success: true,
                             message: 'Insight shared'
@@ -489,6 +501,7 @@ export const resolvers = {
                             message: err.message
                         }
                     })
+                })
             }
         },
         popSharedInsight: async(_, args, { req }) => {

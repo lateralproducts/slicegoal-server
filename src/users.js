@@ -135,7 +135,6 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const Views = db.collection('views')
-            const Profiles = db.collection('profiles')
 
             if (req.session.view.type !== 'multiwheel')
                 throw new Error('Not owner of wheel')
@@ -156,25 +155,18 @@ export const resolvers = {
                         }
                     } else {
                         //Find if this user has already been invited/a view added
-                        const currentView = Views.findOne({
+                        return Views.findOne({
                             wheel: req.session.view.wheel,
                             email: args.email.toLowerCase()
                         })
-
-                        const currentProfile = Profiles.findOne({
-                            wheel: req.session.profile.wheel,
-                            user: userid
-                        })
-
-                        return Promise.all([currentView, currentProfile])
-                            .then(result => {
+                        .then(result => {
                                 // User exists and has already been invited
-                                if(result[0] && result[1]){
+                                if(result){
                                     emailNewClient(
                                         args,
                                         req.session.user,
                                         req.session.view,
-                                        result[0]._id.toString(),
+                                        result._id.toString(),
                                         'accept'
                                     )
                                     return {
@@ -195,6 +187,12 @@ export const resolvers = {
                                             return {
                                                 success: true,
                                                 message: 'email invite sent'
+                                            }
+                                        })
+                                        .catch(() => {
+                                            return {
+                                                success: false,
+                                                message: 'error sharing wheel'
                                             }
                                         })
                                 }
@@ -227,6 +225,12 @@ export const resolvers = {
                                 return {
                                     success: true,
                                     message: 'email invite sent'
+                                }
+                            })
+                            .catch(() => {
+                                return {
+                                    success: false,
+                                    message: 'error sharing wheel'
                                 }
                             })
                 }
