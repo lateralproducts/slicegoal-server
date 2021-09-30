@@ -136,7 +136,7 @@ export const resolvers = {
             const Users = db.collection('users')
             const Views = db.collection('views')
 
-            if (req.session.view.type !== 'multiwheel')
+            if (req.session.view.type !== 'owner')
                 throw new Error('Not owner of wheel')
             else {
                 const user = await Users.findOne({
@@ -325,7 +325,7 @@ export const resolvers = {
             })
         
             if (ipprofile) {
-                if (ipprofile.block = true) {
+                if (ipprofile.block === true) {
                     sessiontrack(
                         req,
                         args,
@@ -638,7 +638,7 @@ async function createNewViewProfile(args, userid, req) {
         user: userid,
         wheel: req.session.view.wheel,
         name: req.session.view.name,
-        type: 'team',
+        type: 'shared',
         created: new Date(),
         email: args.email.toLowerCase()
     }
@@ -649,7 +649,7 @@ async function createNewViewProfile(args, userid, req) {
     if (profiles.length === 1)
         Profiles.updateOne(
             { wheel: req.session.view.wheel },
-            { $set: { type: 'team' } },
+            { $set: { type: 'shared' } },
         )
     if (args.profile) {
         //need to implement this as an option in the front end.
