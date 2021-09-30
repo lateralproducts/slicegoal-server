@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb'
 let pjson = require('../package.json')
 import { getuiversion } from '../util/index'
 import { getprofileid, getuserid, getwheelid } from './users'
-import { shareInsightExistingUserEmail } from './emails'
+import { shareInsightEmail } from './emails'
 import DbConnection from './database'
 
 export const typeDefs = `
@@ -459,6 +459,10 @@ export const resolvers = {
                 _id: ObjectId(getuserid(req.session))
             })
 
+            const targetUser = await Users.findOne({
+                email: args.targetUser
+            })
+
             if (args.targetUser === currentUser.email)
                 return {
                     success: false,
@@ -481,15 +485,39 @@ export const resolvers = {
                     .then(result => {
                         Insights.findOne({_id: ObjectId(result.insertedId)})
                         .then(result => { 
-                            shareInsightExistingUserEmail(
+                            
+                            if(targetUser){
+                                if(targetUser.state === 'verified'){
+                                    // Existing verified user
+                                    shareInsightEmail(
+                                        result,
+                                        currentUser,
+                                        args.targetUser,
+                                        `${process.env.PATH_URL}?sharedinsights=active`,
+                                        false // new user?
+                                    )
+                                } else {
+                                    // Existing but unverified user
+                                    shareInsightEmail(
+                                        result,
+                                        currentUser,
+                                        args.targetUser,
+                                        `${process.env.PATH_URL}?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`,
+                                        false // new user?
+                                    )
+                                }
+                            } else {
+                                // Completely new user
+                                shareInsightEmail(
                                     result,
                                     currentUser,
                                     args.targetUser,
-                                    `${process.env.PATH_URL}?sharedinsights=active`
+                                    `${process.env.PATH_URL}?page=signup&sharedinsights=active`,
+                                    true // new user?
                                 )
                             }
-                        )
-  
+                        })
+
                         return {
                             success: true,
                             message: 'Insight shared'

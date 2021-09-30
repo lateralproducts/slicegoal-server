@@ -43,6 +43,10 @@ let shareInsightTemplate = fs
     .readFileSync(__dirname + '/emailtemplates/shareInsight.html')
     .toString()
 
+let shareInsightNewUser = fs
+    .readFileSync(__dirname + '/emailtemplates/shareInsightNewUser.html')
+    .toString()
+
 const logopath =
     'https://www.cavestep.com/static/media/cavesteplong.d8a54789.png'
 
@@ -184,7 +188,7 @@ export async function emailNewClient(
         sendEmail(to, subject, email)
 }
 
-export async function emailNewPersonal(personal) {
+export async function emailNewPersonal(personal, queryStringParams) {
     let to = personal.email
     let subject = "Looks like you've signed up for Cavestep!"
     let email = Mustache.render(newpersonal, {
@@ -193,7 +197,8 @@ export async function emailNewPersonal(personal) {
         LOGO_PATH_URL: LOGO_PATH_URL,
         personalid: personal._id,
         personalcode: personal.code,
-        logo: logopath
+        logo: logopath,
+        queryStringParams: queryStringParams
     })
 
     sendEmail(to, subject, email)
@@ -212,7 +217,7 @@ export async function emailRerankNudge(user) {
     return await sendEmail(to, subject, email)
 }
 
-export async function emailNewCoach(coach) {
+export async function emailNewCoach(coach, queryStringParams) {
     let to = coach.email
     let subject = 'You’ve signed up to Cavestep'
     let email =
@@ -227,6 +232,7 @@ export async function emailNewCoach(coach) {
         PATH_URL +
         '?page=verify&user=' +
         coach._id +
+        '&'+ queryStringParams +
         '&code=' +
         coach.code +
         "&email=NewCoach'>" +
@@ -270,15 +276,16 @@ export async function newUserNotificationEmail(user) {
     return await sendEmail(to, subject, email)
 }
 
-export async function shareInsightExistingUserEmail( 
+export async function shareInsightEmail( 
     insight,
     sharer,
     receiverEmail,
-    acceptLink
+    acceptLink,
+    newUser
     ) { 
         const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
         const subject = `${sharerName} shared an insight with you - Cavestep`
-        const email = Mustache.render(shareInsightTemplate, {
+        const email = Mustache.render(newUser ? shareInsightNewUser : shareInsightTemplate, {
             insightText: insight.answer,
             sharerName: sharerName,
             sharerEmail: `${sharer.email}`,

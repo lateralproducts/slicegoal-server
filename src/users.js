@@ -37,7 +37,7 @@ export const typeDefs = `
     updatePassword(userid: String, oldpassword: String, newpassword: String): User
     login(email: String!, pwd: String!, setView: String, uiversion: String): User
     setSignUpContext(account: String): Boolean
-    signup(email: String, firstname: String, uiversion: String, account: String): Boolean!
+    signup(email: String, firstname: String, uiversion: String, account: String, queryStringParams: String): Boolean!
     googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
     googleSignup(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
     logout: Boolean!
@@ -347,8 +347,9 @@ export const resolvers = {
             }
             let emailuser = await signup(newuser, args, req)
 
-            if (args.account === 'coach') emailNewCoach(emailuser)
-            else emailNewPersonal(emailuser)
+            const queryStringParams = args.queryStringParams ? args.queryStringParams : '' 
+            if (args.account === 'coach') emailNewCoach(emailuser, queryStringParams)
+            else emailNewPersonal(emailuser, queryStringParams)
             sessiontrack(req, args, 'app', 'signup', 'success')
 
             return true
