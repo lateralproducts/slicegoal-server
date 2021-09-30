@@ -315,11 +315,95 @@ export const resolvers = {
         signup: async(_, args, { req }) => {
             //This is publicly accessible
             const db = await DbConnection.Get()
+            const IPAddresses = db.collection('ipaddresses')
             const Users = db.collection('users')
+        
+            //possibly threatening checks
+        
+            const ipprofile = await IPAddresses.findOne({
+                ip: getuserIpAddress(req)
+            })
+        
+            if (ipprofile) {
+                if (ipprofile.block = true) {
+                    sessiontrack(
+                        req,
+                        args,
+                        'app',
+                        'signup',
+                        'failed, blocked ip',
+                    )
+                    throw new Error(
+                        'An error has occured', //don't be descriptive with error in case malicious
+                    )
+                }
+            }
+        
+            var urlcheck = /[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)?/gi
+            var urlregex = new RegExp(urlcheck)
+        
+            if (args.firstname.match(urlregex)) { //checking firstname has url
+                sessiontrack(
+                    req,
+                    args,
+                    'app',
+                    'signup',
+                    'failed, url in name',
+                )
+                IPAddresses.insert({
+                    ip: getuserIpAddress(req),
+                    block: true,
+                    reason: 'attempted to put link in firstname'
+                })
+                throw new Error(
+                    'An error occured', //don't be descriptive with error in case malicious
+                )
+            }
+        
+            const ipaddress = await Users.find({
+                createdip: getuserIpAddress(req)
+            })
+        
+            //possibly threatening checks
+        
+            if (ipaddress.length > 15) { //if created more than 15 accounts block.
+                sessiontrack(
+                    req,
+                    args,
+                    'app',
+                    'signup',
+                    'failed, 15 account limit, blocking',
+                )
+                IPAddresses.insert({
+                    ip: getuserIpAddress(req),
+                    block: true,
+                    reason: 'account limit at 15'
+                })
+                new Error(
+                    'An error occured.', //don't be descriptive with error in case malicious
+                )
+            }
+        
+            if (args.firstname.length > 30) {//checking firstname length
+                sessiontrack(
+                    req,
+                    args,
+                    'app',
+                    'signup',
+                    'failed, firstname length too long',
+                )
+                throw new Error(
+                    'An error occured', //don't be descriptive with error in case malicious
+                )
+            }
+        
+            //non-threatening checks
+        
             const user = await Users.findOne({
                 email: args.email.toLowerCase()
             })
-            if (user) {
+        
+            if (user) { //checking if already signed up.
                 sessiontrack(
                     req,
                     args,
@@ -331,9 +415,9 @@ export const resolvers = {
                     'If you already have a Cavestep profile with this email you can log in.',
                 )
             }
-
+        
             const date = new Date()
-
+        
             let newuser = {
                 email: args.email.toLowerCase(),
                 firstname: args.firstname,
@@ -351,7 +435,7 @@ export const resolvers = {
             if (args.account === 'coach') emailNewCoach(emailuser, queryStringParams)
             else emailNewPersonal(emailuser, queryStringParams)
             sessiontrack(req, args, 'app', 'signup', 'success')
-
+        
             return true
         },
 
