@@ -325,7 +325,7 @@ export const resolvers = {
             })
         
             if (ipprofile) {
-                if (ipprofile.block = true) {
+                if (ipprofile.block === true) {
                     sessiontrack(
                         req,
                         args,
