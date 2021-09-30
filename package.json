@@ -12,7 +12,8 @@
         "test": "NODE_ENV=test npx babel-node src/index.js",
         "release-patch": "yarn version --patch --message",
         "release-minor": "yarn version --minor --message",
-        "release-major": "yarn version --major --message"
+        "release-major": "yarn version --major --message",
+        "lint": "eslint --ext .js --ignore-path .gitignore ."
     },
     "author": "Daniel Schrader <daniel@cavestep.com> (https://www.cavestep.com/app)",
     "license": "ISC",
@@ -30,6 +31,7 @@
         "cors": "^2.8.1",
         "dotenv-flow": "^3.2.0",
         "eslint": "^7.32.0",
+        "eslintrc": "^1.0.6",
         "eway-rapid": "^1.2.1",
         "express": "^4.14.0",
         "express-session": "^1.16.2",
