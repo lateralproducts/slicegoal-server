@@ -458,26 +458,9 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
             const Goals = db.collection('goals')
-            const Profiles = db.collection('profiles')
-
-            const goal = await Goals.findOne({ _id: ObjectId(goalid) })
-            const profile = await Profiles.findOne({
-                _id: ObjectId(goal.profileid)
-            })
-            if (profile.user !== getuserid(req.session)) {
-                throw new Error('Unauthorised Goal Delete')
-            } else {
-                const goalLinksDeleted = GoalLinks.deleteMany({
-                    goalid: goalid
-                })
-                const goalsDeleted = Goals.deleteOne({ _id: ObjectId(goalid) })
-                const result = await Promise.all([
-                    goalLinksDeleted,
-                    goalsDeleted
-                ])
-                if (result) return true
-                else return false
-            }
+            await GoalLinks.deleteMany({ goalid: goalid, profileid: getprofileid(req.session) })
+            await Goals.deleteOne({ _id: ObjectId(goalid), profileid: getprofileid(req.session) })
+            return true
         },
         updateGoalOrder: async(parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
