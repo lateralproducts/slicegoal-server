@@ -966,7 +966,7 @@ export async function createWheel(
         //Setting up the AreaLink records
         let insertAreaLinks = newAreas.map(areaid => {
             return {
-                area: areaid,
+                area: areaid.toString(),
                 rootarea: startArea,
                 wheelid: wheelid,
                 uiversion: uiversion,

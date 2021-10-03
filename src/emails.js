@@ -254,13 +254,13 @@ export async function emailNewCoach(coach, queryStringParams) {
     sendEmail(to, subject, email)
 }
 
-export async function emailFeedback(user, feedback) {
+export async function emailFeedback(user, feedback, datetime) {
     let to = `${process.env.FEEDBACK_EMAIL}`
     let subject = `Feedback from ${user.firstname}`
     let email = Mustache.render(feedbackTemplate, {
         from: `${user.firstname} ${user.lastname || ''}`,
         email: `${user.email}`,
-        time: new Date(),
+        time: datetime.toString(),
         feedback: feedback
     })
     return await sendEmail(to, subject, email)
