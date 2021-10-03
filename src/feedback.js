@@ -14,16 +14,16 @@ export const resolvers = {
     Mutation: {
         submitFeedback: async (root, args, { req }) => {
             const db = await DbConnection.Get()
-            const Emails = db.collection('emails')
             const Feedback = db.collection('feedback')
             args.userid = getuserid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
-            args.date = new Date(args.datetime)
+            args.date = new Date()
 
-            let emailresponse = await emailFeedback(
+            await emailFeedback(
                 req.session.user,
                 args.description,
+                args.date
             )
             await Feedback.insertOne(args)
             return true
