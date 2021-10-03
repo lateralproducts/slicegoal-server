@@ -116,14 +116,9 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
-            const Users = db.collection('users')
-
-            const user = await Users.findOne({
-                _id: ObjectId(getuserid(req.session))
-            })
 
             const found = await Insights.find({
-                email: user.email,
+                email: req.session.user.email,
                 status: 'newshared'
             }).toArray()
 
