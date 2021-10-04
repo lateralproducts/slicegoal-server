@@ -5,19 +5,26 @@
             <tr>
                 <td style="border: solid 0.2px #000000; border-radius: 3px; padding: 5px;">{{ insightText }}</td>
             </tr>
-
-            <tr>
-                <div>{{ sharerName }}  ({{ sharerEmail }})  shared this insight with you through Cavestep - Sign up to Cavestep and accept this</div>
-            </tr>
             <tr>
                 <td class="button">
-                    <a class="link" style="border: solid 0.2px #212121; text-decoration: none; color: black; border-radius: 3px; padding: 5px; background-color: #fafafa;" href={{ acceptLink }} class="button">Sign up</a> 
+                    <a class="link" style="border: solid 0.2px #212121; text-decoration: none; color: black; border-radius: 3px; padding: 5px; background-color: #fafafa;" href={{ acceptLink }} class="button">Sign up and Save Insight</a> 
                 </td> 
+            </tr>
+            <tr style="height:10px">
             </tr>
             <tr>
                 <img width='100' src= {{ logoPath }}>
             </tr>
-            <tr>We do not tolerate unwanted or abusive message being sent through our platform. If this message was unsolicited or you are not comfortable receiving it from this person, or would like these emails blocked, please contact Cavestep support at support@cavestep.com </tr>
+            <tr>
+                <div style="font-size:10px">
+                    {{ sharerName }}  ({{ sharerEmail }})  shared this insight with you. 
+                    If this message was unsolicited or you are not comfortable
+                    receiving it from this person, or would like these emails
+                    blocked, please contact Cavestep support at
+                    support@cavestep.com. We do not tolerate unwanted or abusive
+                    message being sent through our platform.
+                </div>
+            </tr>
         </table>
     </body>
 </html>
