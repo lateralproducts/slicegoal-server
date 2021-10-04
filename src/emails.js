@@ -284,7 +284,7 @@ export async function shareInsightEmail(
     newUser
     ) { 
         const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
-        const subject = `${sharerName} shared an insight with you`
+        const subject = `${sharerName} shared an insight`
         const email = Mustache.render(newUser ? shareInsightNewUser : shareInsightTemplate, {
             insightText: insight.answer,
             sharerName: sharerName,
