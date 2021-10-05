@@ -1,0 +1,12 @@
+<head>
+    <style>a {cursor: help;} .goal { margin: 3px; }</style>
+</head>
+<div>Hey {{user.firstname}}, here are your top goals for today!</div>
+
+<div>
+    {{#goals}}
+         <a href="{{pathurl}}?goal={{_id}}&email=GoalNudge">{{goal}}</a>
+    {{/goals}}
+</div>
+<br/>
+<a href="{{pathurl}}?email=GoalNudge"><img width='100' src={{logopath}}/></a>
