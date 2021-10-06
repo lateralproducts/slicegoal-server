@@ -16,7 +16,7 @@ export const typeDefs = `
 
 export const resolvers = {
     Mutation: {
-        runUpdate101: async (parent, args, { req }) => {
+        runUpdate101: async(parent, args, { req }) => {
             Areas.updateMany({}, { $rename: { userid: 'wheelid' } })
             Areas.updateMany({}, { $rename: { userid: 'wheelid' } })
             AreaTags.updateMany({}, { $rename: { userid: 'wheelid' } })
@@ -49,7 +49,7 @@ export const resolvers = {
                 name: "my view",
                 type:
                     user.profile === "client"
-                    ? "team"
+                    ? "shared"
                     : user.profile === "daniel"
                     ? "personal"
                     : "coach"
@@ -100,6 +100,6 @@ export const resolvers = {
             }); */
 
             return true
-        },
-    },
+        }
+    }
 }

@@ -238,9 +238,9 @@ export const resolvers = {
                 wheel: getwheelid(req.session),
                 $or: [
                     { user: getuserid(req.session) },
-                    { type: 'team' },
+                    { type: 'shared' },
                     { type: 'average' }
-                ] //return both personal profile and team wheels
+                ] //return both personal profile and shared wheels
             })
                 .sort({ type: -1, name: 1 })
                 .toArray()
@@ -316,7 +316,7 @@ export const resolvers = {
             const ownersview = views.find(
                 view =>
                     view.user === getuserid(req.session) &&
-                    view.type === 'multiwheel',
+                    view.type === 'owner',
             )
 
             const owner = await isWheelOwner(req, ownersview._id)
@@ -335,7 +335,7 @@ export const resolvers = {
             if (parent.view.type !== 'coach')
                 query.$or = [
                     { user: getuserid(req.session) },
-                    { type: 'team' },
+                    { type: 'shared' },
                     { type: 'average' }
                 ]
             //if (args.default) query._id = ObjectId(parent.view.defaultprofile); //if asking for default profile only return the default.
@@ -595,8 +595,8 @@ export const resolvers = {
             })
             let query = new Object()
             query.wheel = view.wheel
-            if (view.type === 'team')
-                query.$or = [{ user: getuserid(req.session) }, { type: 'team' }] //access allowed to all profiles for coach.
+            if (view.type === 'shared')
+                query.$or = [{ user: getuserid(req.session) }, { type: 'shared' }] //access allowed to all profiles for coach.
 
             const profile = await Profiles.findOne(query)
 
@@ -650,7 +650,7 @@ export const resolvers = {
             let { newview, newprofile } = await createWheel(
                 req.session.user,
                 req.session.user._id.toString(),
-                'multiwheel',
+                'owner',
                 args.wheelname,
                 args.areas,
                 getuiversion(req.session),
@@ -995,7 +995,7 @@ export async function createWheel(
         email: user.email,
         created: new Date(),
         name: getname(user.firstname, user.lastname, user.email),
-        type: 'team' //create the first team profile.
+        type: 'shared' //create the first shared profile.
     }
     Profiles.insertOne(newprofile)
 
@@ -1009,7 +1009,7 @@ async function copywheel(wheelid, userid) {
     const AreaLinks = db.collection('arealinks')
     const Views = db.collection('views')
     const Profiles = db.collection('profiles')
-    const viewtype = 'multiwheel'
+    const viewtype = 'owner'
 
     //only using userid as a tag to keep track of the copy.
     //wheel - global
@@ -1082,7 +1082,7 @@ async function copywheel(wheelid, userid) {
             wheel: newwheelid,
             created: new Date(),
             name: newwheel.name,
-            type: 'team' //create the first team profile.
+            type: 'shared' //create the first shared profile.
         }
         Profiles.insertOne(newprofile)
 
@@ -1134,7 +1134,7 @@ async function isWheelOwner(req, viewid) {
     let query = new Object()
     query.wheel = view.wheel
     query.user = getuserid(req.session)
-    query.type = 'multiwheel' //if the userview is "multiwheel", then this person is the owner. Will probably change multiwheel to "Owner" at some point.
+    query.type = 'owner' //if the userview is "owner", then this person is the owner. Will probably change owner to "Owner" at some point.
     const userview = await Views.findOne(query)
 
     if (userview === null) return false

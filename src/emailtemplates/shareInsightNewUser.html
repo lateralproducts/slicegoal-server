@@ -3,21 +3,35 @@
     <body>
         <table style="border-collapse: separate; border-spacing: 10px;">
             <tr>
-                <td style="border: solid 0.2px #000000; border-radius: 3px; padding: 5px;">{{ insightText }}</td>
-            </tr>
-
-            <tr>
-                <div>{{ sharerName }}  ({{ sharerEmail }})  shared this insight with you through Cavestep - Sign up to Cavestep and accept this</div>
+                <td>
+                    <div style="display:flex;">
+                        <div style="border: solid 0.2px #ECEDF2; border-radius: 3px; padding: 5px;">
+                            {{ insightText }}
+                        </div>
+                    </div>
+                </td>
             </tr>
             <tr>
                 <td class="button">
-                    <a class="link" style="border: solid 0.2px #212121; text-decoration: none; color: black; border-radius: 3px; padding: 5px; background-color: #fafafa;" href={{ acceptLink }} class="button">Sign up</a> 
-                </td> 
+                    <a class="link" style="font-size:10px; border: solid 0.5px rgba(128,128,128,0.35); text-decoration: none; color: black; border-radius: 5px; padding: 8px; background-color: #edf9ff;"
+                        href="{{ acceptLink }}" class="button">sign up and save insight</a>
+                </td>
+            </tr>
+            <tr style="height:10px">
             </tr>
             <tr>
                 <img width='100' src= {{ logoPath }}>
             </tr>
-            <tr>We do not tolerate unwanted or abusive message being sent through our platform. If this message was unsolicited or you are not comfortable receiving it from this person, or would like these emails blocked, please contact Cavestep support at support@cavestep.com </tr>
+            <tr>
+                <div style="font-size:10px">
+                    {{ sharerName }}  ({{ sharerEmail }})  shared this insight with you. 
+                    If this message was unsolicited or you are not comfortable
+                    receiving it from this person, or would like these emails
+                    blocked, please contact Cavestep support at
+                    support@cavestep.com. We do not tolerate unwanted or abusive
+                    message being sent through our platform.
+                </div>
+            </tr>
         </table>
     </body>
 </html>
