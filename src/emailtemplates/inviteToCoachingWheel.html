@@ -1,0 +1,16 @@
+<head>
+    <style>a {cursor: help;}</style>
+</head>
+<div>Hey {{ targetUser }},
+    <br/>{{ intro }}
+    <br/> 
+    Click here to start your journey: 
+    <a href={{pathurl}}?page={{page}}&user={{client._id}}&code={{view}}&email=NewClient'>
+    get set up
+    </a>
+    <br/> 
+    <br/> 
+    <a href={{logopath}}?email=NewClient>
+        <img width='100' src={{logopath}}/>
+    </a>
+</div>

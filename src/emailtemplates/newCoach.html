@@ -1,0 +1,22 @@
+<head>
+    <style>a {cursor: help;}</style>
+</head> 
+Hey {{coach.firstname},
+we got your request to create an account. Great to have you with us.
+<br/>
+<br/>
+Click below to start your Cavestep journey.
+<br/>
+<a href="{{pathurl}}?page=verify&user={{coach._id}}{{queryStringParams}}&code={{coach.code}}&email=NewCoach">
+start my Cavestep journey</a>
+<br/>
+<br/>
+Warm regards,
+<br/>
+Daniel Schrader
+<br/>
+Founder
+<br/>
+<a href='{{pathurl}}?email=NewCoach'>
+    <img width='100' src='{{logopath}}'/>
+</a>
