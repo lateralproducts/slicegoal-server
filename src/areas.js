@@ -23,6 +23,7 @@ export const typeDefs = `
         focusLinks(limit: Int, area: String): [Focus]
         focusLink(focuslink: String): Focus
         viewsOnOwnWheel(wheelid: String!): [View]
+        rankDue: Boolean
     }
     
     extend type Mutation {
@@ -324,6 +325,27 @@ export const resolvers = {
 
             views.splice(ownersview, 1) //remove owners view from the list
             return views
+        },
+        rankDue: async(_, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Wheels = db.collection('wheels')
+            const Areas = db.collection('areas')
+
+            let checkDate = new Date()
+            const weekAgo = checkDate.getDate() - 7
+            checkDate.setDate(weekAgo)
+
+            return await Wheels.findOne({_id: ObjectId(getwheelid(req.session))})
+                .then(wheel => {
+                    return Areas.findOne({_id: ObjectId(wheel.startarea)})
+                        .then(rootarea => {
+                            if(rootarea.lastranked &&
+                                rootarea.lastranked < checkDate)
+                                return true
+                            else 
+                                return false
+                        })
+                })
         }
     },
     Wheel: {
@@ -871,6 +893,15 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const RankTimes = db.collection('ranktimes')
+            const Areas = db.collection('areas')
+
+            Areas.findOne({_id: ObjectId(args.area)})
+                .then(area => {
+                    Areas.updateOne(
+                        {_id: ObjectId(area.rootarea)},
+                        {$set: {lastranked: new Date(args.datetime)}}
+                )})
+
             args.profileid = getprofileid(req.session)
             args.date = new Date(args.datetime)
             const res = await RankTimes.insert(args)
