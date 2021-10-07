@@ -28,6 +28,7 @@ export const typeDefs = `
 
   extend type Query {
       isLoggedin (url: String): User
+      getConnectedUsers: [ConnectedUser]
   }
 
   extend type Mutation {
@@ -59,9 +60,17 @@ export const schema = `
     url: String
   }
 
+  type ConnectedUser {
+      _id: String
+      firstname: String
+      lastname: String
+      state: String
+      email: String
+  }
+
   type createClientResponse {
-      success: Boolean
-      message: String
+    success: Boolean
+    message: String
   }
 `
 
@@ -83,6 +92,12 @@ export const resolvers = {
                 sessiontrack(req, args, 'app', 'arrived')
                 return null
             }
+        },
+        getConnectedUsers: async(_, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Community = db.collection('community')
+
+            return await Community.find({user: getuserid(req.session)}).toArray()
         }
     },
     User: {
@@ -113,6 +128,36 @@ export const resolvers = {
                     .limit(1)
                     .toArray()
             }
+        }
+    },
+    ConnectedUser: {
+        state: async parent => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+
+            const user = await Users.findOne({_id: ObjectId(parent.friend)})
+            return user.state
+        },
+        firstname: async parent => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            
+            const user = await Users.findOne({_id: ObjectId(parent.friend)})
+            return user.firstname
+        },
+        lastname: async parent => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            
+            const user = await Users.findOne({_id: ObjectId(parent.friend)})
+            return user.lastname        
+        },
+        email: async parent => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+
+            const user = await Users.findOne({_id: ObjectId(parent.friend)})
+            return user.email
         }
     },
     Mutation: {

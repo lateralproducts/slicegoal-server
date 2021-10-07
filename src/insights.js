@@ -5,6 +5,7 @@ import { getuiversion } from '../util/index'
 import { getprofileid, getuserid, getwheelid } from './users'
 import { shareInsightEmail } from './emails'
 import DbConnection from './database'
+import { createUserConnection } from './community'
 
 export const typeDefs = `
 
@@ -501,6 +502,11 @@ export const resolvers = {
                                         false // new user?
                                     )
                                 }
+                                createUserConnection(
+                                    currentUser, 
+                                    targetUser.email, 
+                                    'insight share',
+                                    result._id.toString())
                             } else {
                                 // Completely new user
                                 shareInsightEmail(
@@ -509,6 +515,12 @@ export const resolvers = {
                                     args.targetUser,
                                     `${process.env.PATH_URL}?page=signup&sharedinsights=active`,
                                     true // new user?
+                                )
+                                createUserConnection(
+                                    currentUser, 
+                                    args.targetUser, 
+                                    'insight share',
+                                    result._id.toString()
                                 )
                             }
                         })
