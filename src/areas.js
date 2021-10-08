@@ -729,8 +729,8 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const AreaLinks = db.collection('arealinks')
-            const InsightLinks = db.collection('insightlinks')
-            const GoalLinks = db.collection('goallinks')
+            const InsightTags = db.collection('insighttags')
+            const GoalTags = db.collection('goaltags')
             const Pomodoros = db.collection('pomodoros')
             const Wheels = db.collection('wheels')
 
@@ -744,10 +744,10 @@ export const resolvers = {
                 const areaLinksDel = AreaLinks.deleteMany({
                     area: areaid
                 })
-                const insightLinksDel = InsightLinks.deleteMany({
+                const insightLinksDel = InsightTags.deleteMany({
                     area: areaid
                 })
-                const goalLinksDel = GoalLinks.deleteMany({
+                const goalLinksDel = GoalTags.deleteMany({
                     areaid: areaid
                 })
                 const pomodorosDel = Pomodoros.deleteMany({
@@ -1146,9 +1146,9 @@ async function deleteWheelAll(req, viewid) {
     const Areas = db.collection('areas')
     const AreaLinks = db.collection('arealinks')
     const Goals = db.collection('goals')
-    const GoalLinks = db.collection('goallinks')
+    const GoalTags = db.collection('goaltags')
     const Insights = db.collection('insights')
-    const InsightLinks = db.collection('insightlinks')
+    const InsightTags = db.collection('insighttags')
     const Wheels = db.collection('wheels')
     const Views = db.collection('views')
     const Profiles = db.collection('profiles')
@@ -1166,9 +1166,9 @@ async function deleteWheelAll(req, viewid) {
 
     deleteprofiles.map(function({ _id }) {
         Goals.deleteMany({ profileid: _id })
-        GoalLinks.deleteMany({ profileid: _id })
+        GoalTags.deleteMany({ profileid: _id })
         Insights.deleteMany({ profileid: _id })
-        InsightLinks.deleteMany({ profileid: _id })
+        InsightTags.deleteMany({ profileid: _id })
         Profiles.deleteOne({ _id: _id }) //delete profile last
     })
 
