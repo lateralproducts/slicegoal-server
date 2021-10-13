@@ -28,7 +28,7 @@ export const typeDefs = `
 
   extend type Query {
       isLoggedin (url: String): User
-      getConnectedUsers: [ConnectedUser]
+      getConnectedUsers: [User]
   }
 
   extend type Mutation {
@@ -59,14 +59,8 @@ export const schema = `
     views: [View]
     currentview: View
     url: String
-  }
-
-  type ConnectedUser {
-      _id: String
-      firstname: String
-      lastname: String
-      state: String
-      email: String
+    state: String
+    lastname: String
   }
 
   type createClientResponse {
@@ -97,8 +91,20 @@ export const resolvers = {
         getConnectedUsers: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Community = db.collection('community')
+            const Users = db.collection('users')
 
-            return await Community.find({user: getuserid(req.session)}).toArray()
+            const community = await Community.find(
+                {user: getuserid(req.session)}
+            )
+            .toArray()
+
+            const user_ids = community.map(connection => {
+                return ObjectId(connection.friend)
+            })
+            return await Users.find(
+                {_id: {$in: user_ids}}
+            ).toArray()
+
         }
     },
     User: {
@@ -129,36 +135,6 @@ export const resolvers = {
                     .limit(1)
                     .toArray()
             }
-        }
-    },
-    ConnectedUser: {
-        state: async parent => {
-            const db = await DbConnection.Get()
-            const Users = db.collection('users')
-
-            const user = await Users.findOne({_id: ObjectId(parent.friend)})
-            return user.state
-        },
-        firstname: async parent => {
-            const db = await DbConnection.Get()
-            const Users = db.collection('users')
-            
-            const user = await Users.findOne({_id: ObjectId(parent.friend)})
-            return user.firstname
-        },
-        lastname: async parent => {
-            const db = await DbConnection.Get()
-            const Users = db.collection('users')
-            
-            const user = await Users.findOne({_id: ObjectId(parent.friend)})
-            return user.lastname        
-        },
-        email: async parent => {
-            const db = await DbConnection.Get()
-            const Users = db.collection('users')
-
-            const user = await Users.findOne({_id: ObjectId(parent.friend)})
-            return user.email
         }
     },
     Mutation: {
