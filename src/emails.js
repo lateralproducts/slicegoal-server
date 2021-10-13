@@ -146,7 +146,6 @@ export async function emailNewPersonal(personal, queryStringParams) {
     let to = personal.email
     let subject = "Looks like you've signed up for Cavestep!"
     let email = Mustache.render(newpersonal, {
-        name: personal.firstname ? ' ' + personal.firstname : '', //using space in front here to manage formatting.
         PATH_URL: PATH_URL,
         LOGO_PATH_URL: LOGO_PATH_URL,
         personalid: personal._id,
