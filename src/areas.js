@@ -96,7 +96,7 @@ export const schema = `
         time(readdate: String): PomodoroData
         clicks: ClickData
         coach: Boolean
-        rankDue: Boolean
+        rankdue: Boolean
     }
 
     type View {
@@ -581,7 +581,7 @@ export const resolvers = {
                 )
             })
         },
-        rankDue: async({_id}, __, { req }) => {
+        rankdue: async({_id}) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
 
