@@ -1,6 +1,6 @@
 import DbConnection from './database'
 
-import { getprofileid, getwheelid } from './users'
+import { getprofileid } from './users'
 
 export const schema = `
     type Tag {
@@ -22,7 +22,6 @@ export const resolvers = {
 
             const GoalTags = db.collection('goaltags')
             const InsightTags = db.collection('insighttags')
-            const Areas = db.collection('areas')
 
             let alltags // goaltags or insighttags
             if(args.type === 'insight') {
@@ -34,30 +33,27 @@ export const resolvers = {
                     .toArray()
             }
 
-            // Result set initialised to all areas on wheel
-            const resAreas = await Areas.find({wheelid: getwheelid(req.session)})
-                .toArray()
-            let resSet = new Set(resAreas.map(area => area._id.toString()))
+            // Initialise result set to unique values of area id on tags
+            let resset = [...new Set(alltags.map(tag => tag.area))]
+            let tagsonarea
 
-            function tagsbyareas(queryAreas, tags) {
-                if(queryAreas.length === 0) return resSet
+            function tagsbyareas(queryareas, tags) {
+                if(queryareas.length === 0) return tags
+                
+                // Only tags with id 'area' = current checking area id 
+                tagsonarea = tags.filter(tag => tag.area === queryareas[0]._id) 
 
-                const tagSet = new Set() // set of insighttags or goaltags
-                tags.forEach(tag => {
-                    if(tag.area === queryAreas[0]._id)
-                        tagSet.add(tag) 
-                })
+                // Only leave result area ids if there remains some tag with that area id 
+                resset = resset.filter(area => tagsonarea.some(tag => {tag.area === area}))
 
-                resSet = resSet.forEach(area => {
-                    if(tagSet.some(tag => {tag.area === area._id.toString()}))
-                        return area
-                })
-
-                queryAreas.splice(0, 1)
-                tagsbyareas(queryAreas, tags)
+                // Move to next area and recurse
+                queryareas.splice(0, 1)
+                tagsbyareas(queryareas, resset)
             }
 
-            return tagsbyareas(args.areas, alltags)
+            return tagsbyareas(args.areas, alltags).map(tag => {
+                return tag.area
+            })
         } 
     }
 }
