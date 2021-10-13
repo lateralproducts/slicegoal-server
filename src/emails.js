@@ -209,6 +209,7 @@ export async function shareInsightEmail(
     insight,
     sharer,
     receiverEmail,
+    shareNote,
     acceptLink,
     newUser
     ) { 
@@ -219,7 +220,8 @@ export async function shareInsightEmail(
             sharerName: sharerName,
             sharerEmail: `${sharer.email}`,
             logoPath: logopath,
-            acceptLink: acceptLink
+            acceptLink: acceptLink,
+            shareNote: shareNote
         })
         return await sendEmail(receiverEmail, subject, email)
     }

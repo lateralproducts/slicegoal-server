@@ -26,7 +26,7 @@ export const typeDefs = `
     markSpacedYes(insightid: String, datetime: String): Boolean
     markSpacedNo(insightid: String, datetime: String): Boolean
     removeInsight(insightid: String!): Boolean
-    shareInsight(insightid: String!, targetUser: String!): ShareResponse
+    shareInsight(insightid: String!, targetUser: String!, shareNote: String): ShareResponse
     popSharedInsight(insightid: String!): Boolean
   }
 `
@@ -489,6 +489,7 @@ export const resolvers = {
                                         result,
                                         currentUser,
                                         args.targetUser,
+                                        args.shareNote,
                                         `${process.env.PATH_URL}?sharedinsights=active`,
                                         false // new user?
                                     )
@@ -498,6 +499,7 @@ export const resolvers = {
                                         result,
                                         currentUser,
                                         args.targetUser,
+                                        args.shareNote,
                                         `${process.env.PATH_URL}?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`,
                                         false // new user?
                                     )
@@ -513,6 +515,7 @@ export const resolvers = {
                                     result,
                                     currentUser,
                                     args.targetUser,
+                                    args.shareNote,
                                     `${process.env.PATH_URL}?page=signup&sharedinsights=active`,
                                     true // new user?
                                 )
