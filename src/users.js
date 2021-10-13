@@ -34,7 +34,7 @@ export const typeDefs = `
   extend type Mutation {
     updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
     createClient(email: String!, firstname: String, lastname: String): createClientResponse
-    verifyAccount(userid: String, code: String, setView: String, password: String): User
+    verifyAccount(userid: String, code: String, setView: String, password: String, firstname: String, lastname: String): User
     updatePassword(userid: String, oldpassword: String, newpassword: String): User
     login(email: String!, pwd: String!, setView: String, uiversion: String): User
     setSignUpContext(account: String): Boolean
@@ -50,6 +50,7 @@ export const schema = `
   type User {
     _id: String
     firstname: String
+    lastname: String
     email: String
     startarea: String
     area: Area
@@ -304,7 +305,9 @@ export const resolvers = {
                 {
                     $set: {
                         state: 'verified',
-                        password: bcrypt.hashSync(args.password, 10)
+                        password: bcrypt.hashSync(args.password, 10),
+                        firstname: args.firstname,
+                        lastname: args.lastname
                     }
                 },
             )
@@ -383,7 +386,8 @@ export const resolvers = {
                     )
                 }
             }
-        
+            
+            /*
             var urlcheck = /[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)?/gi
             var urlregex = new RegExp(urlcheck)
         
@@ -404,7 +408,8 @@ export const resolvers = {
                     'An error occured', //don't be descriptive with error in case malicious
                 )
             }
-        
+            */
+
             const ipaddress = await Users.find({
                 createdip: getuserIpAddress(req)
             })
@@ -428,7 +433,7 @@ export const resolvers = {
                     'An error occured.', //don't be descriptive with error in case malicious
                 )
             }
-        
+            /*
             if (args.firstname.length > 30) {//checking firstname length
                 sessiontrack(
                     req,
@@ -441,7 +446,7 @@ export const resolvers = {
                     'An error occured', //don't be descriptive with error in case malicious
                 )
             }
-        
+            */
             //non-threatening checks
         
             const user = await Users.findOne({
@@ -465,7 +470,6 @@ export const resolvers = {
         
             let newuser = {
                 email: args.email.toLowerCase(),
-                firstname: args.firstname,
                 code: bcrypt.hashSync(date.toString(), 7),
                 uiversion: args.uiversion,
                 serverversion: pjson.version,
