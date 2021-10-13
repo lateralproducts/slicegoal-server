@@ -23,7 +23,6 @@ export const typeDefs = `
         focusLinks(limit: Int, area: String): [Focus]
         focusLink(focuslink: String): Focus
         viewsOnOwnWheel(wheelid: String!): [View]
-        rankDue: Boolean
     }
     
     extend type Mutation {
@@ -97,6 +96,7 @@ export const schema = `
         time(readdate: String): PomodoroData
         clicks: ClickData
         coach: Boolean
+        rankDue: Boolean
     }
 
     type View {
@@ -325,27 +325,6 @@ export const resolvers = {
 
             views.splice(ownersview, 1) //remove owners view from the list
             return views
-        },
-        rankDue: async(_, __, { req }) => {
-            const db = await DbConnection.Get()
-            const Wheels = db.collection('wheels')
-            const Areas = db.collection('areas')
-
-            let checkDate = new Date()
-            const weekAgo = checkDate.getDate() - 7
-            checkDate.setDate(weekAgo)
-
-            return await Wheels.findOne({_id: ObjectId(getwheelid(req.session))})
-                .then(wheel => {
-                    return Areas.findOne({_id: ObjectId(wheel.startarea)})
-                        .then(rootarea => {
-                            if(rootarea.lastranked &&
-                                rootarea.lastranked < checkDate)
-                                return true
-                            else 
-                                return false
-                        })
-                })
         }
     },
     Wheel: {
@@ -601,6 +580,28 @@ export const resolvers = {
                     },
                 )
             })
+        },
+        rankDue: async(_, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            const Wheels = db.collection('wheels')
+
+            let checkDate = new Date()
+            const weekAgo = checkDate.getDate() - 7
+            checkDate.setDate(weekAgo)
+
+            return await Wheels.findOne({_id: ObjectId(getwheelid(req.session))})
+                .then(wheel => {
+                    return Areas.findOne({_id: ObjectId(wheel.startarea)})
+                        .then(rootarea => {
+                            if(rootarea.lastranked &&
+                                rootarea.lastranked < checkDate)
+                                return true
+                            else 
+                                return false
+                        })
+                })
+
         }
     },
     Mutation: {
