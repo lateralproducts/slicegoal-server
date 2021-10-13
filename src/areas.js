@@ -581,28 +581,21 @@ export const resolvers = {
                 )
             })
         },
-        rankDue: async(_, __, { req }) => {
+        rankDue: async({_id}, __, { req }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            const Wheels = db.collection('wheels')
 
             let checkDate = new Date()
             const weekAgo = checkDate.getDate() - 7
             checkDate.setDate(weekAgo)
 
-            return await Wheels.findOne({_id: ObjectId(getwheelid(req.session))})
-                .then(wheel => {
-                    return Areas.findOne({_id: ObjectId(wheel.startarea)})
-                        .then(rootarea => {
-                            if(rootarea.lastranked &&
-                                rootarea.lastranked < checkDate)
-                                return true
-                            else 
-                                return false
-                        })
-                })
-
-        }
+            const area = await Areas.findOne({_id: _id})
+            if(!area.lastranked ||
+                area.lastranked < checkDate)
+                return true
+            else 
+                return false
+            }
     },
     Mutation: {
         setView: async(_, { viewid }, { req }) => {
