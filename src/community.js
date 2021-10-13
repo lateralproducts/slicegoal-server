@@ -25,7 +25,7 @@ export async function createUserConnection(user, friendemail, eventtype, eventid
                 }
                 return Users.insertOne(newUser)
                     .then(result => {
-                        if(result.insertedCount===1) return result.insertedId
+                        if(result.insertedCount===1) return result.insertedId.toString()
                     })
             }
             else 
