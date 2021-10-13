@@ -54,7 +54,7 @@ export const resolvers = {
                 })
 
                 queryAreas.splice(0, 1)
-                tagsbyareas(resSet, tags)
+                tagsbyareas(queryAreas, tags)
             }
 
             return tagsbyareas(args.areas, alltags)
