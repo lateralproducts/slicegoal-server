@@ -60,7 +60,6 @@ export const schema = `
     currentview: View
     url: String
     state: String
-    lastname: String
   }
 
   type createClientResponse {
