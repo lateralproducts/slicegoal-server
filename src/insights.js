@@ -9,7 +9,7 @@ import DbConnection from './database'
 export const typeDefs = `
 
   extend type Query {
-    insights(area: String): [InsightTag]
+    insights(areas: [String]): [InsightTag]
     insightLinks(insightid: String): [InsightTag]
     searchinsights(search: String, spaced: Boolean): [Insight]
     newsharedinsights: Int
@@ -81,9 +81,9 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
-            const insighttags = await InsightTags.find(
+            let insighttags = await InsightTags.find(
                 {
-                    area: args.area,
+                    area: args.areas[0],
                     profileid: getprofileid(req.session),
                     $or: [
                         { nextdate: null },
@@ -92,6 +92,11 @@ export const resolvers = {
                 },
                 { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
             ).toArray()
+            if(args.areas.length > 1) {
+                const remainingareas = args.areas.splice(0, 1)
+                insighttags = insighttags
+                                .filter(tag => remainingareas.some(area => area === tag.area))
+            }
 
             return insighttags
         },
