@@ -275,23 +275,39 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
             const InsightLinks = db.collection('insightlinks')
-            args.lastdate = new Date(args.datetime) //record when insight was last marked
             const insightid = args.insightid
             delete args.insightid
             const spaced = await Spaced.findOne({
                 insightid: insightid,
                 profileid: getprofileid(req.session)
             })
-            if (spaced) {
+            let nextdate
+            if (spaced) { //check if there is a spaced record, if not, create one.
+                nextdate = new Date(spaced.lastmarked ? spaced.lastmarked : null) //set nextdate for today + fibonacci sequence
+                nextdate.setDate(nextdate.getDate() + spaced.fib1)
+                args.datenext = nextdate
+                args.lastmarked = new Date()
                 args.fib1 = spaced.fib0 + spaced.fib1
                 args.fib0 = spaced.fib1
+                Spaced.update(
+                    { insightid: insightid, profileid: getprofileid(req.session) },
+                    {
+                        $set: args
+                    },
+                )
             } else {
-                args.fib1 = 1
-                args.fib0 = 1
+                let newspaced = new Object()
+                newspaced.insightid = insightid
+                newspaced.profileid = getprofileid(req.session)
+                newspaced.fib0 = 1
+                newspaced.fib1 = 1
+                newspaced.lastmarked = new Date()
+                nextdate = new Date()
+                nextdate.setDate(nextdate.getDate() + 1)
+                newspaced.datenext = nextdate
+                Spaced.insert(newspaced)
             }
-            let nextdate = new Date(args.datetime) //set nextdate for today + fibonacci sequence
-            nextdate.setDate(nextdate.getDate() + args.fib1)
-            args.datenext = nextdate
+            
 
             InsightLinks.update(
                 { insightid: insightid, profileid: getprofileid(req.session) },
@@ -301,12 +317,7 @@ export const resolvers = {
                 { multi: true },
             )
 
-            Spaced.update(
-                { insightid: insightid, profileid: getprofileid(req.session) },
-                {
-                    $set: args
-                },
-            )
+            
             return true
         },
         markSpacedNo: async(_, args, { req }) => {
@@ -314,19 +325,44 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
             const Spaced = db.collection('spaced')
-            args.lastdate = new Date(args.datetime) //record when insight was last marked
+            args.lastdate = new Date()
             args.fib0 = 0
             args.fib1 = 1
             const insightid = args.insightid
             delete args.insightid
-            let nextdate = new Date()
-            nextdate.setDate(nextdate.getDate() + 1)
-            args.datenext = nextdate
 
             const spaced = await Spaced.findOne({
                 insightid: insightid,
                 profileid: getprofileid(req.session)
             })
+
+            let nextdate = new Date() //set nextdate for tomorrow.
+            nextdate.setDate(nextdate.getDate() + 1)
+
+            if (spaced) { //check if there is a spaced record, if not, create one.
+                args.lastmarked = new Date()
+                args.datenext = nextdate
+                args.fib0 = 0
+                args.fib1 = 1
+                args.markedno = spaced.markedno ? spaced.markedno + 1 : 1
+                await Spaced.update(
+                    { insightid: insightid, profileid: getprofileid(req.session) },
+                    {
+                        $set: args
+                    },
+                )
+            } else {
+                //this is functionality for spaced repetition. Only activated if the insight has a prompt.
+                let newspaced = new Object()
+                newspaced.insightid = insightid
+                newspaced.profileid = getprofileid(req.session)
+                newspaced.fib0 = 0
+                newspaced.fib1 = 1
+                newspaced.markedno = 1
+                newspaced.lastmarked = new Date()
+                newspaced.datenext = nextdate
+                Spaced.insert(newspaced)
+            }
 
             await InsightLinks.update(
                 { insightid: insightid, profileid: getprofileid(req.session) },
@@ -336,14 +372,6 @@ export const resolvers = {
                 { multi: true },
             )
 
-            args.markedno = spaced.markedno ? spaced.markedno + 1 : 1
-
-            await Spaced.update(
-                { insightid: insightid, profileid: getprofileid(req.session) },
-                {
-                    $set: args
-                },
-            )
             return true
         },
         updateInsight: async(_, args, { req }) => {
