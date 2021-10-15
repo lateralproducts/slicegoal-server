@@ -11,7 +11,8 @@ export const typeDefs = `
   extend type Query {
     insights(area: String): [InsightLink]
     insightLinks(insightid: String): [InsightLink]
-    searchinsights(search: String, spaced: Boolean): [Insight]
+    searchinsights(search: String!): [Insight]
+    spaced: [InsightLink]
     newsharedinsights: Int
     getSharedInsights: SharedInsightList
   }
@@ -85,7 +86,7 @@ export const resolvers = {
                 {
                     area: args.area,
                     profileid: getprofileid(req.session),
-                    $or: [
+                    $or: [ //for spaced repetition.
                         { nextdate: null },
                         { nextdate: { $lte: new Date() } }
                     ]
@@ -95,18 +96,42 @@ export const resolvers = {
 
             return insightlinks
         },
+        spaced: async(_,__,{req}) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const InsightLinks = db.collection('insightlinks')
+
+            let query = new Object()
+            query = {
+                $or: [
+                    { nextdate: null },
+                    { nextdate: { $lte: new Date() } }
+                ],
+                profileid: getprofileid(req.session)
+            }
+            const insightlinks = await InsightLinks.find(
+                query,
+                { sort: { nextdate: -1 } }, //return reverse chron. Last note created at top of list.
+            ).toArray()
+
+            return insightlinks
+        },
         searchinsights: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
+
+            let query = new Object()
+            query = {
+                $or: [
+                    { answer: new RegExp(args.search, 'i') },
+                    { prompt: new RegExp(args.search, 'i') }
+                ],
+                profileid: getprofileid(req.session)
+            }
+
             const insights = await Insights.find(
-                {
-                    $or: [
-                        { answer: new RegExp(args.search, 'i') },
-                        { prompt: new RegExp(args.search, 'i') }
-                    ],
-                    profileid: getprofileid(req.session)
-                },
+                query,
                 { sort: { datecreated: -1 } }, //return reverse chron. Last note created at top of list.
             ).toArray()
 
@@ -222,14 +247,14 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
             const InsightLinks = db.collection('insightlinks')
-            args.date = new Date(args.datetime)
-            const insightId = args.insightId
-            delete args.insightId
+            args.lastdate = new Date(args.datetime) //record when insight was last marked
+            const insightid = args.insightid
+            delete args.insightid
             const spaced = await Spaced.findOne({
-                insightid: insightId,
-                userid: getprofileid(req.session)
+                insightid: insightid,
+                profileid: getprofileid(req.session)
             })
-            if (spaced.fib1) {
+            if (spaced) {
                 args.fib1 = spaced.fib0 + spaced.fib1
                 args.fib0 = spaced.fib1
             } else {
@@ -241,7 +266,7 @@ export const resolvers = {
             args.datenext = nextdate
 
             InsightLinks.update(
-                { insightid: insightId, profileid: getprofileid(req.session) },
+                { insightid: insightid, profileid: getprofileid(req.session) },
                 {
                     $set: { nextdate: nextdate }
                 },
@@ -249,7 +274,7 @@ export const resolvers = {
             )
 
             Spaced.update(
-                { insightid: insightId, userid: getprofileid(req.session) },
+                { insightid: insightid, profileid: getprofileid(req.session) },
                 {
                     $set: args
                 },
@@ -261,22 +286,22 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
             const Spaced = db.collection('spaced')
-            args.date = new Date(args.datetime)
+            args.lastdate = new Date(args.datetime) //record when insight was last marked
             args.fib0 = 0
             args.fib1 = 1
-            const insightId = args.insightId
-            delete args.insightId
+            const insightid = args.insightid
+            delete args.insightid
             let nextdate = new Date()
             nextdate.setDate(nextdate.getDate() + 1)
             args.datenext = nextdate
 
             const spaced = await Spaced.findOne({
-                insightid: insightId,
-                userid: getprofileid(req.session)
+                insightid: insightid,
+                profileid: getprofileid(req.session)
             })
 
             await InsightLinks.update(
-                { insightid: insightId, profileid: getprofileid(req.session) },
+                { insightid: insightid, profileid: getprofileid(req.session) },
                 {
                     $set: { nextdate: nextdate }
                 },
@@ -286,7 +311,7 @@ export const resolvers = {
             args.markedno = spaced.markedno ? spaced.markedno + 1 : 1
 
             await Spaced.update(
-                { insightid: insightId, userid: getprofileid(req.session) },
+                { insightid: insightid, profileid: getprofileid(req.session) },
                 {
                     $set: args
                 },
@@ -297,6 +322,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
+            const Spaced = db.collection('spaced')
             args.lastedited = new Date(args.datetime)
             let insightid = args.insightid
             delete args.insightid
@@ -304,6 +330,35 @@ export const resolvers = {
                 { _id: ObjectId(insightid) },
                 { $set: args },
             )
+
+            if (args.prompt){              
+                const spaced = await Spaced.findOne({
+                    insightid: insightid,
+                    profileid: getprofileid(req.session)
+                })
+                if (spaced) {
+                    let fib = new Object()
+                    fib.fib0 = 0
+                    fib.fib1 = 1
+                    Spaced.update(
+                        { insightid: insightid, userid: getprofileid(req.session) },
+                        {
+                            $set: fib
+                        },
+                    )
+                } else {
+                    //this is functionality for spaced repetition. Only activated if the insight has a prompt.
+                    let newspaced = new Object()
+                    newspaced.insightid = insightid
+                    newspaced.profileid = getprofileid(req.session)
+                    newspaced.fib0 = 0
+                    newspaced.fib1 = 1
+                    let nextdate = new Date() //set nextdate for tomorrow.
+                    nextdate.setDate(nextdate.getDate() + 1)
+                    newspaced.datenext = nextdate
+                    Spaced.insert(newspaced)
+                }
+            }
             return {
                 _id: insightid,
                 message: 'insight updated'
@@ -570,8 +625,7 @@ async function createinsight(newinsight, req) {
             _id: ObjectId(newinsight.profileid)
         })
         if (profile) newinsight.wheelid = profile.wheel
-    }
-    if (!newinsight.profileid) newinsight.profileid = getprofileid(req.session)
+    } else newinsight.profileid = getprofileid(req.session)
 
     try {
         //first insert the insight into DB
@@ -581,7 +635,7 @@ async function createinsight(newinsight, req) {
             //this is functionality for spaced repetition. Only activated if the insight has a prompt.
             let spaced = new Object()
             spaced.insightid = result.insertedId.toString()
-            spaced.profileid = newspaced.profileid
+            spaced.profileid = newinsight.profileid
             spaced.fib0 = 0
             spaced.fib1 = 1
             let nextdate = new Date() //set nextdate for tomorrow.
