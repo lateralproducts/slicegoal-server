@@ -100,9 +100,25 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightLinks = db.collection('insightlinks')
+            const Insights = db.collection('insights')
+
+            let insightquery = new Object()
+            insightquery = {
+                $and: [
+                    { prompt: {$ne: null} },
+                    { prompt: {$ne: ""} }
+                ],
+                profileid: getprofileid(req.session)
+            }
+
+            const insights = await Insights.find(
+                insightquery,
+                { sort: { nextdate: -1 } }, //return reverse chron. Last note created at top of list.
+            ).toArray()
 
             let query = new Object()
             query = {
+                insightid: {$in: insights.map(insight => insight._id.toString())},
                 $or: [
                     { nextdate: null },
                     { nextdate: { $lte: new Date() } }
