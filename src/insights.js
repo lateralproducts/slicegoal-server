@@ -102,34 +102,46 @@ export const resolvers = {
             const InsightLinks = db.collection('insightlinks')
             const Insights = db.collection('insights')
 
-            let insightquery = new Object()
-            insightquery = {
+            const insights = await Insights.find({
                 $and: [
                     { prompt: {$ne: null} },
                     { prompt: {$ne: ""} }
                 ],
                 profileid: getprofileid(req.session)
-            }
-
-            const insights = await Insights.find(
-                insightquery,
+            },
                 { sort: { nextdate: -1 } }, //return reverse chron. Last note created at top of list.
             ).toArray()
 
-            let query = new Object()
-            query = {
-                insightid: {$in: insights.map(insight => insight._id.toString())},
-                $or: [
-                    { nextdate: null },
-                    { nextdate: { $lte: new Date() } }
-                ],
-                profileid: getprofileid(req.session)
-            }
-            const insightlinks = await InsightLinks.find(
-                query,
-                { sort: { nextdate: -1 } }, //return reverse chron. Last note created at top of list.
-            ).toArray()
+            const insightlinks = await new Promise(function(resolve) {
+                InsightLinks.aggregate(
+                    {
+                        $match: {
+                            insightid: {$in: insights.map(insight => insight._id.toString())},
+                            $or: [
+                                { nextdate: null },
+                                { nextdate: { $lte: new Date() } }
+                            ],
+                            profileid: getprofileid(req.session)
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: '$insightid',
+                            doc: { $first: '$$ROOT' }
+                        }
+                    },
+                    {
+                        $replaceRoot: {
+                            newRoot: '$doc'
+                        }
+                    },
 
+                    function(err, data) {
+                        if (err) throw err
+                        resolve(data ? data : [])
+                    },
+                )
+            })
             return insightlinks
         },
         searchinsights: async(_, args, { req }) => {
