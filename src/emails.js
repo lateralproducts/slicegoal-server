@@ -114,7 +114,7 @@ export async function emailNewClient(
     let to = client.email
     let subject = 'You’ve been invited to Cavestep' //to Cavestep🦶
     let email = Mustache.render(inviteToCoachingWheel , {
-        client: client,
+        name: client.firstname ? client.firstname : '',
         logopath: logopath,
         view: newView ? '&view=' + newView : '',
         page: page,
