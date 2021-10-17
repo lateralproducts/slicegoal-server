@@ -43,10 +43,6 @@ const shareInsightTemplate = fs
     .readFileSync(__dirname + '/emailtemplates/shareInsight.html')
     .toString()
 
-const shareInsightNewUser = fs
-    .readFileSync(__dirname + '/emailtemplates/shareInsightNewUser.html')
-    .toString()
-
 const goalNudge = fs
     .readFileSync(__dirname + '/emailtemplates/goalNudge.html')
     .toString()
@@ -146,7 +142,6 @@ export async function emailNewPersonal(personal, queryStringParams) {
     let to = personal.email
     let subject = "Looks like you've signed up for Cavestep!"
     let email = Mustache.render(newpersonal, {
-        name: personal.firstname ? ' ' + personal.firstname : '', //using space in front here to manage formatting.
         PATH_URL: PATH_URL,
         LOGO_PATH_URL: LOGO_PATH_URL,
         personalid: personal._id,
@@ -209,17 +204,18 @@ export async function shareInsightEmail(
     insight,
     sharer,
     receiverEmail,
-    acceptLink,
-    newUser
+    shareNote,
+    acceptLink
     ) { 
         const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
         const subject = `${sharerName} shared an insight`
-        const email = Mustache.render(newUser ? shareInsightNewUser : shareInsightTemplate, {
+        const email = Mustache.render(shareInsightTemplate, {
             insightText: insight.answer,
             sharerName: sharerName,
             sharerEmail: `${sharer.email}`,
             logoPath: logopath,
-            acceptLink: acceptLink
+            acceptLink: acceptLink,
+            shareNote: shareNote
         })
         return await sendEmail(receiverEmail, subject, email)
     }

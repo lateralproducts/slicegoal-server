@@ -28,18 +28,18 @@ export const typeDefs = `
 
   extend type Query {
       isLoggedin (url: String): User
+      getConnectedUsers: [User]
   }
 
   extend type Mutation {
     updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
     createClient(email: String!, firstname: String, lastname: String): createClientResponse
-    verifyAccount(userid: String, code: String, setView: String, password: String): User
+    verifyAccount(userid: String, code: String, setView: String, password: String, firstname: String, lastname: String): User
     updatePassword(userid: String, oldpassword: String, newpassword: String): User
     login(email: String!, pwd: String!, setView: String, uiversion: String): User
     setSignUpContext(account: String): Boolean
     signup(email: String, firstname: String, uiversion: String, account: String, queryStringParams: String): Boolean!
     googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
-    googleSignup(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
     logout: Boolean!
   }
 
@@ -49,6 +49,7 @@ export const schema = `
   type User {
     _id: String
     firstname: String
+    lastname: String
     email: String
     startarea: String
     area: Area
@@ -57,11 +58,12 @@ export const schema = `
     views: [View]
     currentview: View
     url: String
+    state: String
   }
 
   type createClientResponse {
-      success: Boolean
-      message: String
+    success: Boolean
+    message: String
   }
 `
 
@@ -83,6 +85,24 @@ export const resolvers = {
                 sessiontrack(req, args, 'app', 'arrived')
                 return null
             }
+        },
+        getConnectedUsers: async(_, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Community = db.collection('community')
+            const Users = db.collection('users')
+
+            const community = await Community.find(
+                {user: getuserid(req.session)}
+            )
+            .toArray()
+
+            const user_ids = community.map(connection => {
+                return ObjectId(connection.friend)
+            })
+            return await Users.find(
+                {_id: {$in: user_ids}}
+            ).toArray()
+
         }
     },
     User: {
@@ -259,7 +279,9 @@ export const resolvers = {
                 {
                     $set: {
                         state: 'verified',
-                        password: bcrypt.hashSync(args.password, 10)
+                        password: bcrypt.hashSync(args.password, 10),
+                        firstname: args.firstname,
+                        lastname: args.lastname
                     }
                 },
             )
@@ -338,7 +360,8 @@ export const resolvers = {
                     )
                 }
             }
-        
+            
+            /*
             var urlcheck = /[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)?/gi
             var urlregex = new RegExp(urlcheck)
         
@@ -359,7 +382,8 @@ export const resolvers = {
                     'An error occured', //don't be descriptive with error in case malicious
                 )
             }
-        
+            */
+
             const ipaddress = await Users.find({
                 createdip: getuserIpAddress(req)
             })
@@ -383,7 +407,7 @@ export const resolvers = {
                     'An error occured.', //don't be descriptive with error in case malicious
                 )
             }
-        
+            /*
             if (args.firstname.length > 30) {//checking firstname length
                 sessiontrack(
                     req,
@@ -396,7 +420,7 @@ export const resolvers = {
                     'An error occured', //don't be descriptive with error in case malicious
                 )
             }
-        
+            */
             //non-threatening checks
         
             const user = await Users.findOne({
@@ -420,7 +444,6 @@ export const resolvers = {
         
             let newuser = {
                 email: args.email.toLowerCase(),
-                firstname: args.firstname,
                 code: bcrypt.hashSync(date.toString(), 7),
                 uiversion: args.uiversion,
                 serverversion: pjson.version,
@@ -440,10 +463,11 @@ export const resolvers = {
         },
 
         googleLogin: async(_, args, { req }) => {
-            //This is publicly accessible
+            //This is publicly accessible, used for signup too.
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const tokenInfo = await oAuth2Client.getTokenInfo(args.token)
+            delete args.token //don't save google token to DB for security.
             if ((tokenInfo.email = args.email)) {
                 //check token authentication...
 
@@ -457,8 +481,7 @@ export const resolvers = {
                     args.serverversion = pjson.version
                     args.lastip = getuserIpAddress(req)
                     args.type = 'personal'
-                    //req.session.user = user;
-                    //args.token = null; //removing the token from saving in database for security
+                    //googleid, firstname and lastname should already be on args.
                     args.created = new Date()
                     user = args
                     let newuser = await signup(user, args, req) //automatically sign up google login.
@@ -471,8 +494,22 @@ export const resolvers = {
                             { _id: user._id },
                             {
                                 $set: {
-                                    state: 'verified'
+                                    state: 'verified',
+                                    googleid: args.googleid
                                 }
+                            },
+                        )
+                    }
+                    if (!user.googleid) {
+                        //if the user exists and isn't verified, verify them, because we have their google id verified
+                        let fields = new Object()
+                        fields.googleid = args.googleid
+                        if(!user.firstname) fields.firstname = args.firstname
+                        if(!user.lastname) fields.lastname = args.lastname
+                        await Users.updateOne(
+                            { _id: user._id },
+                            {
+                                $set: fields
                             },
                         )
                     }
