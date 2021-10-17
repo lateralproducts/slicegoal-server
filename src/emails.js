@@ -132,7 +132,7 @@ export async function emailNewClient(
         coachemail: coach.email,
         pathurl: `${process.env.PATH_URL}`,
         logopath: logopath,
-        viewname: newView ? '&view=' + newView : ''
+        viewname: view
     })
         
     sendEmail(to, subject, email)

@@ -427,36 +427,42 @@ export const resolvers = {
                 email: args.email.toLowerCase()
             })
         
-            if (user) { //checking if already signed up.
+            if (user && user.state === 'verified') { //checking if already signed up.
                 sessiontrack(
                     req,
                     args,
                     'app',
                     'signup',
-                    'failed, profile already exists',
+                    'failed, profile already exist and is verifed',
                 )
                 throw new Error(
                     'If you already have a Cavestep profile with this email you can log in.',
                 )
             }
-        
-            const date = new Date()
-        
-            let newuser = {
-                email: args.email.toLowerCase(),
-                code: bcrypt.hashSync(date.toString(), 7),
-                uiversion: args.uiversion,
-                serverversion: pjson.version,
-                state: 'new',
-                profile: args.account,
-                created: date,
-                createdip: getuserIpAddress(req)
+            
+            let emailuser 
+            if (user && user.state === 'new') {
+                emailuser = user
             }
-            let emailuser = await signup(newuser, args, req)
+            else {
+                const date = new Date()
+                let newuser = {
+                    email: args.email.toLowerCase(),
+                    firstname: args.firstname,
+                    code: bcrypt.hashSync(date.toString(), 7),
+                    uiversion: args.uiversion,
+                    serverversion: pjson.version,
+                    state: 'new',
+                    profile: args.account,
+                    created: date,
+                    createdip: getuserIpAddress(req)
+                }
+                emailuser = await signup(newuser, args, req)
+            }
 
             const queryStringParams = args.queryStringParams ? args.queryStringParams : '' 
-            if (args.account === 'coach') emailNewCoach(emailuser, queryStringParams)
-            else emailNewPersonal(emailuser, queryStringParams)
+            //if (args.account === 'coach') emailNewCoach(emailuser, queryStringParams)
+            emailNewPersonal(emailuser, queryStringParams)
             sessiontrack(req, args, 'app', 'signup', 'success')
         
             return true

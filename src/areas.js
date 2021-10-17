@@ -1134,7 +1134,7 @@ async function isWheelOwner(req, viewid) {
     let query = new Object()
     query.wheel = view.wheel
     query.user = getuserid(req.session)
-    query.type = 'owner' //if the userview is "owner", then this person is the owner. Will probably change owner to "Owner" at some point.
+    query.type = 'owner' 
     const userview = await Views.findOne(query)
 
     if (userview === null) return false
