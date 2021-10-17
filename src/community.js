@@ -20,7 +20,6 @@ export async function createUserConnection(user, friendemail, eventtype, eventid
                     code: bcrypt.hashSync(date.toString(), 7),
                     serverversion: pjson.version,
                     state: 'new',
-                    profile: 'client',
                     created: date
                 }
                 return Users.insertOne(newUser)

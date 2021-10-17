@@ -197,6 +197,8 @@ export const resolvers = {
                 _id: ObjectId(userid)
             })
 
+            if(!user) return "someone" //if a user is deleted, this function will fail here.
+
             return user.lastname
                 ? user.firstname + ' ' + user.lastname
                 : user.firstname
@@ -455,6 +457,13 @@ export const resolvers = {
                 _id: ObjectId(getuserid(req.session))
             })
 
+            await createUserConnection( //and creates user targetUser profile if new
+                currentUser, 
+                args.targetUser, 
+                'insight share',
+                args.insightid
+            )
+
             const targetUser = await Users.findOne({
                 email: args.targetUser
             })
@@ -481,49 +490,23 @@ export const resolvers = {
                     .then(result => {
                         Insights.findOne({_id: ObjectId(result.insertedId)})
                         .then(result => { 
-                            
-                            if(targetUser){
-                                if(targetUser.state === 'verified'){
-                                    // Existing verified user
-                                    shareInsightEmail(
-                                        result,
-                                        currentUser,
-                                        args.targetUser,
-                                        args.shareNote,
-                                        `${process.env.PATH_URL}?sharedinsights=active`,
-                                        false // new user?
-                                    )
-                                } else {
-                                    // Existing but unverified user
-                                    shareInsightEmail(
-                                        result,
-                                        currentUser,
-                                        args.targetUser,
-                                        args.shareNote,
-                                        `${process.env.PATH_URL}?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`,
-                                        false // new user?
-                                    )
-                                }
-                                createUserConnection(
-                                    currentUser, 
-                                    targetUser.email, 
-                                    'insight share',
-                                    result._id.toString())
-                            } else {
-                                // Completely new user
+                            if(targetUser.state === 'verified'){
+                                // Existing verified user
                                 shareInsightEmail(
                                     result,
                                     currentUser,
                                     args.targetUser,
                                     args.shareNote,
-                                    `${process.env.PATH_URL}?page=signup&sharedinsights=active`,
-                                    true // new user?
+                                    `${process.env.PATH_URL}?sharedinsights=active`
                                 )
-                                createUserConnection(
-                                    currentUser, 
-                                    args.targetUser, 
-                                    'insight share',
-                                    result._id.toString()
+                            } else {
+                                // Existing but unverified user
+                                shareInsightEmail(
+                                    result,
+                                    currentUser,
+                                    args.targetUser,
+                                    args.shareNote,
+                                    `${process.env.PATH_URL}?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`
                                 )
                             }
                         })
@@ -556,8 +539,10 @@ export const resolvers = {
                 _id: ObjectId(args.insightid)
             })
 
+            if(!insight || !user) throw new Error("can\'t remove from the list")
+
             if (insight.email !== user.email)
-                throw new Error('Unauthorised Operation')
+                throw new Error('can\'t remove from the list')
             else {
                 const result = await Insights.deleteOne({
                     _id: ObjectId(args.insightid)

@@ -43,10 +43,6 @@ const shareInsightTemplate = fs
     .readFileSync(__dirname + '/emailtemplates/shareInsight.html')
     .toString()
 
-const shareInsightNewUser = fs
-    .readFileSync(__dirname + '/emailtemplates/shareInsightNewUser.html')
-    .toString()
-
 const goalNudge = fs
     .readFileSync(__dirname + '/emailtemplates/goalNudge.html')
     .toString()
@@ -209,12 +205,11 @@ export async function shareInsightEmail(
     sharer,
     receiverEmail,
     shareNote,
-    acceptLink,
-    newUser
+    acceptLink
     ) { 
         const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
         const subject = `${sharerName} shared an insight`
-        const email = Mustache.render(newUser ? shareInsightNewUser : shareInsightTemplate, {
+        const email = Mustache.render(shareInsightTemplate, {
             insightText: insight.answer,
             sharerName: sharerName,
             sharerEmail: `${sharer.email}`,

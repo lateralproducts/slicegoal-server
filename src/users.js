@@ -40,7 +40,6 @@ export const typeDefs = `
     setSignUpContext(account: String): Boolean
     signup(email: String, firstname: String, uiversion: String, account: String, queryStringParams: String): Boolean!
     googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
-    googleSignup(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
     logout: Boolean!
   }
 
@@ -464,10 +463,11 @@ export const resolvers = {
         },
 
         googleLogin: async(_, args, { req }) => {
-            //This is publicly accessible
+            //This is publicly accessible, used for signup too.
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const tokenInfo = await oAuth2Client.getTokenInfo(args.token)
+            delete args.token //don't save google token to DB for security.
             if ((tokenInfo.email = args.email)) {
                 //check token authentication...
 
@@ -481,8 +481,7 @@ export const resolvers = {
                     args.serverversion = pjson.version
                     args.lastip = getuserIpAddress(req)
                     args.type = 'personal'
-                    //req.session.user = user;
-                    //args.token = null; //removing the token from saving in database for security
+                    //googleid, firstname and lastname should already be on args.
                     args.created = new Date()
                     user = args
                     let newuser = await signup(user, args, req) //automatically sign up google login.
@@ -495,8 +494,22 @@ export const resolvers = {
                             { _id: user._id },
                             {
                                 $set: {
-                                    state: 'verified'
+                                    state: 'verified',
+                                    googleid: args.googleid
                                 }
+                            },
+                        )
+                    }
+                    if (!user.googleid) {
+                        //if the user exists and isn't verified, verify them, because we have their google id verified
+                        let fields = new Object()
+                        fields.googleid = args.googleid
+                        if(!user.firstname) fields.firstname = args.firstname
+                        if(!user.lastname) fields.lastname = args.lastname
+                        await Users.updateOne(
+                            { _id: user._id },
+                            {
+                                $set: fields
                             },
                         )
                     }
