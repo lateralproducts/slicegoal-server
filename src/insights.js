@@ -143,7 +143,7 @@ export const resolvers = {
                     },
                 )
             })
-            return insightlinks
+            return insightlinks.length > 0 ? [insightlinks[0]] : []
         },
         searchinsights: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -286,7 +286,7 @@ export const resolvers = {
             })
             let nextdate
             if (spaced) { //check if there is a spaced record, if not, create one.
-                nextdate = new Date(spaced.lastmarked ? spaced.lastmarked : null) //set nextdate for today + fibonacci sequence
+                nextdate = new Date() //set nextdate for today + fibonacci sequence
                 nextdate.setDate(nextdate.getDate() + spaced.fib1)
                 args.datenext = nextdate
                 args.lastmarked = new Date()
