@@ -581,21 +581,17 @@ export const resolvers = {
                 )
             })
         },
-        rankdue: async({_id}) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-
+        rankdue: async area => {
             let checkDate = new Date()
             const weekAgo = checkDate.getDate() - 7
             checkDate.setDate(weekAgo)
 
-            const area = await Areas.findOne({_id: _id})
             if(!area.lastranked ||
                 area.lastranked < checkDate)
                 return true
             else 
                 return false
-            }
+        }
     },
     Mutation: {
         setView: async(_, { viewid }, { req }) => {
@@ -889,12 +885,10 @@ export const resolvers = {
             const RankTimes = db.collection('ranktimes')
             const Areas = db.collection('areas')
 
-            Areas.findOne({_id: ObjectId(args.area)})
-                .then(area => {
-                    Areas.updateOne(
-                        {_id: ObjectId(area.rootarea)},
-                        {$set: {lastranked: new Date(args.datetime)}}
-                )})
+            Areas.update(
+                {_id: ObjectId(args.area)},
+                {$set: {lastranked: new Date(args.datetime)}}
+            )
 
             args.profileid = getprofileid(req.session)
             args.date = new Date(args.datetime)
