@@ -108,14 +108,14 @@ export async function emailNewClient(
     page,
 ) {
     let to = client.email
-    let subject = 'You’ve been invited to Cavestep' //to Cavestep🦶
+    let subject = coach.firstname ? (coach.firstname + ' ' + coach.lastname + ' invited you to Cavestep') : 'You’ve been invited to Cavestep' //to Cavestep🦶
     let email = Mustache.render(inviteToCoachingWheel , {
         name: client.firstname ? client.firstname : '',
         logopath: logopath,
         view: newView ? '&view=' + newView : '',
         page: page,
         intro: coach.firstname
-            ? coach.firstname + ' has invited you to a Cavestep coaching wheel!'
+            ? coach.firstname + ' has invited you to a Cavestep coaching wheel.'
             : 'You\'ve been invited to a Cavestep coaching wheel.',  // to Cavestep🦶
         pathurl: `${process.env.PATH_URL}`
     })
@@ -140,7 +140,7 @@ export async function emailNewClient(
 
 export async function emailNewPersonal(personal, queryStringParams) {
     let to = personal.email
-    let subject = "Looks like you've signed up for Cavestep!"
+    let subject = "Looks like you've signed up for Cavestep"
     let email = Mustache.render(newpersonal, {
         PATH_URL: PATH_URL,
         LOGO_PATH_URL: LOGO_PATH_URL,
