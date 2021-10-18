@@ -28,6 +28,7 @@ import { typeDefs as paymentQueryMutation } from './payments'
 import { typeDefs as feedbackQueryMutation } from './feedback'
 import { typeDefs as goalQueryMutation } from './goals'
 import { typeDefs as webQueryMutation } from './website'
+import { typeDefs as tagQueryMutation } from './tags'
 
 //import resolvers
 import { resolvers as userResolvers } from './users'
@@ -37,6 +38,7 @@ import { resolvers as paymentResolvers } from './payments'
 import { resolvers as feedbackResolvers } from './feedback'
 import { resolvers as goalResolvers } from './goals'
 import { resolvers as webResolvers } from './website'
+import { resolvers as tagResolvers } from './tags'
 
 import './schedules'
 
@@ -245,7 +247,8 @@ export const start = async() => {
                 areaQueryMutation,
                 goalQueryMutation,
                 feedbackQueryMutation,
-                webQueryMutation
+                webQueryMutation,
+                tagQueryMutation
             ],
 
             resolvers: merge(
@@ -256,6 +259,7 @@ export const start = async() => {
                 goalResolvers,
                 feedbackResolvers,
                 webResolvers,
+                tagResolvers
             ),
             context
         })

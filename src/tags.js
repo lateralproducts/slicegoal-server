@@ -1,5 +1,6 @@
-import DbConnection from './database'
+import { ObjectId } from 'mongodb'
 
+import DbConnection from './database'
 import { getprofileid } from './users'
 
 export const schema = `
@@ -11,7 +12,7 @@ export const schema = `
 
 export const typeDefs = `
     extend type Query {
-        tags(type: String, areas: [AreaTagIn]) : [area]
+        tags(type: String!, areas: [AreaTagIn]) : [Area]
     } 
 `
 
@@ -22,38 +23,59 @@ export const resolvers = {
 
             const GoalTags = db.collection('goaltags')
             const InsightTags = db.collection('insighttags')
+            const Areas = db.collection('areas')
 
             let alltags // goaltags or insighttags
-            if(args.type === 'insight') {
-                alltags = await InsightTags.find({profileid: getprofileid(req.session)})
+            let tagsonarea
+            if(args.type === 'insights') {
+                alltags = await InsightTags.find({ profileid: getprofileid(req.session) })
+                    .toArray()
+                tagsonarea = await InsightTags.find({ area: args.areas[0].area._id })
                     .toArray()
             }
             else if(args.type === 'goals') {
-                alltags = await GoalTags.find({profileid: getprofileid(req.session)})
+                alltags = await GoalTags.find({ profileid: getprofileid(req.session) })
+                    .toArray()
+                tagsonarea = await GoalTags.find({ area: args.areas[0].area._id })
                     .toArray()
             }
 
-            // Initialise result set to unique values of area id on tags
-            let resset = [...new Set(alltags.map(tag => tag.area))]
-            let tagsonarea
+            // If no tags return empty array
+            if(!alltags)
+                return []
 
-            function tagsbyareas(queryareas, tags) {
-                if(queryareas.length === 0) return tags
-                
-                // Only tags with id 'area' = current checking area id 
-                tagsonarea = tags.filter(tag => tag.area === queryareas[0]._id) 
+            // Initialise to only tags for which there exists a tag on first area to that tags insight
+            alltags = alltags.filter(tag => {
+                return tagsonarea.some(tagonarea => tagonarea.insightid === tag.insightid)
+            })
 
-                // Only leave result area ids if there remains some tag with that area id 
-                resset = resset.filter(area => tagsonarea.some(tag => {tag.area === area}))
-
-                // Move to next area and recurse
-                queryareas.splice(0, 1)
-                tagsbyareas(queryareas, resset)
+            let keeptags = alltags // intialise to keep all initialised alltags
+            for(let i=1; i < args.areas.length; i++) {
+                // tags on current area
+                tagsonarea = alltags.filter(tag => 
+                    tag.area === args.areas[i].area._id
+                )
+                // keep only tags for which there exists a tag on current area to that tags insight 
+                keeptags = keeptags.filter(tag => {
+                    return tagsonarea.some(tagonarea => 
+                        tagonarea.insightid === tag.insightid
+                    )})
             }
 
-            return tagsbyareas(args.areas, alltags).map(tag => {
-                return tag.area
-            })
+            // Filter out input areas and take only areaid from tags
+            const areaids = [...new Set(keeptags
+                .filter(tag => !args.areas.some(area => area.area._id === tag.area)) // Filter out input areas
+                .map(tag => {return tag.area}))]
+
+            // Get area objects from resultant areaids
+            if(areaids) {
+                const areaobjectids = areaids.map(area => {return ObjectId(area)})
+                
+                return (await Areas.find({_id: {$in: areaobjectids}})
+                    .toArray())
+            }
+            else 
+                return []
         } 
     }
 }

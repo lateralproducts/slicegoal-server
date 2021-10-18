@@ -9,7 +9,7 @@ import DbConnection from './database'
 export const typeDefs = `
 
   extend type Query {
-    insights(areas: [String]): [InsightTag]
+    insights(areas: [AreaTagIn]!): [InsightTag]
     insightLinks(insightid: String): [InsightTag]
     searchinsights(search: String, spaced: Boolean): [Insight]
     newsharedinsights: Int
@@ -81,9 +81,10 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
+
             let insighttags = await InsightTags.find(
                 {
-                    area: args.areas[0],
+                    area: {$in: [...args.areas.map(area => {return area.area._id})]},
                     profileid: getprofileid(req.session),
                     $or: [
                         { nextdate: null },
@@ -91,14 +92,28 @@ export const resolvers = {
                     ]
                 },
                 { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
-            ).toArray()
-            if(args.areas.length > 1) {
-                const remainingareas = args.areas.splice(0, 1)
-                insighttags = insighttags
-                                .filter(tag => remainingareas.some(area => area === tag.area))
-            }
+            )
+            .toArray()
+            
+            // Get array of all UNIQUE insight ids for found tags
+            let insightids = [...new Set(insighttags.map(tag => {
+                return tag.insightid
+            }))]
 
-            return insighttags
+            // Make sure insights are tagged to EVERY area
+            const filteredinsights = insightids.filter(insightid => {
+                return args.areas.every(area => {
+                    return insighttags.some(tag => 
+                        tag.insightid === insightid && tag.area === area.area._id
+                    )
+                })
+            })
+
+            // Return results appropriately with index for rendering in React
+            return filteredinsights.map((insightid, idx) => {
+                return {_id: idx, insightid: insightid}
+            })
+
         },
         searchinsights: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
