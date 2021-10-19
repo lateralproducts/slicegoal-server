@@ -52,17 +52,17 @@ export const start = async() => {
         //const Signup = db.collection("signup");
 
         /*  async function migrategoals(goal) {
-      let goallink = new Object();
-      goallink.areaid = goal.area;
-      goallink.userid = goal.userid;
-      goallink.goalid = goal._id.toString();
-      goallink.date = goal.date;
-      goallink.orderrank = goal.orderrank;
-      goallink.datetime = goal.datetime;
-      goallink.complete = goal.complete;
+      let goaltag = new Object();
+      goaltag.areaid = goal.area;
+      goaltag.userid = goal.userid;
+      goaltag.goalid = goal._id.toString();
+      goaltag.date = goal.date;
+      goaltag.orderrank = goal.orderrank;
+      goaltag.datetime = goal.datetime;
+      goaltag.complete = goal.complete;
 
       try {
-        GoalLinks.insertOne(goallink);
+        GoalTags.insertOne(goaltag);
       } catch (error) {
         console.log(error);
       }
@@ -89,12 +89,12 @@ export const start = async() => {
           if (newinsight.prompt) nextdate.setDate(nextdate.getDate() + 1);
           insight.datenext = nextdate;
 
-          let insightlink = new Object();
-          insightlink.insightid = result.insertedId.toString();
-          insightlink.userid = newinsight.userid;
-          insightlink.area = newinsight.area;
-          insightlink.datecreated = new Date();
-          InsightLinks.insert(insightlink);
+          let insighttag = new Object();
+          insighttag.insightid = result.insertedId.toString();
+          insighttag.userid = newinsight.userid;
+          insighttag.area = newinsight.area;
+          insighttag.datecreated = new Date();
+          InsightTags.insert(insighttag);
 
           Spaced.updateOne(
             {

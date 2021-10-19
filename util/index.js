@@ -22,9 +22,9 @@ export const resolvers = {
             AreaTags.updateMany({}, { $rename: { userid: 'wheelid' } })
             RankTimes.updateMany({}, { $rename: { userid: 'profileid' } })
             Insights.updateMany({}, { $rename: { userid: 'profileid' } })
-            InsightLinks.updateMany({}, { $rename: { userid: 'profileid' } })
+            InsightTags.updateMany({}, { $rename: { userid: 'profileid' } })
             Goals.updateMany({}, { $rename: { userid: 'profileid' } })
-            GoalLinks.updateMany({}, { $rename: { userid: 'profileid' } })
+            GoalTags.updateMany({}, { $rename: { userid: 'profileid' } })
 
             //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
             /* const users = await Users.find().toArray();
