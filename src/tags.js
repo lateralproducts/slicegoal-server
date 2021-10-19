@@ -12,7 +12,7 @@ export const schema = `
 
 export const typeDefs = `
     extend type Query {
-        tags(type: String!, areas: [AreaTagIn]) : [Area]
+        tags(type: String!, areas: [AreaId]) : [Area]
     } 
 `
 
@@ -30,13 +30,13 @@ export const resolvers = {
             if(args.type === 'insights') {
                 alltags = await InsightTags.find({ profileid: getprofileid(req.session) })
                     .toArray()
-                tagsonarea = await InsightTags.find({ area: args.areas[0].area._id })
+                tagsonarea = await InsightTags.find({ area: args.areas[0]._id })
                     .toArray()
             }
             else if(args.type === 'goals') {
                 alltags = await GoalTags.find({ profileid: getprofileid(req.session) })
                     .toArray()
-                tagsonarea = await GoalTags.find({ area: args.areas[0].area._id })
+                tagsonarea = await GoalTags.find({ area: args.areas[0]._id })
                     .toArray()
             }
 
@@ -53,7 +53,7 @@ export const resolvers = {
             for(let i=1; i < args.areas.length; i++) {
                 // tags on current area
                 tagsonarea = alltags.filter(tag => 
-                    tag.area === args.areas[i].area._id
+                    tag.area === args.areas[i]._id
                 )
                 // keep only tags for which there exists a tag on current area to that tags insight 
                 keeptags = keeptags.filter(tag => {
@@ -64,7 +64,7 @@ export const resolvers = {
 
             // Filter out input areas and take only areaid from tags
             const areaids = [...new Set(keeptags
-                .filter(tag => !args.areas.some(area => area.area._id === tag.area)) // Filter out input areas
+                .filter(tag => !args.areas.some(area => area._id === tag.area)) // Filter out input areas
                 .map(tag => {return tag.area}))]
 
             // Get area objects from resultant areaids

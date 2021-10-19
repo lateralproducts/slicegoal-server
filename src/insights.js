@@ -9,7 +9,7 @@ import DbConnection from './database'
 export const typeDefs = `
 
   extend type Query {
-    insights(areas: [AreaTagIn]!): [InsightTag]
+    insights(areas: [AreaId]!): [InsightTag]
     insightLinks(insightid: String): [InsightTag]
     searchinsights(search: String, spaced: Boolean): [Insight]
     newsharedinsights: Int
@@ -84,7 +84,7 @@ export const resolvers = {
 
             let insighttags = await InsightTags.find(
                 {
-                    area: {$in: [...args.areas.map(area => {return area.area._id})]},
+                    area: {$in: [...args.areas.map(area => {return area._id})]},
                     profileid: getprofileid(req.session),
                     $or: [
                         { nextdate: null },
@@ -104,7 +104,7 @@ export const resolvers = {
             const filteredinsights = insightids.filter(insightid => {
                 return args.areas.every(area => {
                     return insighttags.some(tag => 
-                        tag.insightid === insightid && tag.area === area.area._id
+                        tag.insightid === insightid && tag.area === area._id
                     )
                 })
             })
