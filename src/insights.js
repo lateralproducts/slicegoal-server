@@ -10,7 +10,7 @@ import { createUserConnection } from './community'
 export const typeDefs = `
 
   extend type Query {
-    insights(area: String): [InsightTag]
+    insights(areas: [AreaId]): [InsightTag]
     insightTags(insightid: String): [InsightTag]
     searchinsights(search: String!): [Insight]
     spaced: [InsightTag]
@@ -85,67 +85,39 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
-            const insighttags = await InsightTags.find(
+
+            let insighttags = await InsightTags.find(
                 {
-                    area: args.area,
+                    area: {$in: [...args.areas.map(area => {return area._id})]},
                     profileid: getprofileid(req.session),
                     $or: [ //for spaced repetition.
                         { nextdate: null },
                         { nextdate: { $lte: new Date() } }
                     ]
                 },
-                { sort: { pinned: -1, datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
-            ).toArray()
+                { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
+            )
+            .toArray()
+            
+            // Get array of all UNIQUE insight ids for found tags
+            let insightids = [...new Set(insighttags.map(tag => {
+                return tag.insightid
+            }))]
 
-            return insighttags
-        },
-        spaced: async(_,__,{req}) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const InsightTags = db.collection('insighttags')
-            const Insights = db.collection('insights')
-
-            const insights = await Insights.find({
-                $and: [
-                    { prompt: {$ne: null} },
-                    { prompt: {$ne: ''} }
-                ],
-                profileid: getprofileid(req.session)
-            },
-                { sort: { nextdate: -1 } }, //return reverse chron. Last note created at top of list.
-            ).toArray()
-
-            const insightlinks = await new Promise(function(resolve) {
-                InsightTags.aggregate(
-                    {
-                        $match: {
-                            insightid: {$in: insights.map(insight => insight._id.toString())},
-                            $or: [
-                                { nextdate: null },
-                                { nextdate: { $lte: new Date() } }
-                            ],
-                            profileid: getprofileid(req.session)
-                        }
-                    },
-                    {
-                        $group: {
-                            _id: '$insightid',
-                            doc: { $first: '$$ROOT' }
-                        }
-                    },
-                    {
-                        $replaceRoot: {
-                            newRoot: '$doc'
-                        }
-                    },
-
-                    function(err, data) {
-                        if (err) throw err
-                        resolve(data ? data : [])
-                    },
-                )
+            // Make sure insights are tagged to EVERY area
+            const filteredinsights = insightids.filter(insightid => {
+                return args.areas.every(area => {
+                    return insighttags.some(tag => 
+                        tag.insightid === insightid && tag.area === area._id
+                    )
+                })
             })
-            return insightlinks.length > 0 ? [insightlinks[0]] : []
+
+            // Return results appropriately with index for rendering in React
+            return filteredinsights.map((insightid, idx) => {
+                return {_id: idx, insightid: insightid}
+            })
+
         },
         searchinsights: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -280,6 +252,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
             const InsightTags = db.collection('insighttags')
+            args.date = new Date(args.datetime)
             const insightid = args.insightid
             delete args.insightid
             const spaced = await Spaced.findOne({
