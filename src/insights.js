@@ -90,10 +90,6 @@ export const resolvers = {
                 {
                     area: {$in: [...args.areas.map(area => {return area._id})]},
                     profileid: getprofileid(req.session),
-                    $or: [ //for spaced repetition.
-                        { nextdate: null },
-                        { nextdate: { $lte: new Date() } }
-                    ]
                 },
                 { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
             )
@@ -114,10 +110,63 @@ export const resolvers = {
             })
 
             // Return results appropriately with index for rendering in React
-            return filteredinsights.map((insightid, idx) => {
-                return {_id: idx, insightid: insightid}
-            })
+            const insights = await InsightTags.find(
+                {
+                    insightid: {$in: filteredinsights},
+                    profileid: getprofileid(req.session),
+                    area: args.areas[0]._id
+                },
+                { sort: { pinned: -1, datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
+            )
+            .toArray()
+            return insights
+        },
+        spaced: async(_,__,{req}) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const InsightTags = db.collection('insighttags')
+            const Insights = db.collection('insights')
 
+            const insights = await Insights.find({
+                $and: [
+                    { prompt: {$ne: null} },
+                    { prompt: {$ne: ''} }
+                ],
+                profileid: getprofileid(req.session)
+            },
+                { sort: { nextdate: -1 } }, //return reverse chron. Last note created at top of list.
+            ).toArray()
+
+            const insightlinks = await new Promise(function(resolve) {
+                InsightTags.aggregate(
+                    {
+                        $match: {
+                            insightid: {$in: insights.map(insight => insight._id.toString())},
+                            $or: [
+                                { nextdate: null },
+                                { nextdate: { $lte: new Date() } }
+                            ],
+                            profileid: getprofileid(req.session)
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: '$insightid',
+                            doc: { $first: '$$ROOT' }
+                        }
+                    },
+                    {
+                        $replaceRoot: {
+                            newRoot: '$doc'
+                        }
+                    },
+                    function(err, data) {
+                        if (err) throw err
+                        resolve(data ? data : [])
+                    },
+                )
+            })
+            return insightlinks.length > 0 ? [insightlinks[0]] : []
         },
         searchinsights: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
