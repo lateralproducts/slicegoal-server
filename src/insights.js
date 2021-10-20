@@ -84,7 +84,7 @@ export const resolvers = {
         insights: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insightlinks')
+            const InsightTags = db.collection('insighttags')
             const insighttags = await InsightTags.find(
                 {
                     area: args.area,
@@ -102,7 +102,7 @@ export const resolvers = {
         spaced: async(_,__,{req}) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insightlinks')
+            const InsightTags = db.collection('insighttags')
             const Insights = db.collection('insights')
 
             const insights = await Insights.find({
@@ -207,7 +207,7 @@ export const resolvers = {
         insightTags: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insightlinks')
+            const InsightTags = db.collection('insighttags')
             const insighttags = await InsightTags.find({
                 insightid: args.insightid,
                 profileid: getprofileid(req.session)
@@ -279,7 +279,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
-            const InsightTags = db.collection('insightlinks')
+            const InsightTags = db.collection('insighttags')
             const insightid = args.insightid
             delete args.insightid
             const spaced = await Spaced.findOne({
@@ -328,7 +328,7 @@ export const resolvers = {
         markSpacedNo: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insightlinks')
+            const InsightTags = db.collection('insighttags')
             const Spaced = db.collection('spaced')
             args.lastdate = new Date()
             args.fib0 = 0
@@ -428,7 +428,7 @@ export const resolvers = {
         createInsightTag: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insightlinks')
+            const InsightTags = db.collection('insighttags')
             const Areas = db.collection('areas')
             if (!args.profileid) args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
@@ -470,7 +470,7 @@ export const resolvers = {
         updateInsightTag: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insightlinks')
+            const InsightTags = db.collection('insighttags')
             args.profileid = getprofileid(req.session)
             InsightTags.updateOne(
                 { _id: ObjectId(args.tagid) },
@@ -484,7 +484,7 @@ export const resolvers = {
         removeInsightTag: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insightlinks')
+            const InsightTags = db.collection('insighttags')
             args.profileid = getprofileid(req.session)
             InsightTags.deleteOne(
                 {
@@ -500,7 +500,7 @@ export const resolvers = {
         /* createNewInsightTag: async (root, args, { req }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            const InsightTags = db.collection('insightlinks')
+            const InsightTags = db.collection('insighttags')
             let newarea = new Object() //create new area.
             newarea.wheelid = getprofileid(req.session)
             newarea.name = args.areaname
@@ -531,7 +531,7 @@ export const resolvers = {
         removeInsight: async(_, { insightid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insightlinks')
+            const InsightTags = db.collection('insighttags')
             const Insights = db.collection('insights')
             const Profiles = db.collection('profiles')
 
@@ -666,7 +666,7 @@ export const resolvers = {
         },
         pinInsight: async(_, args) => {
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insightlinks')
+            const InsightTags = db.collection('insighttags')
 
             return await InsightTags.updateOne(
                 {
@@ -688,7 +688,7 @@ async function createinsight(newinsight, req) {
     const Insights = db.collection('insights')
     const Spaced = db.collection('spaced')
     const Areas = db.collection('areas')
-    const insightTags = db.collection('insightlinks')
+    const insightTags = db.collection('insighttags')
 
     const Profiles = db.collection('profiles')
 
