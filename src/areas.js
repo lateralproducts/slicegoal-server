@@ -729,8 +729,8 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const AreaLinks = db.collection('arealinks')
-            const InsightTags = db.collection('insighttags')
-            const GoalTags = db.collection('goaltags')
+            const InsightTags = db.collection('insightlinks')
+            const GoalTags = db.collection('goallinks')
             const Pomodoros = db.collection('pomodoros')
             const Wheels = db.collection('wheels')
 
@@ -744,10 +744,10 @@ export const resolvers = {
                 const areaLinksDel = AreaLinks.deleteMany({
                     area: areaid
                 })
-                const insightLinksDel = InsightTags.deleteMany({
+                const insightTagsDel = InsightTags.deleteMany({
                     area: areaid
                 })
-                const goalLinksDel = GoalTags.deleteMany({
+                const goalTagsDel = GoalTags.deleteMany({
                     areaid: areaid
                 })
                 const pomodorosDel = Pomodoros.deleteMany({
@@ -756,8 +756,8 @@ export const resolvers = {
                 const result = await Promise.all([
                     areaDel,
                     areaLinksDel,
-                    insightLinksDel,
-                    goalLinksDel,
+                    insightTagsDel,
+                    goalTagsDel,
                     pomodorosDel
                 ])
                 if (result) return true
@@ -1146,9 +1146,9 @@ async function deleteWheelAll(req, viewid) {
     const Areas = db.collection('areas')
     const AreaLinks = db.collection('arealinks')
     const Goals = db.collection('goals')
-    const GoalTags = db.collection('goaltags')
+    const GoalTags = db.collection('goallinks')
     const Insights = db.collection('insights')
-    const InsightTags = db.collection('insighttags')
+    const InsightTags = db.collection('insightlinks')
     const Wheels = db.collection('wheels')
     const Views = db.collection('views')
     const Profiles = db.collection('profiles')

@@ -8,7 +8,7 @@ let pjson = require('../package.json')
 export const typeDefs = `
     extend type Query {
         goals(area: String!): [Goal]
-        goalLinks(area: String, goal: String, search: String, date: String): [GoalTag]
+        goalTags(area: String, goal: String, search: String, date: String): [GoalTag]
         readPomoData(area: String): PomodoroData
         readGoalPomoData(goal: String): PomodoroData
         pomodoros(goalId: String): [Pomodoro]
@@ -25,8 +25,8 @@ export const typeDefs = `
     
     extend type Mutation {
         createGoalTag(goalid: String, areaid: String, areaname: String): Tag
-        updateGoalTag(linkid: String!, notes: String, snooze: String): Boolean
-        removeGoalTag(linkid: String!): Boolean
+        updateGoalTag(tagid: String!, notes: String, snooze: String): Boolean
+        removeGoalTag(tagid: String!): Boolean
         snoozeGoalTag(goalid: String!, snooze: String!): Boolean
     }
 
@@ -106,11 +106,11 @@ export const resolvers = {
                 .sort({ orderrank: 1 })
                 .toArray()
         },
-        goalLinks: async(_, args, { req }) => {
+        goalTags: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
-            const GoalTags = db.collection('goaltags')
+            const GoalTags = db.collection('goallinks')
             if (args.search || args.date) {
                 let query = new Object()
                 query.profileid = getprofileid(req.session)
@@ -368,10 +368,10 @@ export const resolvers = {
         updateGoalTag: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const GoalTags = db.collection('goaltags')
+            const GoalTags = db.collection('goallinks')
             args.profileid = getprofileid(req.session)
             GoalTags.updateOne(
-                { _id: ObjectId(args.linkid) },
+                { _id: ObjectId(args.tagid) },
                 { $set: { notes: args.notes } },
                 function(err) {
                     if (err) throw err
@@ -383,7 +383,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            const GoalTags = db.collection('goaltags')
+            const GoalTags = db.collection('goallinks')
             let areaid
             if (!args.areaid) {
                 let newarea = new Object() //create new area.
@@ -410,11 +410,11 @@ export const resolvers = {
         removeGoalTag: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const GoalTags = db.collection('goaltag')
+            const GoalTags = db.collection('goallinks')
             args.profileid = getprofileid(req.session)
             GoalTags.deleteOne(
                 {
-                    _id: ObjectId(args.linkid),
+                    _id: ObjectId(args.tagid),
                     profileid: args.profileid
                 },
                 function(err) {
@@ -427,7 +427,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
-            const GoalTags = db.collection('goaltag')
+            const GoalTags = db.collection('goallinks')
             let goalId = args.goalId
             delete args.goalId
             args.date = args.datetime ? new Date(args.datetime) : null
@@ -456,7 +456,7 @@ export const resolvers = {
         removeGoal: async(root, { goalid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const GoalTags = db.collection('goaltag')
+            const GoalTags = db.collection('goallinks')
             const Goals = db.collection('goals')
             await GoalTags.deleteMany({ goalid: goalid, profileid: getprofileid(req.session) })
             await Goals.deleteOne({ _id: ObjectId(goalid), profileid: getprofileid(req.session) })
@@ -465,7 +465,7 @@ export const resolvers = {
         updateGoalOrder: async(parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const GoalTags = db.collection('goaltag')
+            const GoalTags = db.collection('goallinks')
             args.goals.map(function(_id, count) {
                 GoalTags.updateOne(
                     { _id: ObjectId(_id) },
@@ -534,7 +534,7 @@ export const resolvers = {
         snoozeGoalTag: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const GoalTags = db.collection('goaltags')
+            const GoalTags = db.collection('goallinks')
             args.profileid = getprofileid(req.session)
             args.snoozedate = new Date(args.snooze)
             args.snoozedate.setHours(0, 0, 0, 0)
@@ -577,7 +577,7 @@ export const resolvers = {
 async function creategoal(newgoal, req) {
     const db = await DbConnection.Get()
     const Goals = db.collection('goals')
-    const GoalTags = db.collection('goaltags')
+    const GoalTags = db.collection('goallinks')
     const Areas = db.collection('areas')
     try {
         Goals.insertOne(newgoal).then(result => {
