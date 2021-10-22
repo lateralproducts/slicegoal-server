@@ -41,7 +41,7 @@ export const typeDefs = `
         deleteAreaLink(rootarea: String, area: String): Area
         createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
         createCoachArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
-        createRankTime(area: String, rank: Int, datetime: String, note: String): RankTime
+        createRankTime(anchorarea: String, area: String, rank: Int, datetime: String, note: String): Boolean
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
     }
 `
@@ -96,6 +96,7 @@ export const schema = `
         time(readdate: String): PomodoroData
         clicks: ClickData
         coach: Boolean
+        rankdue: Boolean
     }
 
     type View {
@@ -579,6 +580,17 @@ export const resolvers = {
                     },
                 )
             })
+        },
+        rankdue: async area => {
+            let checkDate = new Date()
+            const weekAgo = checkDate.getDate() - 7
+            checkDate.setDate(weekAgo)
+
+            if(!area.lastranked ||
+                area.lastranked < checkDate)
+                return true
+            else 
+                return false
         }
     },
     Mutation: {
@@ -871,13 +883,25 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const RankTimes = db.collection('ranktimes')
-            args.profileid = getprofileid(req.session)
-            args.date = new Date(args.datetime)
-            const res = await RankTimes.insert(args)
-            return {
-                _id: res.insertedIds[1],
-                message: 'new rank entry created'
+            const Areas = db.collection('areas')
+
+            Areas.update(
+                {_id: ObjectId(args.anchorarea)},
+                {$set: {lastranked: new Date(args.datetime)}}
+            )
+            
+            const ranktimeargs = {
+                profileid: getprofileid(req.session),
+                date: new Date(args.datetime),
+                rank: args.rank,
+                note: args.note,
+                area: args.area
             }
+
+            return await RankTimes.insertOne(ranktimeargs)
+                .then(ranktime => {
+                    if(ranktime.insertedCount) return true
+                })
         },
         createGoalTime: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
