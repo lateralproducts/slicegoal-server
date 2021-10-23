@@ -24,8 +24,7 @@ export const typeDefs = `
     createInsightTag(insightid: String!, profileid: String, area: String, areaname: String): Tag
     updateInsightTag(tagid: String!, notes: String): Boolean
     removeInsightTag(tagid: String): Boolean
-    markSpacedYes(insightid: String, datetime: String): Boolean
-    markSpacedNo(insightid: String, datetime: String): Boolean
+    markSpaced(insightid: String, datetime: String, check: String, marked: String): Boolean
     removeInsight(insightid: String!): Boolean
     shareInsight(insightid: String!, targetUser: String!, shareNote: String): ShareResponse
     popSharedInsight(insightid: String!): Boolean
@@ -296,110 +295,109 @@ export const resolvers = {
         }
     },
     Mutation: {
-        markSpacedYes: async(_, args, { req }) => {
+        markSpaced: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
             const InsightTags = db.collection('insighttags')
-            args.date = new Date(args.datetime)
             const insightid = args.insightid
-            delete args.insightid
+            delete args.insightid //remove from inserted record
+
             const spaced = await Spaced.findOne({
                 insightid: insightid,
                 profileid: getprofileid(req.session)
             })
             let nextdate
-            if (spaced) { //check if there is a spaced record, if not, create one.
-                nextdate = new Date() //set nextdate for today + fibonacci sequence
-                nextdate.setDate(nextdate.getDate() + spaced.fib1)
-                args.datenext = nextdate
-                args.lastmarked = new Date()
-                args.fib1 = spaced.fib0 + spaced.fib1
-                args.fib0 = spaced.fib1
-                Spaced.update(
-                    { insightid: insightid, profileid: getprofileid(req.session) },
-                    {
-                        $set: args
-                    },
-                )
-            } else {
-                let newspaced = new Object()
-                newspaced.insightid = insightid
-                newspaced.profileid = getprofileid(req.session)
-                newspaced.fib0 = 1
-                newspaced.fib1 = 1
-                newspaced.lastmarked = new Date()
-                nextdate = new Date()
-                nextdate.setDate(nextdate.getDate() + 1)
-                newspaced.datenext = nextdate
-                Spaced.insert(newspaced)
+            nextdate = new Date() //set nextdate for today + fibonacci sequence
+
+            let newspaced = new Object()
+            newspaced.insightid = insightid
+            newspaced.profileid = getprofileid(req.session)
+            newspaced.lastmarked = new Date()
+
+            switch(args.marked){
+                case 'remembered':
+                    if (spaced) { //check if there is a spaced record, if not, create one.
+                        nextdate.setDate(nextdate.getDate() + spaced.fib1)
+                        args.datenext = nextdate
+                        args.lastmarked = new Date()
+                        args.fib1 = spaced.fib0 + spaced.fib1
+                        args.fib0 = spaced.fib1
+                        Spaced.update(
+                            { insightid: insightid, profileid: getprofileid(req.session) },
+                            {
+                                $set: args,
+                                $push: {
+                                    checks: {
+                                        time: new Date(),
+                                        result: args.marked,
+                                        check: args.check
+                                    }
+                                }
+                            },
+                        )
+                    } else {
+                        nextdate.setDate(nextdate.getDate() + 1)
+                        newspaced.fib0 = 1
+                        newspaced.fib1 = 1
+                        newspaced.datenext = nextdate
+                        newspaced.datecreated = new Date()
+                        Spaced.insert(newspaced)
+                    }
+                    InsightTags.update(
+                        { insightid: insightid, profileid: getprofileid(req.session) },
+                        {
+                            $set: { nextdate: nextdate }
+                        },
+                        { multi: true },
+                    )
+                    return true
+                case 'forgot':
+                default:
+                    args.lastdate = new Date()
+                    args.fib0 = 0
+                    args.fib1 = 1
+                    nextdate.setDate(nextdate.getDate() + 1)
+
+                    if (spaced) { //check if there is a spaced record, if not, create one.
+                        args.lastmarked = new Date()
+                        args.datenext = nextdate
+                        args.fib0 = 0
+                        args.fib1 = 1
+                        args.markedno = spaced.markedno ? spaced.markedno + 1 : 1
+                        await Spaced.update(
+                            { insightid: insightid, profileid: getprofileid(req.session) },
+                            {
+                                $set: args,
+                                $push: {
+                                    checks: {
+                                        time: new Date(),
+                                        result: args.marked,
+                                        check: args.check
+                                    }
+                                }
+                            },
+                        )
+                    } else {
+                        //this is functionality for spaced repetition. Only activated if the insight has a prompt.
+                        newspaced.fib0 = 0
+                        newspaced.fib1 = 1
+                        newspaced.markedno = 1
+                        newspaced.datenext = nextdate
+                        newspaced.datecreated = new Date()
+                        Spaced.insert(newspaced)
+                    }
+
+                    await InsightTags.update(
+                        { insightid: insightid, profileid: getprofileid(req.session) },
+                        {
+                            $set: { nextdate: nextdate }
+                        },
+                        { multi: true },
+                    )
+
+                    return true
             }
-            
-
-            InsightTags.update(
-                { insightid: insightid, profileid: getprofileid(req.session) },
-                {
-                    $set: { nextdate: nextdate }
-                },
-                { multi: true },
-            )
-
-            
-            return true
-        },
-        markSpacedNo: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const InsightTags = db.collection('insighttags')
-            const Spaced = db.collection('spaced')
-            args.lastdate = new Date()
-            args.fib0 = 0
-            args.fib1 = 1
-            const insightid = args.insightid
-            delete args.insightid
-
-            const spaced = await Spaced.findOne({
-                insightid: insightid,
-                profileid: getprofileid(req.session)
-            })
-
-            let nextdate = new Date() //set nextdate for tomorrow.
-            nextdate.setDate(nextdate.getDate() + 1)
-
-            if (spaced) { //check if there is a spaced record, if not, create one.
-                args.lastmarked = new Date()
-                args.datenext = nextdate
-                args.fib0 = 0
-                args.fib1 = 1
-                args.markedno = spaced.markedno ? spaced.markedno + 1 : 1
-                await Spaced.update(
-                    { insightid: insightid, profileid: getprofileid(req.session) },
-                    {
-                        $set: args
-                    },
-                )
-            } else {
-                //this is functionality for spaced repetition. Only activated if the insight has a prompt.
-                let newspaced = new Object()
-                newspaced.insightid = insightid
-                newspaced.profileid = getprofileid(req.session)
-                newspaced.fib0 = 0
-                newspaced.fib1 = 1
-                newspaced.markedno = 1
-                newspaced.lastmarked = new Date()
-                newspaced.datenext = nextdate
-                Spaced.insert(newspaced)
-            }
-
-            await InsightTags.update(
-                { insightid: insightid, profileid: getprofileid(req.session) },
-                {
-                    $set: { nextdate: nextdate }
-                },
-                { multi: true },
-            )
-
-            return true
         },
         updateInsight: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
