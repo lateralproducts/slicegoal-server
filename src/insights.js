@@ -6,6 +6,7 @@ import { getprofileid, getuserid, getwheelid } from './users'
 import { shareInsightEmail } from './emails'
 import DbConnection from './database'
 import { createUserConnection } from './community'
+import { attachSources } from './sources'
 
 export const typeDefs = `
 
@@ -19,8 +20,8 @@ export const typeDefs = `
   }
 
   extend type Mutation {
-    createInsight(datetime: String, profileid: String, prompt: String, answer: String, areatags: [AreaTagIn]): Spaced
-    updateInsight(insightid: String, datetime: String, prompt: String, answer: String): Spaced 
+    createInsight(datetime: String, profileid: String, prompt: String, answer: String, areatags: [AreaTagIn], sources: [SourceTagIn]): Spaced
+    updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, sources: [SourceTagIn]): Spaced 
     createInsightTag(insightid: String!, profileid: String, area: String, areaname: String): Tag
     updateInsightTag(tagid: String!, notes: String): Boolean
     removeInsightTag(tagid: String): Boolean
@@ -412,6 +413,15 @@ export const resolvers = {
                 { $set: args },
             )
 
+            if(args.sources) {
+                attachSources(
+                    args.sources, 
+                    'insight', 
+                    insightid,
+                    getprofileid(req.session)
+                )
+            }
+
             if (args.prompt){              
                 const spaced = await Spaced.findOne({
                     insightid: insightid,
@@ -541,12 +551,19 @@ export const resolvers = {
             args.uiversion = getuiversion(req.session)
             args.datecreated = new Date(args.datetime)
             args.lastedited = new Date(args.datetime)
-            const insertedId = await createinsight(args, req)
 
-            return {
-                _id: insertedId,
-                message: 'new insight created'
-            }
+            createinsight(args, req)
+                .then(insertedId => {
+                    attachSources(
+                        args.sources, 
+                        'insight', 
+                        insertedId, 
+                        getprofileid(req.session)
+                    )
+                    .then(() => {
+                        return insertedId
+                    })
+                })
         },
         removeInsight: async(_, { insightid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')

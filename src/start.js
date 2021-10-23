@@ -19,6 +19,7 @@ import { schema as areaSchema } from './areas'
 import { schema as insightSchema } from './insights'
 import { schema as goalSchema } from './goals'
 import { schema as tagSchema } from './tags'
+import { schema as sourceSchema } from './sources'
 
 //import queries and mutations
 import { typeDefs as userQueryMutation } from './users'
@@ -29,6 +30,7 @@ import { typeDefs as feedbackQueryMutation } from './feedback'
 import { typeDefs as goalQueryMutation } from './goals'
 import { typeDefs as webQueryMutation } from './website'
 import { typeDefs as tagQueryMutation } from './tags'
+import { typeDefs as sourceMutation } from './sources'
 
 //import resolvers
 import { resolvers as userResolvers } from './users'
@@ -39,6 +41,7 @@ import { resolvers as feedbackResolvers } from './feedback'
 import { resolvers as goalResolvers } from './goals'
 import { resolvers as webResolvers } from './website'
 import { resolvers as tagResolvers } from './tags'
+import { resolvers as sourceResolvers } from './sources'
 
 import './schedules'
 
@@ -241,6 +244,7 @@ export const start = async() => {
                 insightSchema,
                 goalSchema,
                 tagSchema,
+                sourceSchema,
                 paymentQueryMutation,
                 userQueryMutation,
                 insightQueryMutation,
@@ -248,7 +252,8 @@ export const start = async() => {
                 goalQueryMutation,
                 feedbackQueryMutation,
                 webQueryMutation,
-                tagQueryMutation
+                tagQueryMutation,
+                sourceMutation
             ],
 
             resolvers: merge(
@@ -259,7 +264,8 @@ export const start = async() => {
                 goalResolvers,
                 feedbackResolvers,
                 webResolvers,
-                tagResolvers
+                tagResolvers,
+                sourceResolvers
             ),
             context
         })
