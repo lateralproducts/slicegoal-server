@@ -51,165 +51,7 @@ app.use(cors())
 
 export const start = async() => {
     try {
-        //const Signup = db.collection("signup");
-
-        /*  async function migrategoals(goal) {
-      let goaltag = new Object();
-      goaltag.areaid = goal.area;
-      goaltag.userid = goal.userid;
-      goaltag.goalid = goal._id.toString();
-      goaltag.date = goal.date;
-      goaltag.orderrank = goal.orderrank;
-      goaltag.datetime = goal.datetime;
-      goaltag.complete = goal.complete;
-
-      try {
-        GoalTags.insertOne(goaltag);
-      } catch (error) {
-        console.log(error);
-      }
-    }
-
-    async function migrateinsights(spaced) {
-      let newinsight = new Object();
-      newinsight.area = spaced.area;
-      newinsight.answer = spaced.answer;
-      newinsight.prompt = spaced.prompt;
-      newinsight.userid = spaced.userid;
-      newinsight.datecreated = spaced.datecreated;
-      newinsight.lastedited = spaced.lastedited;
-      newinsight.datetime = spaced.datetime;
-
-      try {
-        Insights.insertOne(newinsight).then(result => {
-          let insight = new Object();
-          insight.insightid = result.insertedId.toString();
-          insight.userid = newinsight.userid;
-          insight.fib0 = 0;
-          insight.fib1 = 1;
-          let nextdate = new Date(); //set nextdate for tomorrow.
-          if (newinsight.prompt) nextdate.setDate(nextdate.getDate() + 1);
-          insight.datenext = nextdate;
-
-          let insighttag = new Object();
-          insighttag.insightid = result.insertedId.toString();
-          insighttag.userid = newinsight.userid;
-          insighttag.area = newinsight.area;
-          insighttag.datecreated = new Date();
-          InsightTags.insert(insighttag);
-
-          Spaced.updateOne(
-            {
-              _id: spaced._id
-            },
-            { $set: { insightid: result.insertedId.toString() } }
-          );
-        });
-      } catch (error) {
-        console.log(error);
-      }
-    }
-
-    function aggregatePomo(area) {
-      Pomodoros.aggregate(
-        {
-          $match: {
-            area: area
-          }
-        },
-        {
-          $group: {
-            _id: { area: "$area" },
-            count: { $sum: "$minutes" },
-            records: { $sum: 1 }
-          }
-        },
-        function(err, data) {
-          if (err) throw err;
-
-          /*  console.log(JSON.stringify(data, undefined, 2));
-          console.log(data[0].count); 
-          return data[0].count;
-        }
-      );
-    }
-
-    async function updateinsights(spaced) {
-      try {
-        if (area.insights) {
-          await Spaced.insertOne({
-            area: area._id.toString(),
-            answer: area.insights,
-            userid: area.userid
-          });
-          return false;
-        }
-      } catch (error) {
-        console.log(error);
-      }
-    }
-
-    async function updatepomos(area) {
-      try {
-        if (area.area) {
-          const link = await Pomodoros.findOne({
-            area: area.area,
-            links: { $not: { $eq: null } }
-          });
-
-          if (link) {
-            console.log(link);
-            await Pomodoros.update(
-              { _id: ObjectId(area._id) },
-              {
-                $set: {
-                  links: link.links
-                },
-                $unset: { areaId: "" }
-              }
-            );
-          }
-          return false;
-        }
-      } catch (error) {
-        console.log(error);
-      }
-    }
-
-    async function updaterank(ranktime) {
-      try {
-        await RankTimes.update(
-          { _id: ObjectId(ranktime._id) },
-          {
-            $set: {
-              area: ranktime.areaId
-            },
-            $unset: { areaId: "" }
-          }
-        );
-        return true;
-      } catch (error) {
-        console.log(error);
-      }
-    }
-
-    async function updategoal(goaltime) {
-      try {
-        await GoalTimes.update(
-          { _id: ObjectId(goaltime._id) },
-          {
-            $set: {
-              area: goaltime.areaId
-            },
-            $unset: { areaId: "" }
-          }
-        );
-        return true;
-      } catch (error) {
-        console.log(error);
-      }
-    } */
-
+        
         const opts = {
             port: 3001,
             endpoint: '/server',
@@ -265,10 +107,10 @@ export const start = async() => {
         })
 
         /* function loggingMiddleware(req, res, next) {
-      console.log("ip:", ip);
-      next();
-    }
-    server.express.use(loggingMiddleware); */
+          console.log("ip:", ip);
+          next();
+        }
+        server.express.use(loggingMiddleware); */
         //the function above tracks the ip address of requests
 
         // session middleware
