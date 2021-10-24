@@ -473,6 +473,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const tokenInfo = await oAuth2Client.getTokenInfo(args.token)
+            req.session.googleToken = args.token
             delete args.token //don't save google token to DB for security.
             if ((tokenInfo.email = args.email)) {
                 //check token authentication...
@@ -550,15 +551,16 @@ export const resolvers = {
                     }
                 },
             )
-            if (req.session.user)
-                if (req.session.user.token)
-                    try {
-                        await oAuth2Client.revokeToken(req.session.user.token)
-                    } catch (error) {
-                        console.log(error)
-                    }
+            if (req.session.googleToken)
+                try {
+                    await oAuth2Client.revokeToken(req.session.googleToken)
+                    console.log('revoked')
+                } catch (error) {
+                    console.log(error)
+                }
             delete req.session.user
             req.session.destroy()
+            console.log('destroyed')
             return true
         },
 
