@@ -59,18 +59,25 @@ export const schema = `
         area: Area
         insight: Insight
         notes: String
-        pinned: Boolean 
+        pinned: Boolean
+        spaced: Spaced 
     }
     type Spaced {
         _id: String
         insightid: String
         insight: Insight
         area: String
-        datetimecreated: Float
-        datetimelast: Float
+        datetimecreated: String
+        lastmarked: String
         fib0: String
         fib1: String
         datenext: String
+        checks: [SpacedMark]
+    }
+    type SpacedMark {
+        time: String
+        result: String
+        check: String
     }
     type ShareResponse {
         success: Boolean
@@ -241,7 +248,7 @@ export const resolvers = {
             const Spaced = db.collection('spaced')
             let spaced = await Spaced.findOne({
                 insightid: parent._id.toString(),
-                userid: getprofileid(req.session)
+                profileid: getprofileid(req.session)
             })
             return spaced
         }
@@ -256,6 +263,15 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             return await Insights.findOne({ _id: ObjectId(parent.insightid) })
+        },
+        spaced: async parent => {
+            const db = await DbConnection.Get()
+            const Spaced = db.collection('spaced')
+            let spaced = await Spaced.findOne({
+                insightid: parent.insightid,
+                profileid: getprofileid(req.session)
+            })
+            return spaced
         }
     },
     SharedInsightList: {

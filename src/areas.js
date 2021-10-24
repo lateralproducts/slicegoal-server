@@ -144,7 +144,7 @@ export const schema = `
         goal: Int
         datetime: String
         note: String
-        date: Float
+        date: String
         goaldate: String
     }
 `
