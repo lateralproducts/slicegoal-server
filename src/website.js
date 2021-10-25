@@ -13,6 +13,7 @@ export const resolvers = {
             //actioninfo: pass parameters (like wheel name, etc)
             //abconfig: pass parameter to log for A/B testing
             //pagetrack: if loading a webpage with a unique identifer, to track over sessions
+            if(args.actioninfo) console.log(args.actioninfo)
             sessiontrack(
                 req,
                 args,
