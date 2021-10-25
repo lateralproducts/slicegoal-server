@@ -89,7 +89,7 @@ export const resolvers = {
             let insighttags = await InsightTags.find(
                 {
                     area: {$in: [...args.areas.map(area => {return area._id})]},
-                    profileid: getprofileid(req.session),
+                    profileid: getprofileid(req.session)
                 },
                 { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
             )

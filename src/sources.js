@@ -118,7 +118,10 @@ export async function attachSources(sourcelist, resourcetype, resourceid, profil
     // Remove necessary tags
     const newsourceids = newsourcetags.map(tag => {return tag._id})
     SourceTags.find(
-        {sourceid: {$nin: newsourceids}}
+        {
+            resourceid: resourceid,
+            sourceid: {$nin: newsourceids}
+        }
     )
     .toArray()
     .then(deletetags => {
@@ -133,7 +136,10 @@ export async function attachSources(sourcelist, resourcetype, resourceid, profil
     const updatepromisearray = []
     newsourcetags.forEach(sourcetag => {
         updatepromisearray.push(SourceTags.updateOne(
-                {sourceid: sourcetag._id},
+                {
+                    sourceid: sourcetag._id,
+                    resourceid: resourceid
+                },
                 {   
                     sourceid: sourcetag._id,
                     resourcetype: resourcetype,
