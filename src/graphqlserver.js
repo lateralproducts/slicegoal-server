@@ -46,11 +46,12 @@ let pjson = require('../package.json')
 console.log('server version: ' + pjson.version)
 console.log('environment: ' + process.env.npm_lifecycle_event)
 
-const app = express()
-app.use(cors())
+//const app = express()
+//app.use(cors())
 
-export const start = async() => {
+export const graphql = async() => {
     try {
+        var path = require('path');
         
         const opts = {
             port: 3001,
@@ -134,6 +135,15 @@ export const start = async() => {
                 `Server is running on http://localhost:${opts.port}${opts.endpoint}`,
             ),
         )
+
+        // file server
+        server.express.get('/files/*', (req, res, next) => {
+            // here you can use your way to get the path dir ..  
+            const pathDir = path.join(__dirname, req.path);
+            //console.log(req.session.user.firstname)
+            res.sendFile(pathDir);
+        }); // ✔️🚀
+
     } catch (e) {
         console.log(e)
     }

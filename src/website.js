@@ -105,7 +105,7 @@ export async function sessiontrack(
     }
 }
 
-function querytojson(search) {
+export function querytojson(search) {
     try {
         const json = JSON.parse(
             '{"' +
