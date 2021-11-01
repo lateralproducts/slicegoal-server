@@ -108,7 +108,8 @@ export async function emailNewClient(
     page,
 ) {
     let to = client.email
-    let subject = coach.firstname ? (coach.firstname + ' ' + coach.lastname + ' invited you to Cavestep') : 'You’ve been invited to Cavestep' //to Cavestep🦶
+    let name = `${coach.firstname} ${coach.lastname || ''}`
+    let subject = name ? (`${name.trim()}` + ' invited you to Cavestep') : 'You’ve been invited to Cavestep' //to Cavestep🦶
     let email = Mustache.render(inviteToCoachingWheel , {
         name: client.firstname ? client.firstname : '',
         logopath: logopath,
@@ -208,7 +209,7 @@ export async function shareInsightEmail(
     acceptLink
     ) { 
         const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
-        const subject = `${sharerName} shared an insight`
+        const subject = `${sharerName.trim()} shared an insight`
         const email = Mustache.render(shareInsightTemplate, {
             insightText: insight.answer,
             sharerName: sharerName,
