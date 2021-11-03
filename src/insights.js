@@ -554,15 +554,17 @@ export const resolvers = {
 
             createinsight(args, req)
                 .then(insertedId => {
-                    attachSources(
-                        args.sources, 
-                        'insight', 
-                        insertedId, 
-                        getprofileid(req.session)
-                    )
-                    .then(() => {
-                        return insertedId
-                    })
+                    if (args.sources) {
+                        attachSources(
+                            args.sources, 
+                            'insight', 
+                            insertedId, 
+                            getprofileid(req.session)
+                        )
+                        .then(() => {
+                            return insertedId
+                        })
+                    }
                 })
         },
         removeInsight: async(_, { insightid }, { req }) => {
