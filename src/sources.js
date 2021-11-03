@@ -9,6 +9,7 @@ export const typeDefs = `
     extend type Query {
         sources: [Source]
         insightSources(insightid: String!): [SourceTag]
+        sourceInsights(sourceid: String!): [Insight]
     }
 
     extend type Mutation {
@@ -44,16 +45,36 @@ export const schema = `
 
 export const resolvers = {
     Query: {
-        sources: async function(_, args, { req }) {
+        // all sources on a profile, ordered by last tagged
+        sources: async function(_, __, { req }) {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const Sources = db.collection('sources')
+            const SourceTags = db.collection('sourcetags')
 
-            return await Sources.find(
-                {profileid: getprofileid(req.session)}
-                )
-                .toArray()
+           return await SourceTags.aggregate([
+                {$match: {profileid: getprofileid(req.session)}},
+                {$group: {
+                    _id: '$sourceid',
+                    lasttagged: {$max: '$datetime'}
+                }},
+                {$addFields: {sourceobjectid: {$toObjectId: '$_id'}}},
+                {$sort: {lasttagged: -1}},
+                {$lookup: {
+                    from: 'sources',
+                    localField: 'sourceobjectid',
+                    foreignField: '_id',
+                    as: 'sources'
+                }},
+                {$unwind: '$sources'}
+            ])
+            .toArray()
+            .then(tags => {
+                return tags.map(tag => {
+                    return tag.sources
+                })
+            })
         },
+        // all sources on an insight
         insightSources: async function(_, { insightid }, { req }) {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
@@ -65,6 +86,29 @@ export const resolvers = {
                     resourceid: insightid
                 }
             ).toArray()
+        },
+        // all insights associated with given source
+        sourceInsights: async function(_, { sourceid }, { req }) {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const SourceTags = db.collection('sourcetags')
+            const Insights = db.collection('insights')
+
+            const sourcetags = await SourceTags.find({
+                resourcetype: 'insight',
+                sourceid: sourceid
+            })
+            .toArray()
+            
+            const sourceids = [...(sourcetags
+                                .map(tag => {
+                                    return ObjectId(tag.resourceid)
+                                }))]
+
+            return await Insights.find(
+                {_id: {$in: sourceids}}
+            )
+            .toArray()
         }
     },
     Mutation: {
