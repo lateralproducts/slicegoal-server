@@ -97,6 +97,12 @@ export const schema = `
         clicks: ClickData
         coach: Boolean
         rankdue: Boolean
+        count: Int
+    }
+
+    type AreaReturn {
+        count: Int
+        area: Area
     }
 
     type View {

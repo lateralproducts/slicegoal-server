@@ -24,6 +24,7 @@ export const resolvers = {
             const GoalTags = db.collection('goaltags')
             const InsightTags = db.collection('insighttags')
             const Areas = db.collection('areas')
+            const Insights = db.collection('insights')
 
             let alltags // goaltags or insighttags
             let tagsonarea
@@ -38,6 +39,29 @@ export const resolvers = {
                     .toArray()
                 tagsonarea = await GoalTags.find({ area: args.areas[0]._id })
                     .toArray()
+            } else if(args.type === 'spaced') {
+
+                const insights = (await Insights.find({
+                    profileid: getprofileid(req.session),
+                    $and: [
+                        { prompt: {$ne: null} },
+                        { prompt: {$ne: ''} }
+                    ]
+                })
+                .toArray())
+                .map(insight => {
+                    return insight._id.toString()
+                })
+
+                alltags = await InsightTags.find({ insightid: {$in: insights} }).toArray()
+
+                if(args.areas.length > 1)  { //ignore the first area (the start area)
+                    tagsonarea = await InsightTags.find({ area: args.areas[1]._id }).toArray()
+                }
+                else {
+                    const areaobjectids = alltags.map(tag => {return ObjectId(tag.area)})
+                    return await Areas.find({_id: {$in: areaobjectids}}).toArray()
+                }
             }
 
             // If no tags return empty array
@@ -77,5 +101,48 @@ export const resolvers = {
             else 
                 return []
         } 
+    },
+    Area: {
+        count: async(area, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+            const InsightTags = db.collection('insighttags')
+            const Spaced = db.collection('spaced')
+
+            // ids of insights that have prompt set
+            const insightidsprompt = (await Insights.find({
+                $and: [
+                    { prompt: {$ne: null} },
+                    { prompt: {$ne: ''} }
+                ],
+                profileid: getprofileid(req.session)
+            },
+                { sort: { nextdate: -1 } }, //return reverse chron. Last note created at top of list.
+            )
+            .toArray())
+            .map(insight => insight._id.toString())
+
+            const insighttags = await InsightTags.find(
+                    {$and: [
+                        {area: area._id.toString()},
+                        {insightid: {$in: insightidsprompt}}
+                        ]
+                    }
+                )
+                .toArray()
+
+            const spaced = await Spaced.find(
+                    {
+                        insightid: {$in: insighttags.map(tag => {return tag.insightid})},
+                        $or: [
+                            { datenext: null },
+                            { datenext: { $lte: new Date() } }
+                        ]
+                    }
+                )
+                .toArray()
+
+            return spaced.length
+        }
     }
 }

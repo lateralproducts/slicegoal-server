@@ -14,7 +14,7 @@ export const typeDefs = `
     insights(areas: [AreaId]): [InsightTag]
     insightTags(insightid: String): [InsightTag]
     searchinsights(search: String!): [Insight]
-    spaced: [InsightTag]
+    spaced(areas: [AreaId]): FilteredSpaced
     newsharedinsights: Int
     getSharedInsights: SharedInsightList
   }
@@ -77,18 +77,23 @@ export const schema = `
         success: Boolean
         message: String
     }
+    type FilteredSpaced {
+        count: Int 
+        insights: [Insight]
+    }
 `
 
 export const resolvers = {
     Query: {
-        insights: async(_, args, { req }) => {
+        insights: async(_, { areas }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
+
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
 
             let insighttags = await InsightTags.find(
                 {
-                    area: {$in: [...args.areas.map(area => {return area._id})]},
+                    area: {$in: [...areas.map(area => {return area._id})]},
                     profileid: getprofileid(req.session)
                 },
                 { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
@@ -102,7 +107,7 @@ export const resolvers = {
 
             // Make sure insights are tagged to EVERY area
             const filteredinsights = insightids.filter(insightid => {
-                return args.areas.every(area => {
+                return areas.every(area => {
                     return insighttags.some(tag => 
                         tag.insightid === insightid && tag.area === area._id
                     )
@@ -114,20 +119,22 @@ export const resolvers = {
                 {
                     insightid: {$in: filteredinsights},
                     profileid: getprofileid(req.session),
-                    area: args.areas[0]._id
+                    area: areas[0]._id
                 },
                 { sort: { pinned: -1, datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
             )
             .toArray()
             return insights
         },
-        spaced: async(_,__,{req}) => {
+        spaced: async(_, { areas }, {req}) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insighttags')
+            const Spaced = db.collection('spaced')
             const Insights = db.collection('insights')
+            const InsightTags = db.collection('insighttags')
 
-            const insights = await Insights.find({
+            // ids of insights that have prompt set
+            const insightidsprompt = (await Insights.find({
                 $and: [
                     { prompt: {$ne: null} },
                     { prompt: {$ne: ''} }
@@ -135,38 +142,47 @@ export const resolvers = {
                 profileid: getprofileid(req.session)
             },
                 { sort: { nextdate: -1 } }, //return reverse chron. Last note created at top of list.
-            ).toArray()
+            )
+            .toArray())
+            .map(insight => insight._id.toString())
 
-            const insightlinks = await new Promise(function(resolve) {
-                InsightTags.aggregate(
-                    {
-                        $match: {
-                            insightid: {$in: insights.map(insight => insight._id.toString())},
-                            $or: [
-                                { nextdate: null },
-                                { nextdate: { $lte: new Date() } }
-                            ],
-                            profileid: getprofileid(req.session)
-                        }
-                    },
-                    {
-                        $group: {
-                            _id: '$insightid',
-                            doc: { $first: '$$ROOT' }
-                        }
-                    },
-                    {
-                        $replaceRoot: {
-                            newRoot: '$doc'
-                        }
-                    },
-                    function(err, data) {
-                        if (err) throw err
-                        resolve(data ? data : [])
-                    },
-                )
+            // ids of insights that have prompt set and prompt is due
+            const insightidspromptdue = (await Spaced.find(
+                {
+                    insightid: {$in: insightidsprompt},
+                    $or: [
+                        { datenext: null },
+                        { datenext: { $lte: new Date() } }
+                    ]
+                }
+            )
+            .toArray())
+            .map(insight => {
+                return ObjectId(insight.insightid)
             })
-            return insightlinks.length > 0 ? [insightlinks[0]] : []
+
+            // insight objects to return/filter
+            let insights = await Insights.find({ _id: {$in: insightidspromptdue} }).toArray()
+
+            // All insights on profile if filter areas not given
+            if(areas.length > 0) {
+                const insighttags = await InsightTags.find({
+                                        $and: [ {insightid: {$in: insightidspromptdue.map(id => {return id.toString()}) }},
+                                                {area: {$in: areas.map(area => {return area._id}) }}
+                                            ]}
+                                        ).toArray()
+
+                insights = insights.filter(insight => { 
+                    return insighttags.some(tag => { 
+                        return tag.insightid === insight._id.toString()
+                        })
+                    })
+            }
+
+            return {
+                count: insightidspromptdue.length,
+                insights: insights
+            }
         },
         searchinsights: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
