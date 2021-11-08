@@ -14,7 +14,8 @@ const auth = {
 const sender = 'CAVESTEP<' + auth.user + '>'
 
 const PATH_URL = `${process.env.PATH_URL}`
-const LOGO_PATH_URL = PATH_URL
+const APP_PATH_URL = `${PATH_URL}/app`
+const LOGO_PATH_URL = `${PATH_URL}/files/cavesteplong.png`
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -59,9 +60,6 @@ const newCoach = fs
     .readFileSync(__dirname + '/emailtemplates/newCoach.html')
     .toString()
 
-const logopath =
-    'https://www.cavestep.com/static/media/cavesteplong.d8a54789.png'
-
 async function sendEmail(to, subject, email) {
     const db = await DbConnection.Get()
     const Emails = db.collection('emails')
@@ -93,8 +91,8 @@ export async function emailGoalNudge(user, links, goals) {
     let subject = 'Your Cavestep Goals'
     const email = Mustache.render(goalNudge, {
         goals: goals,
-        pathurl: `${process.env.PATH_URL}`,
-        logopath: logopath,
+        pathurl: APP_PATH_URL,
+        logopath: LOGO_PATH_URL,
         user: user
     })
     sendEmail(to, subject, email)
@@ -111,13 +109,13 @@ export async function emailNewClient(
     let subject = coach.firstname ? (coach.firstname + ' ' + coach.lastname + ' invited you to Cavestep') : 'You’ve been invited to Cavestep' //to Cavestep🦶
     let email = Mustache.render(inviteToCoachingWheel , {
         name: client.firstname ? client.firstname : '',
-        logopath: logopath,
+        logopath: LOGO_PATH_URL,
         view: newView ? '&view=' + newView : '',
         page: page,
         intro: coach.firstname
             ? coach.firstname + ' has invited you to a Cavestep coaching wheel.'
             : 'You\'ve been invited to a Cavestep coaching wheel.',  // to Cavestep🦶
-        pathurl: `${process.env.PATH_URL}`
+        pathurl: APP_PATH_URL
     })
 
     sendEmail(to, subject, email)
@@ -130,8 +128,8 @@ export async function emailNewClient(
         clientcode: client.code,
         coachname: coach.firstname + coach.lastname,
         coachemail: coach.email,
-        pathurl: `${process.env.PATH_URL}`,
-        logopath: logopath,
+        pathurl: APP_PATH_URL,
+        logopath: LOGO_PATH_URL,
         viewname: view
     })
         
@@ -142,11 +140,10 @@ export async function emailNewPersonal(personal, queryStringParams) {
     let to = personal.email
     let subject = "Looks like you've signed up for Cavestep"
     let email = Mustache.render(newpersonal, {
-        PATH_URL: PATH_URL,
-        LOGO_PATH_URL: LOGO_PATH_URL,
+        pathurl: APP_PATH_URL,
         personalid: personal._id,
         personalcode: personal.code,
-        logo: logopath,
+        logopath: LOGO_PATH_URL,
         queryStringParams: queryStringParams
     })
 
@@ -158,9 +155,8 @@ export async function emailRerankNudge(user) {
     let subject = 'Time to rank your wheel'
     let email = Mustache.render(rerank, {
         name: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
-        PATH_URL: PATH_URL,
-        LOGO_PATH_URL: LOGO_PATH_URL,
-        logo: logopath
+        pathurl: APP_PATH_URL,  
+        logopath: LOGO_PATH_URL
     })
 
     return await sendEmail(to, subject, email)
@@ -170,10 +166,10 @@ export async function emailNewCoach(coach, queryStringParams) {
     let to = coach.email
     let subject = 'You’ve signed up to Cavestep'
     let email = Mustache.render(newCoach, {
-        pathurl: `${process.env.PATH_URL}`,
+        pathurl: APP_PATH_URL,
         coach: coach,
         queryStringParams: '&' + queryStringParams,
-        logopath: logopath
+        logopath: LOGO_PATH_URL
     })
     sendEmail(to, subject, email)
 }
@@ -213,7 +209,7 @@ export async function shareInsightEmail(
             insightText: insight.answer,
             sharerName: sharerName,
             sharerEmail: `${sharer.email}`,
-            logoPath: logopath,
+            logopath: LOGO_PATH_URL,
             acceptLink: acceptLink,
             shareNote: shareNote
         })

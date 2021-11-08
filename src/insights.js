@@ -7,6 +7,9 @@ import { shareInsightEmail } from './emails'
 import DbConnection from './database'
 import { createUserConnection } from './community'
 
+const PATH_URL = `${process.env.PATH_URL}`
+const APP_PATH_URL = `${PATH_URL}/app`
+
 export const typeDefs = `
 
   extend type Query {
@@ -646,7 +649,7 @@ export const resolvers = {
                                     currentUser,
                                     args.targetUser,
                                     args.shareNote,
-                                    `${process.env.PATH_URL}?sharedinsights=active`
+                                    `${APP_PATH_URL}?sharedinsights=active`
                                 )
                             } else {
                                 // Existing but unverified user
@@ -655,7 +658,7 @@ export const resolvers = {
                                     currentUser,
                                     args.targetUser,
                                     args.shareNote,
-                                    `${process.env.PATH_URL}?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`
+                                    `${APP_PATH_URL}?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`
                                 )
                             }
                         })
