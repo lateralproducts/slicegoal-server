@@ -40,6 +40,8 @@ import { resolvers as goalResolvers } from './goals'
 import { resolvers as webResolvers } from './website'
 import { resolvers as tagResolvers } from './tags'
 
+//upload()
+import { getfile } from './storage'
 import './schedules'
 
 let pjson = require('../package.json')
@@ -139,9 +141,12 @@ export const graphql = async() => {
         // file server
         server.express.get('/files/*', (req, res, next) => {
             // here you can use your way to get the path dir ..  
-            const pathDir = path.join(__dirname, req.path);
-            //console.log(req.session.user.firstname)
-            res.sendFile(pathDir);
+            //const pathDir = path.join(__dirname, "files/cavesteplong.png"); //using local files
+            //res.sendFile(pathDir);
+
+            if(req.session.user) console.log(req.session.user.firstname)
+
+            getfile(path.basename(req.path), res)
         }); // ✔️🚀
 
     } catch (e) {
