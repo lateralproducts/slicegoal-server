@@ -12,9 +12,9 @@ const S3 = new AWS.S3({
 
 const s3bucket = 'cavestep-bucket-test'
 
-var filePath = path.join(__dirname, "files/cavesteplong.png")
-//export function savefile(file,res){ //incomplete
-    S3.putObject({
+//var filePath = path.join(__dirname, "files/cavesteplong.png")
+export function savefile(file,res){ //incomplete
+    /* S3.putObject({
         Key: "cavesteplong.png", //filename
         Body: fs.createReadStream(filePath),
         Bucket: s3bucket,
@@ -24,8 +24,8 @@ var filePath = path.join(__dirname, "files/cavesteplong.png")
         } else {
             console.log("Upload successful: " + data);
         }
-    })
-//}
+    }) */
+}
 
 export function getfile(file,res){
     S3.getObject({
