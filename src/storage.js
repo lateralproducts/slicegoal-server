@@ -5,12 +5,12 @@ const path = require('path');
 const S3 = new AWS.S3({
     signatureVersion: "v4",
     apiVersion: '2006-03-01',
-    accessKeyId: 'REDACTED_AWS_ACCESS_KEY_ID',
-    secretAccessKey: 'REDACTED_AWS_SECRET_ACCESS_KEY',
-    region: 'ap-southeast-2'
+    accessKeyId: `${process.env.AWS_ACCESS_KEY_ID}`,
+    secretAccessKey: `${process.env.AWS_SECRET_ACCESS_KEY}`,
+    region: `${process.env.AWS_DEFAULT_REGION}`
   })
 
-const s3bucket = 'cavestep-bucket-test'
+const s3bucket = `${process.env.AWS_BUCKET}`
 
 //var filePath = path.join(__dirname, "files/cavesteplong.png")
 export function savefile(file,res){ //incomplete
