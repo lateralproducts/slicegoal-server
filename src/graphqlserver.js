@@ -1,8 +1,10 @@
-import express from 'express'
+//import express from 'express'
 //import bodyParser from "body-parser";
 //import { graphqlExpress, graphiqlExpress } from "graphql-server-express";
 //import { makeExecutableSchema } from "graphql-tools";
-import cors from 'cors'
+//import cors from 'cors'
+
+import { querytojson } from "./website"
 
 //import { AsyncResource } from "async_hooks";
 
@@ -145,8 +147,14 @@ export const graphql = async() => {
             //res.sendFile(pathDir);
 
             if(req.session.user) console.log(req.session.user.firstname)
-
             getfile(path.basename(req.path), res)
+
+            //logaccess
+            if (path.basename(req.path)=== "cavesteplong.png") {
+                const item = req.query
+                console.log(item.ix)
+            }
+
         }); // ✔️🚀
 
     } catch (e) {

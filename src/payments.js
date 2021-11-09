@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb'
-import { getuserid, getuserIpAddress } from './users'
+import { getuserid, getipaddress } from './users'
 import DbConnection from './database'
 import rapid from 'eway-rapid'
 
@@ -116,7 +116,7 @@ export const resolvers = {
 
                     Transactions.insertOne({
                         initiated: new Date(),
-                        ipaddress: getuserIpAddress(req),
+                        ipaddress: getipaddress(req),
                         user: getuserid(req.session),
                         accessCode: result.AccessCode
                     })

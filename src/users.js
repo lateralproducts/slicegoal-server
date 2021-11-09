@@ -343,7 +343,7 @@ export const resolvers = {
             //possibly threatening checks
         
             const ipprofile = await IPAddresses.findOne({
-                ip: getuserIpAddress(req)
+                ip: getipaddress(req)
             })
         
             if (ipprofile) {
@@ -374,7 +374,7 @@ export const resolvers = {
                     'failed, url in name',
                 )
                 IPAddresses.insert({
-                    ip: getuserIpAddress(req),
+                    ip: getipaddress(req),
                     block: true,
                     reason: 'attempted to put link in firstname'
                 })
@@ -385,7 +385,7 @@ export const resolvers = {
             */
 
             const ipaddress = await Users.find({
-                createdip: getuserIpAddress(req)
+                createdip: getipaddress(req)
             })
         
             //possibly threatening checks
@@ -399,7 +399,7 @@ export const resolvers = {
                     'failed, 15 account limit, blocking',
                 )
                 IPAddresses.insert({
-                    ip: getuserIpAddress(req),
+                    ip: getipaddress(req),
                     block: true,
                     reason: 'account limit at 15'
                 })
@@ -455,7 +455,7 @@ export const resolvers = {
                     state: 'new',
                     profile: args.account,
                     created: date,
-                    createdip: getuserIpAddress(req)
+                    createdip: getipaddress(req)
                 }
                 emailuser = await signup(newuser, args, req)
             }
@@ -486,7 +486,7 @@ export const resolvers = {
                     args.profile = '' //can't just be coach. need to fix this.
                     args.state = 'verified'
                     args.serverversion = pjson.version
-                    args.lastip = getuserIpAddress(req)
+                    args.lastip = getipaddress(req)
                     args.type = 'personal'
                     //googleid, firstname and lastname should already be on args.
                     args.created = new Date()
@@ -546,7 +546,7 @@ export const resolvers = {
                         pages: {
                             page: 'logout',
                             time: new Date(),
-                            ip: getuserIpAddress(req)
+                            ip: getipaddress(req)
                         }
                     }
                 },
@@ -610,6 +610,14 @@ export function getwheelid(session) {
     else return null
 }
 
+export const getipaddress = request => {
+    const headers = request.headers
+    if (!headers) return null
+    const ipAddress = headers['x-forwarded-for']
+    if (!ipAddress) return null
+    return ipAddress
+}
+
 async function login(user, args, req) {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
@@ -651,7 +659,7 @@ async function login(user, args, req) {
             {
                 $set: {
                     uiversion: args.uiversion,
-                    lastip: getuserIpAddress(req),
+                    lastip: getipaddress(req),
                     lastlogin: new Date()
                 }
             },
@@ -714,7 +722,7 @@ async function createNewViewProfile(args, userid, req) {
 async function signup(newuser, __, req) {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
-    newuser.lastip = getuserIpAddress(req)
+    newuser.lastip = getipaddress(req)
     let userid = (await Users.insertOne(newuser)).insertedId.toString()
 
     if (userid) {
@@ -725,14 +733,6 @@ async function signup(newuser, __, req) {
             'Sign up failed for some reason. Sorry. Please try again.',
         )
     }
-}
-
-export const getuserIpAddress = request => {
-    const headers = request.headers
-    if (!headers) return null
-    const ipAddress = headers['x-forwarded-for']
-    if (!ipAddress) return null
-    return ipAddress
 }
 
 function checkPasswordFormat(password) {
