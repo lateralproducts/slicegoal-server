@@ -29,7 +29,7 @@ export const typeDefs = `
     removeInsight(insightid: String!): Boolean
     shareInsight(insightid: String!, targetUser: String!, shareNote: String): ShareResponse
     popSharedInsight(insightid: String!): Boolean
-    pinInsight(insightid: String!, areaid: String!, setpinned: Boolean): Boolean
+    pinInsight(insightid: String!, areaid: String, sourceid: String, setpinned: Boolean, resourcetype: String): Boolean
   }
 `
 
@@ -573,6 +573,7 @@ export const resolvers = {
             const InsightTags = db.collection('insighttags')
             const Insights = db.collection('insights')
             const Profiles = db.collection('profiles')
+            const SourceTags = db.collection('sourcetags')
 
             //Check ownership
             Insights.findOne({ _id: ObjectId(insightid) }).then(insight => {
@@ -586,6 +587,12 @@ export const resolvers = {
                                 function(err) {
                                     if (err) throw err
                                 },
+                            )
+                            SourceTags.deleteMany(
+                                { 
+                                    resourcetype: 'insight',
+                                    resourceid: insightid
+                                }
                             )
                             Insights.deleteOne(
                                 { _id: ObjectId(insightid) },
@@ -706,17 +713,32 @@ export const resolvers = {
         pinInsight: async(_, args) => {
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
+            const SourceTags = db.collection('sourcetags')
 
-            return await InsightTags.updateOne(
-                {
-                    area: args.areaid,
-                    insightid: args.insightid
-                },
-                {$set: {pinned: args.setpinned}}
-            )
-            .then(res => {
-                if(res.result.n) return true
-            })
+            if(args.resourcetype === 'source') {
+                return await SourceTags.updateOne(
+                    {
+                        sourceid: args.sourceid,
+                        resourceid: args.insightid
+                    },
+                    {$set: {pinned: args.setpinned}}
+                )
+                .then(res => {
+                    if(res.result.n) return true
+                })
+            }
+            else if(args.resourcetype === 'insight') {
+                return await InsightTags.updateOne(
+                    {
+                        area: args.areaid,
+                        insightid: args.insightid
+                    },
+                    {$set: {pinned: args.setpinned}}
+                )
+                .then(res => {
+                    if(res.result.n) return true
+                })
+            }
         }
     }
 }

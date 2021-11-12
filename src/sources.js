@@ -3,13 +3,12 @@ import { ObjectId } from 'mongodb'
 import DbConnection from './database'
 import { getprofileid } from './users'
 
-
 export const typeDefs = `
 
     extend type Query {
         sources: [Source]
         insightSources(insightid: String!): [SourceTag]
-        sourceInsights(sourceid: String!): [Insight]
+        sourceInsights(sourceid: String!): [SourceInsight]
     }
 
     extend type Mutation {
@@ -33,6 +32,7 @@ export const schema = `
         profileid: String
         source: Source
         note: String
+        pinned: Boolean
     }
 
     input SourceTagIn {
@@ -41,6 +41,10 @@ export const schema = `
         _id: String!
     }
 
+    type SourceInsight {
+        insight: Insight
+        pinned: Boolean
+    }
 `
 
 export const resolvers = {
@@ -92,23 +96,22 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const SourceTags = db.collection('sourcetags')
-            const Insights = db.collection('insights')
 
             const sourcetags = await SourceTags.find({
                 resourcetype: 'insight',
                 sourceid: sourceid
-            })
-            .toArray()
-            
-            const sourceids = [...(sourcetags
-                                .map(tag => {
-                                    return ObjectId(tag.resourceid)
-                                }))]
-
-            return await Insights.find(
-                {_id: {$in: sourceids}}
+                },
+                { sort: { pinned: -1, datetime: -1 } }
             )
             .toArray()
+
+            return sourcetags.map(tag => {
+                return {
+                    insightid: ObjectId(tag.resourceid),
+                    pinned: tag.pinned || false
+                }
+            })
+
         }
     },
     Mutation: {
@@ -138,6 +141,16 @@ export const resolvers = {
 
             return await Sources.findOne(
                 {_id: ObjectId(parent.sourceid)}
+            )
+        }
+    },
+    SourceInsight: {
+        insight: async({ insightid }) => {
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+
+            return await Insights.findOne(
+                { _id: insightid }
             )
         }
     }
