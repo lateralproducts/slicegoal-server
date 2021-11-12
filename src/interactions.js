@@ -1,3 +1,5 @@
+import DbConnection from './database'
+import { shareInsightEmail } from './emails'
 import { ObjectId } from 'mongodb'
 import { getprofileid, getuserid, getwheelid } from './users'
 
@@ -35,37 +37,66 @@ export const schema = `
     }
 `
 
-export async function newIx({from, to, type, data}){
+export async function newIx(from, to, type, insight, sharenote){
     const db = await DbConnection.Get()
     const Interactions = db.collection('interactions')
     let ix = new Object()
-    ix.to = to //userid
-    ix.from = from //userid
+    ix.to = to._id.toString() //userid
+    ix.from = from._id.toString() //userid
     ix.type = type //eg. shareinsight
-    ix.data = data
+    ix.data = insight
     ix.triggered = new Date()
-    return (await Interactions.insertOne(ix)).insertedId.toString()
+    ix.status = 'pending'
+    ix.history = [{
+        time: new Date(),
+        action: 'triggered',
+        channel: 'app'}]
+    const interactionid = (await Interactions.insertOne(ix)).insertedId.toString()
+
+    if(to.state === 'verified'){
+        // Existing verified user
+        shareInsightEmail(
+            insight,
+            from,
+            to,
+            sharenote,
+            `${APP_PATH_URL}?sharedinsights=active`,
+            interactionid
+        )
+    } else {
+        // Existing but unverified user
+        shareInsightEmail(
+            insight,
+            from,
+            to,
+            sharenote,
+            `${APP_PATH_URL}?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`,
+            interactionid
+        )
+    }
 }
 
-export async function updateIx({ixid, from, to, type, status, action, channel}){
+export async function updateIx(ixid, status, action, channel){
     const db = await DbConnection.Get()
     const Interactions = db.collection('interactions')
     let fields = new Object()
-    fields.googleid = args.googleid
     if(status) fields.status = status
-    if(action) fields.action = action
-    Interactions.update(
-        { _id: ixid },
-        {
-            $set: fields,
-            $push: {
-                history: {
-                    time: new Date(),
-                    result: args.marked,
-                    check: args.check
+    try {
+        Interactions.update(
+            { _id: ObjectId(ixid) },
+            {
+                $set: fields,
+                $push: {
+                    history: {
+                        time: new Date(),
+                        action: action,
+                        channel: channel
+                    }
                 }
-            }
-        },
-    )
+            },
+        )
+    } catch (error) {
+        console.log("error logging ix update - " + error)
+    }
 }
 
