@@ -122,7 +122,7 @@ export async function emailNewClient(
     })
 
     sendEmail(to, subject, email)
-    to = 'daniel@cavestep.com'
+    to = `${process.env.NOTIFICATION_EMAIL}`
     subject = 'New User!' //to Cavestep🦶
     email = Mustache.render(adminEmailNewUser, {
         clientname: client.firstname + client.lastname,
@@ -192,7 +192,7 @@ export async function emailFeedback(user, feedback, datetime) {
 }
 
 export async function newUserNotificationEmail(user) {
-    let to = `${process.env.NEW_USER_NOTIFICATION_EMAIL_ADDRESS}`
+    let to = `${process.env.NOTIFICATION_EMAIL}`
     let subject = `New Cavestep user! ${user.firstname} ${user.lastname || ''}`
     let email = Mustache.render(newUserTemplate, {
         name: `${user.firstname} ${user.lastname || ''}`,
