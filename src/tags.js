@@ -31,7 +31,8 @@ export const resolvers = {
             let tagsonarea
 
             // ignore first area (start area) for spaced scenario (want to return a tag for it)
-            const inputareas = args.type === 'spaced' ? args.areas.splice(0, 1) : args.areas
+            args.type === 'spaced' ? args.areas.splice(0, 1) : null
+            const inputareas = args.areas
 
             if(args.type === 'insights') {
                 alltags = await InsightTags.find({ profileid: getprofileid(req.session) })
@@ -73,7 +74,7 @@ export const resolvers = {
             .map(spaced => {
                 return spaced.insightid.toString()
             })
-            
+
             if(args.type === 'spaced') {
 
                 alltags = await InsightTags.find({ 
@@ -87,7 +88,7 @@ export const resolvers = {
 
                 tagsonarea = await InsightTags.find({ 
                     $and: [
-                        inputareas.length > 0 ? { area: inputareas[0]._id } : '',
+                        inputareas.length > 0 ? { area: inputareas[0]._id } : {},
                         { profileid: getprofileid(req.session)},
                         { insightid: {$in: insightspromptset }},
                         { insightid: {$in: insightspromptdue }}
@@ -129,7 +130,7 @@ export const resolvers = {
                     })
                 }
             }
-            
+
             // Filter out input areas and take only areaid from tags
             const areaids = [...new Set(keeptags
                 .filter(tag => !args.areas.some(area => area._id === tag.area)) // Filter out input areas
@@ -141,52 +142,90 @@ export const resolvers = {
                 
                 return (await Areas.find({_id: {$in: areaobjectids}})
                     .toArray())
+                    .map(area => {
+                        return {
+                            _id: area._id.toString(),
+                            name: area.name,
+                            inputareas: inputareas
+                        }
+                    })
             }
             else 
                 return []
         } 
     },
     Area: {
-        count: async(area, __, { req }) => {
+        count: async(parent, __, { req }) => {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const InsightTags = db.collection('insighttags')
             const Spaced = db.collection('spaced')
 
-            // ids of insights that have prompt set
-            const insightidsprompt = (await Insights.find({
+            // Check insights with prompt set
+            const insightspromptset = (await Insights.find({
+                profileid: getprofileid(req.session),
                 $and: [
                     { prompt: {$ne: null} },
                     { prompt: {$ne: ''} }
-                ],
-                profileid: getprofileid(req.session)
-            },
-                { sort: { nextdate: -1 } }, //return reverse chron. Last note created at top of list.
+                ]
+            })
+            .toArray())
+            .map(insight => {
+                return insight._id.toString()
+            })
+
+            // Check spaced entries which have a memory prompt due
+            const insightspromptdue = (await Spaced.find(
+                {
+                    profileid: getprofileid(req.session),
+                    $or: [
+                        { datenext: null },
+                        { datenext: { $lte: new Date() } }
+                    ]
+                }
             )
             .toArray())
-            .map(insight => insight._id.toString())
+            .map(spaced => {
+                return spaced.insightid.toString()
+            })
 
-            const insighttags = await InsightTags.find(
-                    {$and: [
-                        {area: area._id.toString()},
-                        {insightid: {$in: insightidsprompt}}
-                        ]
-                    }
+            let alltags = await InsightTags.find({ 
+                $and: [
+                    { profileid: getprofileid(req.session)},
+                    { insightid: {$in: insightspromptset }},
+                    { insightid: {$in: insightspromptdue }}
+                ]
+             })
+            .toArray()
+
+            let tagsonarea = await InsightTags.find({ 
+                $and: [
+                    { area: parent._id },
+                    { profileid: getprofileid(req.session)},
+                    { insightid: {$in: insightspromptset }},
+                    { insightid: {$in: insightspromptdue }}
+                ]
+            })
+            .toArray()
+
+            if(!alltags) return []
+
+            let keeptags = tagsonarea // intialise to keep all tags on area
+            for(let i=0; i < parent.inputareas.length; i++) {
+
+                tagsonarea = alltags.filter(tag => 
+                    tag.area === parent.inputareas[i]._id
                 )
-                .toArray()
 
-            const spaced = await Spaced.find(
-                    {
-                        insightid: {$in: insighttags.map(tag => {return tag.insightid})},
-                        $or: [
-                            { datenext: null },
-                            { datenext: { $lte: new Date() } }
-                        ]
-                    }
-                )
-                .toArray()
+                keeptags = keeptags.filter(tag => {
+                    return (tagsonarea.some(tagonarea => tagonarea.insightid === tag.insightid) &&
+                        insightspromptset.some(id => { return id === tag.insightid }) &&
+                        insightspromptdue.some(id => { return id === tag.insightid })
+                    )
+                })
+            }
 
-            return spaced.length
+            return keeptags.length
         }
     }
 }
