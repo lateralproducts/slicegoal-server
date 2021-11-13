@@ -1,5 +1,5 @@
 import DbConnection from './database'
-import { getuserIpAddress } from './users'
+import { getipaddress } from './users'
 
 export const typeDefs = `   
     extend type Mutation {
@@ -60,7 +60,7 @@ export async function sessiontrack(
         if (actioninfo) pageentry.actioninfo = actioninfo
         if (result) pageentry.result = result
         if (query) pageentry.query = query
-        pageentry.ip = getuserIpAddress(req)
+        pageentry.ip = getipaddress(req)
         pageentry.email = update.email
 
         Sessions.updateOne(
@@ -77,7 +77,7 @@ export async function sessiontrack(
     } else {
         const newsession = new Object()
         newsession.session = req.session.id
-        newsession.landedip = getuserIpAddress(req)
+        newsession.landedip = getipaddress(req)
         newsession.email = args.email
         newsession.landpage = page ? page : 'app'
         if (screenwidth) newsession.screenwidth = screenwidth
@@ -97,7 +97,7 @@ export async function sessiontrack(
         if (actioninfo) pageentry.actioninfo = actioninfo
         if (result) pageentry.result = result
         if (query) pageentry.query = query
-        pageentry.ip = getuserIpAddress(req)
+        pageentry.ip = getipaddress(req)
         pageentry.email = args.email
 
         newsession.pages = [pageentry]

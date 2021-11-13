@@ -3,13 +3,10 @@ import { ObjectId } from 'mongodb'
 let pjson = require('../package.json')
 import { getuiversion } from '../util/index'
 import { getprofileid, getuserid, getwheelid } from './users'
-import { shareInsightEmail } from './emails'
 import DbConnection from './database'
 import { createUserConnection } from './community'
 import { attachSources } from './sources'
-
-const PATH_URL = `${process.env.PATH_URL}`
-const APP_PATH_URL = `${PATH_URL}/app`
+import { newIx } from './interactions'
 
 export const typeDefs = `
 
@@ -652,11 +649,11 @@ export const resolvers = {
                     message: 'Cannot share with yourself - try duplicating'
                 }
             else {
-
                 return await Insights.findOne({
                     _id: ObjectId(args.insightid)
                 })
                 .then(insight => {
+                    //save shared insight to be accessed.
                     return Insights.insertOne({
                         sharedfrom: getuserid(req.session),
                         status: 'newshared',
@@ -668,25 +665,8 @@ export const resolvers = {
                     .then(result => {
                         Insights.findOne({_id: ObjectId(result.insertedId)})
                         .then(result => { 
-                            if(targetUser.state === 'verified'){
-                                // Existing verified user
-                                shareInsightEmail(
-                                    result,
-                                    currentUser,
-                                    args.targetUser,
-                                    args.shareNote,
-                                    `${APP_PATH_URL}?sharedinsights=active`
-                                )
-                            } else {
-                                // Existing but unverified user
-                                shareInsightEmail(
-                                    result,
-                                    currentUser,
-                                    args.targetUser,
-                                    args.shareNote,
-                                    `${APP_PATH_URL}?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`
-                                )
-                            }
+                            //save interaction
+                            newIx(currentUser,targetUser,'shareinsight', result, args.shareNote)
                         })
 
                         return {

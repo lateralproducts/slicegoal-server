@@ -63,7 +63,10 @@ async function addCommunityConnection(userid, friendid) {
 async function addCommunityInteraction(userid, friendid, eventtype, eventid) {
     const db = await DbConnection.Get()
     const Community = db.collection('community')
-    
+
+
+    //remove once interaction complete.
+    //attaching interaction to community connection
     return await Community.findOne({user: userid, friend: friendid})
         .then(connection => {
             if(!connection) {

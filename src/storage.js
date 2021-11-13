@@ -27,7 +27,7 @@ export function savefile(file,res){ //incomplete
     }) */
 }
 
-export function getfile(file,res){
+export async function getfile(file,res){
     S3.getObject({
         Key: file,
         Bucket: s3bucket

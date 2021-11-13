@@ -1,8 +1,10 @@
-import express from 'express'
+//import express from 'express'
 //import bodyParser from "body-parser";
 //import { graphqlExpress, graphiqlExpress } from "graphql-server-express";
 //import { makeExecutableSchema } from "graphql-tools";
-import cors from 'cors'
+//import cors from 'cors'
+
+import { querytojson } from "./website"
 
 //import { AsyncResource } from "async_hooks";
 
@@ -12,6 +14,8 @@ import ms from 'ms'
 import { Queries } from './schema/queries'
 import { Mutations } from './schema/mutations'
 import { merge } from 'lodash'
+import { updateIx } from './interactions'
+import { getipaddress } from './users'
 
 //import schemas
 import { schema as userSchema } from './users'
@@ -149,10 +153,19 @@ export const graphql = async() => {
             // here you can use your way to get the path dir ..  
             //const pathDir = path.join(__dirname, "files/cavesteplong.png"); //using local files
             //res.sendFile(pathDir);
-
             if(req.session.user) console.log(req.session.user.firstname)
-
+            console.log(getipaddress(req))
             getfile(path.basename(req.path), res)
+
+            //logaccess
+            if (path.basename(req.path)=== "cavesteplong.png") {
+                const item = req.query
+                if(item.ix) {
+                    updateIx(item.ix,'seen','open','email')
+                    console.log("cavestep image accessed - " + item.ix)
+                }
+            }
+
         }); // ✔️🚀
 
     } catch (e) {

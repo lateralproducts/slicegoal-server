@@ -200,9 +200,10 @@ export async function newUserNotificationEmail(user) {
 export async function shareInsightEmail( 
     insight,
     sharer,
-    receiverEmail,
+    receiver,
     shareNote,
-    acceptLink
+    acceptLink,
+    interactionid
     ) { 
         const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
         const subject = `${sharerName.trim()} shared an insight`
@@ -212,7 +213,8 @@ export async function shareInsightEmail(
             sharerEmail: `${sharer.email}`,
             logopath: LOGO_PATH_URL,
             acceptLink: acceptLink,
-            shareNote: shareNote
+            shareNote: shareNote,
+            interactionid: interactionid,
         })
-        return await sendEmail(receiverEmail, subject, email)
+        return await sendEmail(receiver.email, subject, email)
     }
