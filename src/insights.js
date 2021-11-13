@@ -164,19 +164,16 @@ export const resolvers = {
             // insight objects to return/filter
             let insights = await Insights.find({ _id: {$in: insightidspromptdue} }).toArray()
 
-            // All insights on profile if filter areas not given
             if(areas.length > 0) {
-                const insighttags = await InsightTags.find({
-                                        $and: [ {insightid: {$in: insightidspromptdue.map(id => {return id.toString()}) }},
-                                                {area: {$in: areas.map(area => {return area._id}) }}
-                                            ]}
-                                        ).toArray()
+                const insighttags = await InsightTags.find({}).toArray()
 
-                insights = insights.filter(insight => { 
-                    return insighttags.some(tag => { 
-                        return tag.insightid === insight._id.toString()
-                        })
-                    })
+                insights = insights.filter(insight => 
+                    areas.every(area => 
+                        insighttags.some(tag => 
+                            tag.area === area._id && tag.insightid === insight._id.toString()
+                        )
+                    )
+                )
             }
 
             return {
