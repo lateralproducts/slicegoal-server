@@ -4,7 +4,6 @@ import bcrypt from 'bcryptjs'
 import {
     emailNewClient,
     emailNewPersonal,
-    emailNewCoach,
     newUserNotificationEmail
 } from './emails'
 

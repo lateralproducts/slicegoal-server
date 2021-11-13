@@ -6,6 +6,7 @@ import { getprofileid, getuserid, getwheelid } from './users'
 import { shareInsightEmail } from './emails'
 import DbConnection from './database'
 import { createUserConnection } from './community'
+import { attachSources } from './sources'
 
 const PATH_URL = `${process.env.PATH_URL}`
 const APP_PATH_URL = `${PATH_URL}/app`
@@ -22,8 +23,8 @@ export const typeDefs = `
   }
 
   extend type Mutation {
-    createInsight(datetime: String, profileid: String, prompt: String, answer: String, areatags: [AreaTagIn]): Spaced
-    updateInsight(insightid: String, datetime: String, prompt: String, answer: String): Spaced 
+    createInsight(datetime: String, profileid: String, prompt: String, answer: String, areatags: [AreaTagIn], sources: [SourceTagIn]): Spaced
+    updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, sources: [SourceTagIn]): Spaced 
     createInsightTag(insightid: String!, profileid: String, area: String, areaname: String): Tag
     updateInsightTag(tagid: String!, notes: String): Boolean
     removeInsightTag(tagid: String): Boolean
@@ -31,7 +32,7 @@ export const typeDefs = `
     removeInsight(insightid: String!): Boolean
     shareInsight(insightid: String!, targetUser: String!, shareNote: String): ShareResponse
     popSharedInsight(insightid: String!): Boolean
-    pinInsight(insightid: String!, areaid: String!, setpinned: Boolean): Boolean
+    pinInsight(insightid: String!, areaid: String, sourceid: String, setpinned: Boolean, resourcetype: String): Boolean
   }
 `
 
@@ -98,7 +99,7 @@ export const resolvers = {
             let insighttags = await InsightTags.find(
                 {
                     area: {$in: [...args.areas.map(area => {return area._id})]},
-                    profileid: getprofileid(req.session),
+                    profileid: getprofileid(req.session)
                 },
                 { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
             )
@@ -431,6 +432,15 @@ export const resolvers = {
                 { $set: args },
             )
 
+            if(args.sources) {
+                attachSources(
+                    args.sources, 
+                    'insight', 
+                    insightid,
+                    getprofileid(req.session)
+                )
+            }
+
             if (args.prompt){              
                 const spaced = await Spaced.findOne({
                     insightid: insightid,
@@ -560,12 +570,21 @@ export const resolvers = {
             args.uiversion = getuiversion(req.session)
             args.datecreated = new Date(args.datetime)
             args.lastedited = new Date(args.datetime)
-            const insertedId = await createinsight(args, req)
 
-            return {
-                _id: insertedId,
-                message: 'new insight created'
-            }
+            createinsight(args, req)
+                .then(insertedId => {
+                    if (args.sources) {
+                        attachSources(
+                            args.sources, 
+                            'insight', 
+                            insertedId, 
+                            getprofileid(req.session)
+                        )
+                        .then(() => {
+                            return insertedId
+                        })
+                    }
+                })
         },
         removeInsight: async(_, { insightid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -573,6 +592,7 @@ export const resolvers = {
             const InsightTags = db.collection('insighttags')
             const Insights = db.collection('insights')
             const Profiles = db.collection('profiles')
+            const SourceTags = db.collection('sourcetags')
 
             //Check ownership
             Insights.findOne({ _id: ObjectId(insightid) }).then(insight => {
@@ -586,6 +606,12 @@ export const resolvers = {
                                 function(err) {
                                     if (err) throw err
                                 },
+                            )
+                            SourceTags.deleteMany(
+                                { 
+                                    resourcetype: 'insight',
+                                    resourceid: insightid
+                                }
                             )
                             Insights.deleteOne(
                                 { _id: ObjectId(insightid) },
@@ -706,17 +732,32 @@ export const resolvers = {
         pinInsight: async(_, args) => {
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
+            const SourceTags = db.collection('sourcetags')
 
-            return await InsightTags.updateOne(
-                {
-                    area: args.areaid,
-                    insightid: args.insightid
-                },
-                {$set: {pinned: args.setpinned}}
-            )
-            .then(res => {
-                if(res.result.n) return true
-            })
+            if(args.resourcetype === 'source') {
+                return await SourceTags.updateOne(
+                    {
+                        sourceid: args.sourceid,
+                        resourceid: args.insightid
+                    },
+                    {$set: {pinned: args.setpinned}}
+                )
+                .then(res => {
+                    if(res.result.n) return true
+                })
+            }
+            else if(args.resourcetype === 'insight') {
+                return await InsightTags.updateOne(
+                    {
+                        area: args.areaid,
+                        insightid: args.insightid
+                    },
+                    {$set: {pinned: args.setpinned}}
+                )
+                .then(res => {
+                    if(res.result.n) return true
+                })
+            }
         }
     }
 }
