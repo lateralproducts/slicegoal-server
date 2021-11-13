@@ -180,7 +180,7 @@ export const resolvers = {
             }
 
             return {
-                count: insightidspromptdue.length,
+                count: insights.length,
                 insights: insights
             }
         },
