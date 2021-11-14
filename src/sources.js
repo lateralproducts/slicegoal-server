@@ -53,30 +53,8 @@ export const resolvers = {
         sources: async function(_, __, { req }) {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const SourceTags = db.collection('sourcetags')
-
-           return await SourceTags.aggregate([
-                {$match: {profileid: getprofileid(req.session)}},
-                {$group: {
-                    _id: '$sourceid',
-                    lasttagged: {$max: '$datetime'}
-                }},
-                {$addFields: {sourceobjectid: {$toObjectId: '$_id'}}},
-                {$sort: {lasttagged: -1}},
-                {$lookup: {
-                    from: 'sources',
-                    localField: 'sourceobjectid',
-                    foreignField: '_id',
-                    as: 'sources'
-                }},
-                {$unwind: '$sources'}
-            ])
-            .toArray()
-            .then(tags => {
-                return tags.map(tag => {
-                    return tag.sources
-                })
-            })
+            const Sources = db.collection('sources')
+            return await Sources.find({profileid: getprofileid(req.session)}).toArray()
         },
         // all sources on an insight
         insightSources: async function(_, { insightid }, { req }) {
