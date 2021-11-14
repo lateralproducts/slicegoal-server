@@ -35,7 +35,11 @@ export async function getfile(file,res){
         if (err) {
             return res.send({ "error": err }) //could send local error image
         }
-        res.writeHead(200, {'Content-Type': 'image/png'});
+        res.writeHead(200, //to make sure email clients don't cache files. Review when making full blown file server.
+            {'Content-Type': 'image/png',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Cache-Control': 'post-check=0, pre-check=0',
+            'Pragma': 'no-cache'})
         res.write(data.Body, 'binary');
         res.end(null, 'binary');
         return //res.send(data)
