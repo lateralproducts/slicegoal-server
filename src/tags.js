@@ -22,44 +22,113 @@ export const resolvers = {
             const db = await DbConnection.Get()
 
             const GoalTags = db.collection('goaltags')
+            const Insights = db.collection('insights')
             const InsightTags = db.collection('insighttags')
+            const Spaced = db.collection('spaced')
             const Areas = db.collection('areas')
 
             let alltags // goaltags or insighttags
             let tagsonarea
+
+            // ignore first area (start area) for spaced scenario (want to return a tag for it)
+            args.type === 'spaced' ? args.areas.splice(0, 1) : null
+            const inputareas = args.areas
+
             if(args.type === 'insights') {
                 alltags = await InsightTags.find({ profileid: getprofileid(req.session) })
                     .toArray()
-                tagsonarea = await InsightTags.find({ area: args.areas[0]._id })
+                tagsonarea = await InsightTags.find({ area: inputareas[0]._id })
                     .toArray()
             }
             else if(args.type === 'goals') {
                 alltags = await GoalTags.find({ profileid: getprofileid(req.session) })
                     .toArray()
-                tagsonarea = await GoalTags.find({ area: args.areas[0]._id })
+                tagsonarea = await GoalTags.find({ area: inputareas[0]._id })
                     .toArray()
+            } 
+
+            // Check insights for which prompt is set 
+            const insightspromptset = (await Insights.find({
+                profileid: getprofileid(req.session),
+                $and: [
+                    { prompt: {$ne: null} },
+                    { prompt: {$ne: ''} }
+                ]
+            })
+            .toArray())
+            .map(insight => {
+                return insight._id.toString()
+            })
+
+            // Check spaced entries which have a memory prompt due
+            const insightspromptdue = (await Spaced.find(
+                {
+                    profileid: getprofileid(req.session),
+                    $or: [
+                        { datenext: null },
+                        { datenext: { $lte: new Date() } }
+                    ]
+                }
+            )
+            .toArray())
+            .map(spaced => {
+                return spaced.insightid.toString()
+            })
+
+            if(args.type === 'spaced') {
+
+                alltags = await InsightTags.find({ 
+                    $and: [
+                        { profileid: getprofileid(req.session)},
+                        { insightid: {$in: insightspromptset }},
+                        { insightid: {$in: insightspromptdue }}
+                    ]
+                 })
+                .toArray()
+
+                tagsonarea = await InsightTags.find({ 
+                    $and: [
+                        inputareas.length > 0 ? { area: inputareas[0]._id } : {},
+                        { profileid: getprofileid(req.session)},
+                        { insightid: {$in: insightspromptset }},
+                        { insightid: {$in: insightspromptdue }}
+                    ]
+                })
+                .toArray()
+            } else {
+                // Initialise to only tags for which there exists a tag on first area to that tags insight
+                alltags = alltags.filter(tag => {
+                    return tagsonarea.some(tagonarea => tagonarea.insightid === tag.insightid)
+                })
             }
 
             // If no tags return empty array
             if(!alltags)
                 return []
 
-            // Initialise to only tags for which there exists a tag on first area to that tags insight
-            alltags = alltags.filter(tag => {
-                return tagsonarea.some(tagonarea => tagonarea.insightid === tag.insightid)
-            })
-
             let keeptags = alltags // intialise to keep all initialised alltags
             for(let i=1; i < args.areas.length; i++) {
+
                 // tags on current area
                 tagsonarea = alltags.filter(tag => 
                     tag.area === args.areas[i]._id
                 )
-                // keep only tags for which there exists a tag on current area to that tags insight 
-                keeptags = keeptags.filter(tag => {
-                    return tagsonarea.some(tagonarea => 
-                        tagonarea.insightid === tag.insightid
-                    )})
+                // keep only tags for which there exists a tag on current area to that tags insight
+                if(args.type === 'insights') {
+                    keeptags = keeptags.filter(tag => {
+                        return tagsonarea.some(tagonarea =>
+                            tagonarea.insightid === tag.insightid
+                        )
+                    })
+                }
+                else if(args.type === 'spaced') {
+                    keeptags = keeptags.filter(tag => {
+                        return (tagsonarea.some(tagonarea => tagonarea.insightid === tag.insightid) &&
+                            insightspromptset.some(id => { return id === tag.insightid }) &&
+                            insightspromptdue.some(id => { return id === tag.insightid })
+                        )
+                    })
+                }
             }
 
             // Filter out input areas and take only areaid from tags
@@ -73,9 +142,90 @@ export const resolvers = {
                 
                 return (await Areas.find({_id: {$in: areaobjectids}})
                     .toArray())
+                    .map(area => {
+                        return {
+                            _id: area._id.toString(),
+                            name: area.name,
+                            inputareas: inputareas
+                        }
+                    })
             }
             else 
                 return []
         } 
+    },
+    Area: {
+        count: async(parent, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+            const InsightTags = db.collection('insighttags')
+            const Spaced = db.collection('spaced')
+
+            // Check insights with prompt set
+            const insightspromptset = (await Insights.find({
+                profileid: getprofileid(req.session),
+                $and: [
+                    { prompt: {$ne: null} },
+                    { prompt: {$ne: ''} }
+                ]
+            })
+            .toArray())
+            .map(insight => {
+                return insight._id.toString()
+            })
+
+            // Check spaced entries which have a memory prompt due
+            const insightspromptdue = (await Spaced.find(
+                {
+                    profileid: getprofileid(req.session),
+                    $or: [
+                        { datenext: null },
+                        { datenext: { $lte: new Date() } }
+                    ]
+                }
+            )
+            .toArray())
+            .map(spaced => {
+                return spaced.insightid.toString()
+            })
+
+            let alltags = await InsightTags.find({ 
+                $and: [
+                    { profileid: getprofileid(req.session)},
+                    { insightid: {$in: insightspromptset }},
+                    { insightid: {$in: insightspromptdue }}
+                ]
+             })
+            .toArray()
+
+            let tagsonarea = await InsightTags.find({ 
+                $and: [
+                    { area: parent._id },
+                    { profileid: getprofileid(req.session)},
+                    { insightid: {$in: insightspromptset }},
+                    { insightid: {$in: insightspromptdue }}
+                ]
+            })
+            .toArray()
+
+            if(!alltags) return []
+
+            let keeptags = tagsonarea // intialise to keep all tags on area
+            for(let i=0; i < parent.inputareas.length; i++) {
+
+                tagsonarea = alltags.filter(tag => 
+                    tag.area === parent.inputareas[i]._id
+                )
+
+                keeptags = keeptags.filter(tag => {
+                    return (tagsonarea.some(tagonarea => tagonarea.insightid === tag.insightid) &&
+                        insightspromptset.some(id => { return id === tag.insightid }) &&
+                        insightspromptdue.some(id => { return id === tag.insightid })
+                    )
+                })
+            }
+
+            return keeptags.length
+        }
     }
 }
