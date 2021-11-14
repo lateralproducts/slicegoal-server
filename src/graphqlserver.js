@@ -155,7 +155,6 @@ export const graphql = async() => {
             //res.sendFile(pathDir);
             if(req.session.user) console.log(req.session.user.firstname)
             console.log(getipaddress(req))
-            getfile(path.basename(req.path), res)
 
             //logaccess
             if (path.basename(req.path)=== "cavesteplong.png") {
@@ -164,6 +163,8 @@ export const graphql = async() => {
                     updateIx(item.ix,'seen','open','email')
                     console.log("cavestep image accessed - " + item.ix)
                 }
+            } else {
+                getfile(path.basename(req.path), res)
             }
 
         }); // ✔️🚀
