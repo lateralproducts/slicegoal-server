@@ -158,6 +158,7 @@ export const graphql = async() => {
 
             //logaccess
             if (path.basename(req.path)=== "cavesteplong.png") {
+                getfile(path.basename(req.path), res)
                 const item = req.query
                 if(item.ix) {
                     updateIx(item.ix,'seen','open','email')
