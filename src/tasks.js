@@ -58,7 +58,7 @@ export const resolvers = {
                     profile: getprofileid(req.session),
                     $and: [
                         {'starttime.time': {$gte: prevmidnight}},
-                        {'starttime.time': {$lte: nextmidnight}}
+                        {'starttime.time': {$lt: nextmidnight}}
                    ]
                 }
             )
@@ -71,7 +71,6 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            args.profile = getprofileid(req.session)
 
             const setdate = new Date(args.date)
             const starttime = startTime(setdate, args.starttime)
@@ -121,7 +120,7 @@ function startTime(setdate, starttime) {
         setdate.getFullYear(), 
         setdate.getMonth(), 
         setdate.getDate(), 
-        starttime.hours || (- setdate.getTimezoneOffset() / 60), 
+        starttime.hours || 0, 
         starttime.minutes || 0
     )
 
@@ -141,7 +140,7 @@ function endTime(setdate, endtime, starttime) {
         setdate.getFullYear(), 
         setdate.getMonth(), 
         setdate.getDate(), 
-        endtime.hours, 
+        endtime.hours || 0, 
         endtime.minutes || 0
     ) : daylater
 
