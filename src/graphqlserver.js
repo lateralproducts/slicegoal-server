@@ -19,6 +19,7 @@ import { schema as areaSchema } from './areas'
 import { schema as insightSchema } from './insights'
 import { schema as goalSchema } from './goals'
 import { schema as tagSchema } from './tags'
+import { schema as taskSchema } from './tasks'
 
 //import queries and mutations
 import { typeDefs as userQueryMutation } from './users'
@@ -29,6 +30,7 @@ import { typeDefs as feedbackQueryMutation } from './feedback'
 import { typeDefs as goalQueryMutation } from './goals'
 import { typeDefs as webQueryMutation } from './website'
 import { typeDefs as tagQueryMutation } from './tags'
+import { typeDefs as taskQueryMutation } from './tasks'
 
 //import resolvers
 import { resolvers as userResolvers } from './users'
@@ -39,6 +41,7 @@ import { resolvers as feedbackResolvers } from './feedback'
 import { resolvers as goalResolvers } from './goals'
 import { resolvers as webResolvers } from './website'
 import { resolvers as tagResolvers } from './tags'
+import { resolvers as taskResolvers } from './tasks'
 
 //upload()
 import { getfile } from './storage'
@@ -53,7 +56,7 @@ console.log('environment: ' + process.env.npm_lifecycle_event)
 
 export const graphql = async() => {
     try {
-        var path = require('path');
+        var path = require('path')
         
         const opts = {
             port: 3001,
@@ -86,6 +89,7 @@ export const graphql = async() => {
                 insightSchema,
                 goalSchema,
                 tagSchema,
+                taskSchema,
                 paymentQueryMutation,
                 userQueryMutation,
                 insightQueryMutation,
@@ -93,7 +97,8 @@ export const graphql = async() => {
                 goalQueryMutation,
                 feedbackQueryMutation,
                 webQueryMutation,
-                tagQueryMutation
+                tagQueryMutation,
+                taskQueryMutation
             ],
 
             resolvers: merge(
@@ -104,7 +109,8 @@ export const graphql = async() => {
                 goalResolvers,
                 feedbackResolvers,
                 webResolvers,
-                tagResolvers
+                tagResolvers,
+                taskResolvers
             ),
             context
         })
@@ -147,7 +153,7 @@ export const graphql = async() => {
             if(req.session.user) console.log(req.session.user.firstname)
 
             getfile(path.basename(req.path), res)
-        }); // ✔️🚀
+        }) // ✔️🚀
 
     } catch (e) {
         console.log(e)

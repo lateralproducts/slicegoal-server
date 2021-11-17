@@ -1,9 +1,9 @@
-const AWS = require('aws-sdk');
-const fs = require('fs');
-const path = require('path');
+const AWS = require('aws-sdk')
+const fs = require('fs')
+const path = require('path')
 
 const S3 = new AWS.S3({
-    signatureVersion: "v4",
+    signatureVersion: 'v4',
     apiVersion: '2006-03-01',
     accessKeyId: `${process.env.AWS_ACCESS_KEY_ID}`,
     secretAccessKey: `${process.env.AWS_SECRET_ACCESS_KEY}`,
@@ -33,11 +33,11 @@ export function getfile(file,res){
         Bucket: s3bucket
     }, (err, data) => {
         if (err) {
-            return res.send({ "error": err }) //could send local error image
+            return res.send({ 'error': err }) //could send local error image
         }
-        res.writeHead(200, {'Content-Type': 'image/png'});
-        res.write(data.Body, 'binary');
-        res.end(null, 'binary');
+        res.writeHead(200, {'Content-Type': 'image/png'})
+        res.write(data.Body, 'binary')
+        res.end(null, 'binary')
         return //res.send(data)
     })
 }
