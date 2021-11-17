@@ -1,8 +1,10 @@
-import express from 'express'
+//import express from 'express'
 //import bodyParser from "body-parser";
 //import { graphqlExpress, graphiqlExpress } from "graphql-server-express";
 //import { makeExecutableSchema } from "graphql-tools";
-import cors from 'cors'
+//import cors from 'cors'
+
+//import { querytojson } from './website'
 
 //import { AsyncResource } from "async_hooks";
 
@@ -12,6 +14,8 @@ import ms from 'ms'
 import { Queries } from './schema/queries'
 import { Mutations } from './schema/mutations'
 import { merge } from 'lodash'
+import { updateIx } from './interactions'
+import { getipaddress } from './users'
 
 //import schemas
 import { schema as userSchema } from './users'
@@ -20,6 +24,7 @@ import { schema as insightSchema } from './insights'
 import { schema as goalSchema } from './goals'
 import { schema as tagSchema } from './tags'
 import { schema as taskSchema } from './tasks'
+import { schema as sourceSchema } from './sources'
 
 //import queries and mutations
 import { typeDefs as userQueryMutation } from './users'
@@ -31,6 +36,7 @@ import { typeDefs as goalQueryMutation } from './goals'
 import { typeDefs as webQueryMutation } from './website'
 import { typeDefs as tagQueryMutation } from './tags'
 import { typeDefs as taskQueryMutation } from './tasks'
+import { typeDefs as sourceMutation } from './sources'
 
 //import resolvers
 import { resolvers as userResolvers } from './users'
@@ -42,6 +48,7 @@ import { resolvers as goalResolvers } from './goals'
 import { resolvers as webResolvers } from './website'
 import { resolvers as tagResolvers } from './tags'
 import { resolvers as taskResolvers } from './tasks'
+import { resolvers as sourceResolvers } from './sources'
 
 //upload()
 import { getfile } from './storage'
@@ -90,6 +97,7 @@ export const graphql = async() => {
                 goalSchema,
                 tagSchema,
                 taskSchema,
+                sourceSchema,
                 paymentQueryMutation,
                 userQueryMutation,
                 insightQueryMutation,
@@ -98,7 +106,8 @@ export const graphql = async() => {
                 feedbackQueryMutation,
                 webQueryMutation,
                 tagQueryMutation,
-                taskQueryMutation
+                taskQueryMutation,
+                sourceMutation
             ],
 
             resolvers: merge(
@@ -110,7 +119,8 @@ export const graphql = async() => {
                 feedbackResolvers,
                 webResolvers,
                 tagResolvers,
-                taskResolvers
+                taskResolvers,
+                sourceResolvers
             ),
             context
         })
@@ -149,10 +159,21 @@ export const graphql = async() => {
             // here you can use your way to get the path dir ..  
             //const pathDir = path.join(__dirname, "files/cavesteplong.png"); //using local files
             //res.sendFile(pathDir);
-
             if(req.session.user) console.log(req.session.user.firstname)
+            console.log(getipaddress(req))
 
-            getfile(path.basename(req.path), res)
+            //logaccess
+            if (path.basename(req.path)=== 'cavesteplong.png') {
+                getfile(path.basename(req.path), res)
+                const item = req.query
+                if(item.ix) {
+                    updateIx(item.ix,'seen','open','email')
+                    console.log('cavestep image accessed - ' + item.ix)
+                }
+            } else {
+                getfile(path.basename(req.path), res)
+            }
+
         }) // ✔️🚀
 
     } catch (e) {

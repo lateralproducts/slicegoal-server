@@ -106,7 +106,8 @@ export async function emailNewClient(
     page,
 ) {
     let to = client.email
-    let subject = coach.firstname ? (coach.firstname + ' ' + coach.lastname + ' invited you to Cavestep') : 'You’ve been invited to Cavestep' //to Cavestep🦶
+    let name = `${coach.firstname} ${coach.lastname || ''}`
+    let subject = name ? (`${name.trim()}` + ' invited you to Cavestep') : 'You’ve been invited to Cavestep' //to Cavestep🦶
     let email = Mustache.render(inviteToCoachingWheel , {
         name: client.firstname ? client.firstname : '',
         logopath: LOGO_PATH_URL,
@@ -119,7 +120,7 @@ export async function emailNewClient(
     })
 
     sendEmail(to, subject, email)
-    to = 'daniel@cavestep.com'
+    to = `${process.env.NOTIFICATION_EMAIL}`
     subject = 'New User!' //to Cavestep🦶
     email = Mustache.render(adminEmailNewUser, {
         clientname: client.firstname + client.lastname,
@@ -187,7 +188,7 @@ export async function emailFeedback(user, feedback, datetime) {
 }
 
 export async function newUserNotificationEmail(user) {
-    let to = `${process.env.NEW_USER_NOTIFICATION_EMAIL_ADDRESS}`
+    let to = `${process.env.NOTIFICATION_EMAIL}`
     let subject = `New Cavestep user! ${user.firstname} ${user.lastname || ''}`
     let email = Mustache.render(newUserTemplate, {
         name: `${user.firstname} ${user.lastname || ''}`,
@@ -199,19 +200,21 @@ export async function newUserNotificationEmail(user) {
 export async function shareInsightEmail( 
     insight,
     sharer,
-    receiverEmail,
+    receiver,
     shareNote,
-    acceptLink
+    acceptLink,
+    interactionid
     ) { 
         const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
-        const subject = `${sharerName} shared an insight`
+        const subject = `${sharerName.trim()} shared an insight`
         const email = Mustache.render(shareInsightTemplate, {
             insightText: insight.answer,
             sharerName: sharerName,
             sharerEmail: `${sharer.email}`,
             logopath: LOGO_PATH_URL,
             acceptLink: acceptLink,
-            shareNote: shareNote
+            shareNote: shareNote,
+            interactionid: interactionid,
         })
-        return await sendEmail(receiverEmail, subject, email)
+        return await sendEmail(receiver.email, subject, email)
     }
