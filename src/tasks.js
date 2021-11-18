@@ -93,14 +93,15 @@ export const resolvers = {
             const starttime = startTime(setdate, args.starttime)
             const endtime = endTime(setdate, args.endtime, starttime)
 
+            var updates = new Object()
+            updates.starttime = starttime
+            updates.endtime = endtime
+            updates.title = args.title
+            updates.description = args.description
+
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
-                [
-                    {$set: {starttime: starttime}},
-                    {$set: {endtime: endtime}},
-                    {$set: {title: args.title}},
-                    {$set: {description: args.description}}
-                ]
+                {$set: updates}
             )).result.ok === 1
         },
         deleteTask: async(_, args, { req }) => {
