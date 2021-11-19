@@ -8,11 +8,13 @@ export const typeDefs = `
     extend type Query {
         sources: [Source]
         insightSources(insightid: String!): [SourceTag]
-        sourceInsights(sourceid: String!): [SourceInsight]
+        sourceInsights(sourceid: String!): SourceInsightList
     }
 
     extend type Mutation {
-        createSource(name: String!): Source
+        createSource(name: String!, url: String, notes: String): Source
+        editSource(sourceid: String!, name: String, url: String, notes: String) : Boolean
+        deleteSource(sourceid: String!): Boolean
     }
 `
 
@@ -23,6 +25,8 @@ export const schema = `
         name: String
         datetime: String
         profileid: String
+        notes: String
+        url: String
     }
 
     type SourceTag {
@@ -39,6 +43,12 @@ export const schema = `
         note: String
         name: String
         _id: String!
+    }
+
+    type SourceInsightList {
+        insightlist: [SourceInsight]
+        notes: String
+        url: String
     }
 
     type SourceInsight {
@@ -73,6 +83,7 @@ export const resolvers = {
         sourceInsights: async function(_, { sourceid }, { req }) {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
+            const Sources = db.collection('sources')
             const SourceTags = db.collection('sourcetags')
 
             const sourcetags = await SourceTags.find({
@@ -83,13 +94,20 @@ export const resolvers = {
             )
             .toArray()
 
-            return sourcetags.map(tag => {
+            const insightlist = sourcetags.map(tag => {
                 return {
                     insightid: ObjectId(tag.resourceid),
                     pinned: tag.pinned || false
                 }
             })
 
+            const source = await Sources.findOne({ _id: ObjectId(sourceid)})
+
+            return {
+                notes: source.notes,
+                url: source.url,
+                insightlist: insightlist
+            }
         }
     },
     Mutation: {
@@ -99,9 +117,12 @@ export const resolvers = {
             const Sources = db.collection('sources')
 
             return await Sources.insertOne(
-                {profileid: getprofileid(req.session),
-                datetime: new Date(),
-                name: args.name
+                {
+                    profileid: getprofileid(req.session),
+                    datetime: new Date(),
+                    name: args.name,
+                    url: args.url,
+                    notes: args.notes
                 }
             )
             .then(source => {
@@ -110,6 +131,29 @@ export const resolvers = {
                     name: args.name
                 }
             })
+        },
+        editSource: async function(_, args, { req }) {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Sources = db.collection('sources')
+
+            return (await Sources.updateOne(
+                {_id: ObjectId(args.sourceid)},
+                {$set: {name: args.name, url: args.url, notes: args.notes}}
+            )).matchedCount === 1
+
+        },
+        deleteSource: async function(_, { sourceid }, { req }) {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Sources = db.collection('sources')
+            const SourceTags = db.collection('sourcetags')
+
+            // Remove tags to source and then tag itself 
+            return (await SourceTags.remove({ sourceid: sourceid })
+                .then(() => {
+                    return Sources.deleteOne({ _id: ObjectId(sourceid) })
+                })).deleteCount === 1
         }
     },
     SourceTag: {
