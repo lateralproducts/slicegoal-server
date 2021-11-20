@@ -102,12 +102,13 @@ export async function emailGoalNudge(user, links, goals) {
     sendEmail(to, subject, email)
 }
 
-export async function emailStats(email, stats) {
+export async function emailStats(email, stats, title) { //stats an array of metrics and measures {metric,measure}
     let to = email
-    let subject = ' Stats for Cavestep'
+    let subject = title
     const body = Mustache.render(dailyStats, {
         stats: stats,
         logopath: LOGO_PATH_URL,
+        title: title,
     })
     sendEmail(to, subject, body)
 }

@@ -44,5 +44,6 @@ export async function createreport(to,fromdate,todate){
     //{_id:"$campaign.ad", count: { $sum : 1 }}
 
     //email...
-    to.map(email => emailStats( email, stats ))
+    var title =  'Stats for ' + fromdate.getDate()  + "-" + (fromdate.getMonth()+1) + "-" + fromdate.getFullYear()
+    to.map(email => emailStats( email, stats, title ))
 }

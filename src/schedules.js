@@ -5,12 +5,17 @@ import { createreport } from './reporting'
 
 let schedule = require('node-schedule')
 
-schedule.scheduleJob({ hour: 8, minute: 0 }, function() {
+schedule.scheduleJob({ hour: 20, minute: 0 }, function() {
     var today = new Date()
-    today.setHours(0,0,0,0)
     var start = new Date()
     start.setDate(today.getDate() - 1)
     var end = today
+    //set to midnight
+    start.setHours(0,0,0,0)
+    end.setHours(0,0,0,0)
+    //set to Australian boundaries
+    start.setHours(start.getHours() - 11)
+    end.setHours(end.getHours() - 11)
     createreport(['daniel@lateralproducts.com'], start, end)
 })
 
