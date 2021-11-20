@@ -1,19 +1,29 @@
 import { ObjectId } from 'mongodb'
 import DbConnection from './database'
 import { emailGoalNudge, emailRerankNudge } from './emails'
+import { createreport } from './reporting'
 
 let schedule = require('node-schedule')
 
-schedule.scheduleJob({ hour: 14, minute: 53 }, function() {
-    //set to UTC time for server
-    goalnudge('daniel@lateralproducts.com')
+schedule.scheduleJob({ hour: 8, minute: 0 }, function() {
+    var today = new Date()
+    today.setHours(0,0,0,0)
+    var start = new Date()
+    start.setDate(today.getDate() - 1)
+    var end = today
+    createreport(['daniel@lateralproducts.com'], start, end)
 })
 
-schedule.scheduleJob({ dayOfWeek: 0, hour: 22, minute: 0 }, function() {
+/* schedule.scheduleJob({ hour: 8, minute: 0 }, function() {
+    //set to UTC time for server
+    goalnudge('daniel@lateralproducts.com')
+})  */
+
+//schedule.scheduleJob({ dayOfWeek: 0, hour: 22, minute: 0 }, function() {
     //nudging once a week
     //set to UTC time for server 22 UTC = 8am Melbourne Time. dayOfWeek: 0, hour: 22, minute: 0 is 8am Monday in Melbourne
     //ranknudge(); //holding off sending these messages again for a little bit.
-})
+//})
 
 async function goalnudge(email) {
     const db = await DbConnection.Get()

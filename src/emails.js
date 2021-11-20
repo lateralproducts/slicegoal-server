@@ -48,6 +48,10 @@ const goalNudge = fs
     .readFileSync(__dirname + '/emailtemplates/goalNudge.html')
     .toString()
 
+const dailyStats = fs
+    .readFileSync(__dirname + '/emailtemplates/dailystats.html')
+    .toString()
+
 const inviteToCoachingWheel = fs
     .readFileSync(__dirname + '/emailtemplates/inviteToCoachingWheel.html')
     .toString()
@@ -96,6 +100,16 @@ export async function emailGoalNudge(user, links, goals) {
         user: user
     })
     sendEmail(to, subject, email)
+}
+
+export async function emailStats(email, stats) {
+    let to = email
+    let subject = ' Stats for Cavestep'
+    const body = Mustache.render(dailyStats, {
+        stats: stats,
+        logopath: LOGO_PATH_URL,
+    })
+    sendEmail(to, subject, body)
 }
 
 export async function emailNewClient(
