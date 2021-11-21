@@ -62,7 +62,7 @@ export const resolvers = {
                    ]
                 }
             )
-            .sort({'starttime.specified': 1, 'starttime.time': 1})
+            .sort({'starttime.specified': -1, 'starttime.time': 1})
             .toArray()
         }
     },
