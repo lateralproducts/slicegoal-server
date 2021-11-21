@@ -4,7 +4,7 @@
 //import { makeExecutableSchema } from "graphql-tools";
 //import cors from 'cors'
 
-import { querytojson } from "./website"
+//import { querytojson } from './website'
 
 //import { AsyncResource } from "async_hooks";
 
@@ -23,6 +23,7 @@ import { schema as areaSchema } from './areas'
 import { schema as insightSchema } from './insights'
 import { schema as goalSchema } from './goals'
 import { schema as tagSchema } from './tags'
+import { schema as taskSchema } from './tasks'
 import { schema as sourceSchema } from './sources'
 
 //import queries and mutations
@@ -34,6 +35,7 @@ import { typeDefs as feedbackQueryMutation } from './feedback'
 import { typeDefs as goalQueryMutation } from './goals'
 import { typeDefs as webQueryMutation } from './website'
 import { typeDefs as tagQueryMutation } from './tags'
+import { typeDefs as taskQueryMutation } from './tasks'
 import { typeDefs as sourceMutation } from './sources'
 
 //import resolvers
@@ -45,6 +47,7 @@ import { resolvers as feedbackResolvers } from './feedback'
 import { resolvers as goalResolvers } from './goals'
 import { resolvers as webResolvers } from './website'
 import { resolvers as tagResolvers } from './tags'
+import { resolvers as taskResolvers } from './tasks'
 import { resolvers as sourceResolvers } from './sources'
 
 //upload()
@@ -60,7 +63,7 @@ console.log('environment: ' + process.env.npm_lifecycle_event)
 
 export const graphql = async() => {
     try {
-        var path = require('path');
+        var path = require('path')
         
         const opts = {
             port: 3001,
@@ -93,6 +96,7 @@ export const graphql = async() => {
                 insightSchema,
                 goalSchema,
                 tagSchema,
+                taskSchema,
                 sourceSchema,
                 paymentQueryMutation,
                 userQueryMutation,
@@ -102,6 +106,7 @@ export const graphql = async() => {
                 feedbackQueryMutation,
                 webQueryMutation,
                 tagQueryMutation,
+                taskQueryMutation,
                 sourceMutation
             ],
 
@@ -114,6 +119,7 @@ export const graphql = async() => {
                 feedbackResolvers,
                 webResolvers,
                 tagResolvers,
+                taskResolvers,
                 sourceResolvers
             ),
             context
@@ -157,18 +163,18 @@ export const graphql = async() => {
             console.log(getipaddress(req))
 
             //logaccess
-            if (path.basename(req.path)=== "cavesteplong.png") {
+            if (path.basename(req.path)=== 'cavesteplong.png') {
                 getfile(path.basename(req.path), res)
                 const item = req.query
                 if(item.ix) {
                     updateIx(item.ix,'seen','open','email')
-                    console.log("cavestep image accessed - " + item.ix)
+                    console.log('cavestep image accessed - ' + item.ix)
                 }
             } else {
                 getfile(path.basename(req.path), res)
             }
 
-        }); // ✔️🚀
+        }) // ✔️🚀
 
     } catch (e) {
         console.log(e)
