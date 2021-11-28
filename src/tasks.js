@@ -7,63 +7,46 @@ export const schema = `
     type Task {
         _id: String
         date: String
-        starttime: StoredTime
-        endtime: StoredTime
+        starttime: String
+        endtime: String
         title: String
         description: String
-    }
-
-    input Time {
-        hours: Int
-        minutes: Int
-    }
-
-    type StoredTime {
-        specified: Boolean
-        time: String
     }
 `
 
 export const typeDefs = `
     extend type Query {
-        tasks(date: String) : [Task]
+        tasks(starttime: String, endtime: String) : [Task]
     }
     
     extend type Mutation {
-        newTask(date: String!, starttime: Time, endtime: Time, title: String!, description: String) : Boolean
-        editTask(taskid: String!, date: String, starttime: Time, endtime: Time, title: String, description: String) : Boolean
+        newTask(starttime: String, endtime: String, title: String!, description: String) : Boolean
+        editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String) : Boolean
         deleteTask(taskid: String!) : Boolean
     }
 `
 
 export const resolvers = {
     Query: {
-        tasks: async(_, { date }, { req }) => {
+        tasks: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
-            const dateobj = new Date(date)
-            const prevmidnight = new Date(
-                dateobj.getFullYear(),
-                dateobj.getMonth(),
-                dateobj.getDate()
-            )
+            const starttime = new Date(args.starttime)
+            const endtime = new Date(args.endtime)
 
-            const nextmidnight = new Date(prevmidnight)
-            nextmidnight.setDate(nextmidnight.getDate() + 1)
-
-            return await Tasks.find(
+            const tasks = await Tasks.find(
                 {
                     profile: getprofileid(req.session),
                     $and: [
-                        {'starttime.time': {$gte: prevmidnight}},
-                        {'starttime.time': {$lt: nextmidnight}}
+                        {'starttime': {$gte: starttime}},
+                        {'starttime': {$lt: endtime}}
                    ]
                 }
             )
-            .sort({'starttime.specified': -1, 'starttime.time': 1})
-            .toArray()
+            .sort({daytask: 1, starttime: 1}).toArray()
+            return tasks
         }
     },
     Mutation: {
@@ -72,30 +55,25 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
-            const setdate = new Date(args.date)
-            const starttime = startTime(setdate, args.starttime)
-            const endtime = endTime(setdate, args.endtime, starttime)
+            var task = new Object(args)
+            task.starttime = new Date(args.starttime)
+            if (args.endtime) {task.endtime = new Date(args.endtime)}
+            else task.daytask = true
+            task.title = args.title
+            task.description = args.description
+            task.profile = getprofileid(req.session)
 
-            return (await Tasks.insertOne({
-                starttime: starttime,
-                endtime: endtime,
-                title: args.title,
-                description: args.description,
-                profile: getprofileid(req.session)
-            })).result.ok === 1
+            return (await Tasks.insertOne(task)).result.ok === 1
         },
         editTask: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
-            const setdate = new Date(args.date)
-            const starttime = startTime(setdate, args.starttime)
-            const endtime = endTime(setdate, args.endtime, starttime)
-
             var updates = new Object()
-            updates.starttime = starttime
-            updates.endtime = endtime
+            updates.starttime = new Date(args.starttime)
+            if (args.endtime) {updates.endtime = new Date(args.endtime)}
+            else updates.daytask = true
             updates.title = args.title
             updates.description = args.description
 
@@ -111,42 +89,5 @@ export const resolvers = {
 
             return (await Tasks.deleteOne({_id: ObjectId(args.taskid)})).result.ok === 1
         }
-    }
-}
-
-// specify the start time object - defaults to UTC 00:00 of date
-function startTime(setdate, starttime) {
-    
-    const time =  new Date(
-        setdate.getFullYear(), 
-        setdate.getMonth(), 
-        setdate.getDate(), 
-        starttime.hours || 0, 
-        starttime.minutes || 0
-    )
-
-    return {
-        specified: starttime.hours ? true : false,
-        time: time 
-    }
-
-}
-
-// specify the end time - defaults to 24 hours after start 
-function endTime(setdate, endtime, starttime) {
-    const daylater = new Date(starttime.time)
-    daylater.setDate(daylater.getDate() + 1)
-
-    const time = endtime.hours ? new Date(
-        setdate.getFullYear(), 
-        setdate.getMonth(), 
-        setdate.getDate(), 
-        endtime.hours || 0, 
-        endtime.minutes || 0
-    ) : daylater
-
-    return {
-        specified: endtime.hours ? true : false,
-        time: time
     }
 }
