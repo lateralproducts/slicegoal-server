@@ -21,6 +21,7 @@ export const typeDefs = `
         updateGoalOrder(goals: [String]): Boolean
         savePomodoro(area: String, links: [String], notes: String, goal: String, datetime: String, minutes: Int): Boolean!
         checkKey(goalId: String!, index: Int, check: Boolean): Boolean
+        removeKey(goalid: String!, index: Int): Boolean
     }
     
     extend type Mutation {
@@ -49,6 +50,7 @@ export const schema = `
         keys: [Key]
         time: PomodoroData
         links: [Area]
+        tasks: [Task]
     }
 
     input KeyIn {
@@ -266,6 +268,18 @@ export const resolvers = {
         }
     },
     Goal: {
+        tasks: async({ _id }, _, { req }) => {
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            const tasks = await Tasks.find(
+                {
+                    profile: getprofileid(req.session),
+                    goal: _id.toString()
+                }
+            )
+            .sort({daytask: 1, starttime: 1}).toArray()
+            return tasks
+        },
         links: async({ links }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -362,6 +376,26 @@ export const resolvers = {
                         [`keys.${args.index}.date`]: new Date()
                     }
                 },
+            )
+            return true
+        },
+        removeKey: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Goals = db.collection('goals')
+            await Goals.updateOne(
+                {
+                    _id: ObjectId(args.goalid),
+                    profileid: getprofileid(req.session)
+                },
+                { $unset: {[`keys.${args.index}`]:1}} //apparently you need to $unset then $pull to completely remove a field from an array.
+            )
+            await Goals.updateOne(
+                {
+                    _id: ObjectId(args.goalid),
+                    profileid: getprofileid(req.session)
+                },
+                { $pull: {keys:null}}
             )
             return true
         },
