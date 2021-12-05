@@ -15,8 +15,8 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        createGoal(datetime: String, goal: String, notes: String, keys:[KeyIn], areatags: [AreaTagIn], links: [String]): Goal
-        updateGoal(goalId: String!, goal: String, notes: String, datetime: String, complete: String, keys:[KeyIn]): Goal
+        createGoal(datetime: String, goal: String, notes: String, tasks:[KeyIn], areatags: [AreaTagIn], links: [String]): Goal
+        updateGoal(goalId: String!, goal: String, notes: String, datetime: String, complete: String): Goal
         removeGoal(goalid: String!): Boolean
         updateGoalOrder(goals: [String]): Boolean
         savePomodoro(area: String, links: [String], notes: String, goal: String, datetime: String, minutes: Int): Boolean!
@@ -613,8 +613,19 @@ async function creategoal(newgoal, req) {
     const Goals = db.collection('goals')
     const GoalTags = db.collection('goaltags')
     const Areas = db.collection('areas')
+    const Tasks = db.collection('tasks')
     try {
         Goals.insertOne(newgoal).then(result => {
+            if (newgoal.tasks){
+                newgoal.tasks.map(async task => {   
+                    var newtask = new Object()
+                    newtask.title = task.title
+                    newtask.complete = task.checked
+                    newtask.goal = result.insertedId.toString()
+                    newtask.profile = getprofileid(req.session)
+                    Tasks.insertOne(newtask)
+                })
+            }
             if (newgoal.areatags)
                 newgoal.areatags.map(async link => {
                     let areaid = link.area._id

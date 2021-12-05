@@ -361,7 +361,8 @@ export const resolvers = {
                                     checks: {
                                         time: new Date(),
                                         result: args.marked,
-                                        check: args.check
+                                        check: args.check,
+                                        lastdate: spaced.datenext
                                     }
                                 }
                             },
