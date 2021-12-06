@@ -14,9 +14,9 @@ schedule.scheduleJob({ hour: 21, minute: 30 }, function() { //21:30 UTC = 8:30 S
     start.setHours(0,0,0,0)
     end.setHours(0,0,0,0)
     //set to Australian boundaries
-    start.setHours(start.getHours() - 11)
-    end.setHours(end.getHours() - 11)
-    createreport(['test@cavestep.com'], start, end)
+    start.setHours(start.getHours() - 11) //-11 is Australian time
+    end.setHours(end.getHours() - 11) //-11 is Australian time
+    createreport(['daniel@lateralproducts.com'], start, end)
 })
 
 /* schedule.scheduleJob({ hour: 8, minute: 0 }, function() {
