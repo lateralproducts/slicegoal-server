@@ -14,8 +14,8 @@ schedule.scheduleJob({ hour: 21, minute: 30 }, function() { //21:30 UTC = 8:30 S
     start.setHours(0,0,0,0)
     end.setHours(0,0,0,0)
     //set to Australian boundaries
-    start.setHours(start.getHours() - 11) //-11 is Australian time
-    end.setHours(end.getHours() - 11) //-11 is Australian time
+    start.setHours(start.getHours() - 11) //-11 is Australian time in UTC
+    end.setHours(end.getHours() - 11) //-11 is Australian time in UTC
     createreport(['daniel@lateralproducts.com'], start, end)
 })
 

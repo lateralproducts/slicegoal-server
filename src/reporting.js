@@ -31,6 +31,8 @@ export async function createreport(to,fromdate,todate){
     }).toArray()
     stats.push({metric: "active users", measure: activesessions.length})
 
+    fromdate.setHours(fromdate.getHours() + 11) //+ 11 hours for Aus time
+
     //send email...
     var title =  'Stats for ' + fromdate.getDate()  + "-" + (fromdate.getMonth()+1) + "-" + fromdate.getFullYear()
     to.map(email => emailStats( email, stats, title ))
