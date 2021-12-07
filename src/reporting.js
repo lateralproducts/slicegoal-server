@@ -6,6 +6,25 @@ export async function createreport(to,fromdate,todate){
     const Sessions = db.collection('sessions')
 
     var stats = [] //{metric, measure}
+
+    const websitelanded = await Sessions.find({
+        'pages.1': {$exists: true}, //not bouncing. Opening more than one page.
+        'campaign.campaign': {$exists: false},
+        email: null,
+        landed: {$gte: fromdate, $lt: todate},
+        landedip:{$nin:[/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./]}
+    }).toArray()
+    stats.push({metric: "landed", measure: websitelanded.length})
+
+    const campaignlanded = await Sessions.find({
+        'pages.1': {$exists: true}, //not bouncing. Opening more than one page.
+        'campaign.campaign': {$exists: true},
+        email: null,
+        landed: {$gte: fromdate, $lt: todate},
+        landedip:{$nin:[/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./]}
+    }).toArray()
+    stats.push({metric: "campaign landed", measure: campaignlanded.length})
+
     //Website Sessions (without Sessions) -  Sessions without Email
     const websitesessions = await Sessions.find({
         'pages.2': {$exists: true}, //not bouncing. Opening more than one page.
@@ -13,7 +32,7 @@ export async function createreport(to,fromdate,todate){
         landed: {$gte: fromdate, $lt: todate},
         landedip:{$nin:[/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./]}
     }).toArray()
-    stats.push({metric: "website sessions", measure: websitesessions.length})
+    stats.push({metric: "website sessions > 1 pg", measure: websitesessions.length})
 
     //New Signups - Sessions with Signup
     const newsignups = await Sessions.find({
