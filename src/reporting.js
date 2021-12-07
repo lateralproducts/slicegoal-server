@@ -7,23 +7,25 @@ export async function createreport(to,fromdate,todate){
 
     var stats = [] //{metric, measure}
 
+    //Landed and bouncing. With no campaign.
     const websitelanded = await Sessions.find({
-        'pages.1': {$exists: true}, //not bouncing. Opening more than one page.
+        'pages.1': {$exists: true}, 
         'campaign.campaign': {$exists: false},
         email: null,
         landed: {$gte: fromdate, $lt: todate},
         landedip:{$nin:[/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./]}
     }).toArray()
-    stats.push({metric: "landed", measure: websitelanded.length})
+    stats.push({metric: "website landed", measure: websitelanded.length})
 
+    //Campaign landed and bouncing.
     const campaignlanded = await Sessions.find({
-        'pages.1': {$exists: true}, //not bouncing. Opening more than one page.
+        'pages.1': {$exists: true}, 
         'campaign.campaign': {$exists: true},
         email: null,
         landed: {$gte: fromdate, $lt: todate},
         landedip:{$nin:[/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./]}
     }).toArray()
-    stats.push({metric: "campaign landed", measure: campaignlanded.length})
+    stats.push({metric: "website landed campaign", measure: campaignlanded.length})
 
     //Website Sessions (without Sessions) -  Sessions without Email
     const websitesessions = await Sessions.find({
@@ -32,7 +34,7 @@ export async function createreport(to,fromdate,todate){
         landed: {$gte: fromdate, $lt: todate},
         landedip:{$nin:[/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./]}
     }).toArray()
-    stats.push({metric: "website sessions > 1 pg", measure: websitesessions.length})
+    stats.push({metric: "website sessions", measure: websitesessions.length})
 
     //New Signups - Sessions with Signup
     const newsignups = await Sessions.find({
