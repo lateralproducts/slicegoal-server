@@ -5,11 +5,11 @@ import { createreport } from './reporting'
 
 let schedule = require('node-schedule')
 
-schedule.scheduleJob({ hour: 20, minute: 30 }, function() { //15:00 UTC = 2:00am, 20:30 UTC = 7:30am Sydney/Melbourne time
+schedule.scheduleJob({ hour: 20, minute: 40 }, function() { //15:00 UTC = 2:00am, 20:30 UTC = 7:30am Sydney/Melbourne time
     var today = new Date()
     var start = new Date()
-    start.setDate(today.getDate() - 1)
     var end = today
+    end.setDate(today.getDate() + 1)
     //set to midnight
     start.setHours(0,0,0,0)
     end.setHours(0,0,0,0)
