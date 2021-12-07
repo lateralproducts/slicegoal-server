@@ -5,7 +5,7 @@ import { createreport } from './reporting'
 
 let schedule = require('node-schedule')
 
-schedule.scheduleJob({ hour: 21, minute: 30 }, function() { //21:30 UTC = 8:30 Sydney/Melbourne time
+schedule.scheduleJob({ hour: 15, minute: 0 }, function() { //15:00 UTC = 2:00am Sydney/Melbourne time
     var today = new Date()
     var start = new Date()
     start.setDate(today.getDate() - 1)
@@ -16,7 +16,7 @@ schedule.scheduleJob({ hour: 21, minute: 30 }, function() { //21:30 UTC = 8:30 S
     //set to Australian boundaries
     start.setHours(start.getHours() - 11) //-11 is Australian time in UTC
     end.setHours(end.getHours() - 11) //-11 is Australian time in UTC
-    createreport(['daniel@lateralproducts.com'], start, end)
+    createreport([`${process.env.NOTIFICATION_EMAIL}`], start, end)
 })
 
 /* schedule.scheduleJob({ hour: 8, minute: 0 }, function() {
