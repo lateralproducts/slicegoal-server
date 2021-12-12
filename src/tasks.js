@@ -79,7 +79,7 @@ export const resolvers = {
                         ]
                     }
                 )
-                .sort({daytask: 1, starttime: 1}).toArray()
+                .sort({starttime: 1}).toArray()
             }
         }
     },
@@ -106,9 +106,6 @@ export const resolvers = {
                 task.daytask = true
                 task.endtime = null
             }
-            task.schedule = args.schedule
-            task.title = args.title
-            task.description = args.description
             task.profile = getprofileid(req.session)
 
             return (await Tasks.insertOne(task)).insertedId.toString()
@@ -132,6 +129,7 @@ export const resolvers = {
             if(args.title) updates.title = args.title
             if(args.complete !== null) updates.complete = args.complete
             if(args.description) updates.description = args.description
+            if(args.goal) updates.goal = args.goal
 
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
@@ -149,9 +147,6 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-
-
-
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
                 {$set: {schedule: args.schedule}}
