@@ -348,7 +348,7 @@ export const resolvers = {
             switch(args.marked){
                 case 'remembered':
                     if (spaced) { //check if there is a spaced record, if not, create one.
-                        nextdate.setDate(nextdate.getDate() + spaced.fib1)
+                        nextdate.setDate(nextdate.getDate() + spaced.fib1) //setting the date of fib1 of last saved record fib1
                         args.datenext = nextdate
                         args.lastmarked = new Date()
                         args.fib1 = spaced.fib0 + spaced.fib1

@@ -3,8 +3,9 @@ import { MongoClient } from 'mongodb'
 let DbConnection = () => {
     let db = null
     async function DbConnect() {
-        let MONGO_URL = `${process.env.MONGODB_URL}`
-        console.log('attempting to open server: ' + MONGO_URL)
+        let MONGO_AUTH = process.env.MONGODB_PWD ? `${process.env.MONGODB_USR}:${process.env.MONGODB_PWD}@` : ''
+        let MONGO_URL = `mongodb://${MONGO_AUTH}${process.env.MONGODB_URL}`
+        console.log('attempting to open server: ' + `${process.env.MONGODB_URL}` + ' with auth')
         let _db = await MongoClient.connect(MONGO_URL)
         return _db
     }
