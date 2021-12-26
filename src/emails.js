@@ -17,10 +17,17 @@ const PATH_URL = `${process.env.PATH_URL}`
 const APP_PATH_URL = `${PATH_URL}/app`
 const LOGO_PATH_URL = `${PATH_URL}/files/cavesteplong.png`
 
-const transporter = nodemailer.createTransport({
+const transporter = `${process.env.NODE_ENV}` === 'production' ? 
+nodemailer.createTransport({
     service: 'gmail',
     auth
-})
+}) :
+nodemailer.createTransport({
+    port: 1025,
+    tls: {
+        ciphers: 'SSLv3'
+    }
+}) 
 
 const Mustache = require('mustache')
 
@@ -108,7 +115,7 @@ export async function emailStats(email, stats, title) { //stats an array of metr
     const body = Mustache.render(dailyStats, {
         stats: stats,
         logopath: LOGO_PATH_URL,
-        title: title,
+        title: title
     })
     sendEmail(to, subject, body)
 }
@@ -229,7 +236,7 @@ export async function shareInsightEmail(
             logopath: LOGO_PATH_URL,
             acceptLink: acceptLink,
             shareNote: shareNote,
-            interactionid: interactionid,
+            interactionid: interactionid
         })
         return await sendEmail(receiver.email, subject, email)
     }
