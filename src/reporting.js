@@ -9,7 +9,7 @@ export async function createreport(to,fromdate,todate){
 
     //Landed and bouncing. With no campaign.
     const websitelanded = await Sessions.find({
-        'pages.1': {$exists: true}, 
+        'pages.1': {$exists: true}, //making sure we're only counting when someone has landed and also exists, as we get another action.
         'campaign.campaign': {$exists: false},
         email: null,
         landed: {$gte: fromdate, $lt: todate},

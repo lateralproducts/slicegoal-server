@@ -226,6 +226,7 @@ export const resolvers = {
                         args.state = 'new'
                         args.code = bcrypt.hashSync('verifythisyo', 7)
                         args.created = new Date()
+                        args.email = args.email.toLowerCase()
                         let newuser = await Users.insertOne(args) //create record to return id
                         args._id = newuser.insertedId.toString() //use args to pass new user id for email link
                         userid = newuser.insertedId.toString() //pass id for creating view and profiles
