@@ -5,6 +5,9 @@
 <div>{{title}}</div>
 {{#stats}}
     <div><b>{{measure}} {{metric}}</b></div>
+    {{#notes}}
+    <div style="font-size:12px">{{.}}</div>
+    {{/notes}}
 {{/stats}}
 </ul>
 <br/>

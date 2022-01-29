@@ -606,35 +606,35 @@ export const resolvers = {
             const SourceTags = db.collection('sourcetags')
 
             //Check ownership
-            Insights.findOne({ _id: ObjectId(insightid) }).then(insight => {
-                if (insight) Profiles.findOne({ _id: ObjectId(insight.profileid) }).then(
-                    profile => {
-                        if (profile.user !== getuserid(req.session)) {
-                            throw new Error('Unauthorised Insight Delete')
-                        } else {
-                            InsightTags.deleteMany(
-                                { insightid: insightid },
-                                function(err) {
-                                    if (err) throw err
-                                },
-                            )
-                            SourceTags.deleteMany(
-                                { 
-                                    resourcetype: 'insight',
-                                    resourceid: insightid
-                                }
-                            )
-                            Insights.deleteOne(
-                                { _id: ObjectId(insightid) },
-                                function(err) {
-                                    if (err) throw err
-                                },
-                            )
-                            return true
+            const insight = await Insights.findOne({ _id: ObjectId(insightid) })
+            if (insight) {
+                const profile = await Profiles.findOne({ _id: ObjectId(insight.profileid) })
+                if (profile.user !== getuserid(req.session)) {
+                    throw new Error('Unauthorised Insight Delete')
+                } else {
+                    InsightTags.deleteMany(
+                        { insightid: insightid },
+                        function(err) {
+                            if (err) throw err
+                        },
+                    )
+                    SourceTags.deleteMany(
+                        { 
+                            resourcetype: 'insight',
+                            resourceid: insightid
                         }
-                    },
-                )
-            })
+                    )
+                    Insights.deleteOne(
+                        { _id: ObjectId(insightid) },
+                        function(err) {
+                            if (err) throw err
+                        },
+                    )
+                    return true
+                }
+            } else {
+                throw new Error("Insight not found")
+            }
         },
         shareInsight: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')

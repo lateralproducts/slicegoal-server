@@ -41,7 +41,7 @@ export async function createreport(to,fromdate,todate){
         'pages.action':'signup',
         landed: {$gte: fromdate, $lt: todate}
     }).toArray()
-    stats.push({metric: "signups", measure: newsignups.length})
+    stats.push({metric: "signups", measure: newsignups.length, notes: newsignups.map(session => { return session.email })})
 
     //Active Users - Sessions with Emails - have logged in.
     const activesessions = await Sessions.find({
@@ -50,7 +50,7 @@ export async function createreport(to,fromdate,todate){
         landed: {$gte: fromdate, $lt: todate},
         email:{$nin:[null,"test@cavestep.com","daniel@lateralproducts.com", "daniel@cavestep.com", "calebschrader@hotmail.com"]}
     }).toArray()
-    stats.push({metric: "active users", measure: activesessions.length})
+    stats.push({metric: "active users", measure: activesessions.length, notes: activesessions.map(session => { return session.email })})
 
     fromdate.setHours(fromdate.getHours() + 11) //+ 11 hours for Aus time
 

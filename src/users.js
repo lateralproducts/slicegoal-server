@@ -560,7 +560,7 @@ export const resolvers = {
                 }
             delete req.session.user
             req.session.destroy()
-            console.log('destroyed')
+            console.log('logged out, session destroyed')
             return true
         },
 
@@ -644,7 +644,8 @@ async function login(user, args, req) {
             req.session.view = view
             let query = new Object()
 
-            if (view.type !== 'coach') query.user = user._id.toString()
+            //if (view.type !== 'coach') query.user = user._id.toString() //deciding which profile to pull. Needs more thought.
+            
             query.wheel = view.wheel
             const profile = await Profiles.findOne(query, {
                 sort: { type: -1 }

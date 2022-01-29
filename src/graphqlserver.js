@@ -160,7 +160,7 @@ export const graphql = async() => {
             //const pathDir = path.join(__dirname, "files/cavesteplong.png"); //using local files
             //res.sendFile(pathDir);
             if(req.session.user) console.log(req.session.user.firstname)
-            console.log(getipaddress(req))
+            console.log("ip address - " + getipaddress(req))
 
             //logaccess
             if (path.basename(req.path)=== 'cavesteplong.png') {
