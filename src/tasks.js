@@ -28,6 +28,7 @@ export const typeDefs = `
         deleteTask(taskid: String!) : Boolean
         scheduleTask(taskid: String!, schedule: Boolean) : Boolean
         checkTask(taskid: String!, checked: Boolean) : Boolean
+        removeTaskGoal(taskid: String!): Boolean
     }
 `
 
@@ -129,7 +130,7 @@ export const resolvers = {
             if(args.title) updates.title = args.title
             if(args.complete !== null) updates.complete = args.complete
             if(args.description) updates.description = args.description
-            updates.goal = args.goal //setting null if no goal.
+            if(args.goal) updates.goal = args.goal
 
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
@@ -160,6 +161,16 @@ export const resolvers = {
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
                 {$set: {complete: args.checked}}
+            )).result.ok === 1
+        },
+        removeTaskGoal: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+
+            return (await Tasks.updateOne(
+                {_id: ObjectId(args.taskid)},
+                {$unset: {goal:''}}
             )).result.ok === 1
         }
     }
