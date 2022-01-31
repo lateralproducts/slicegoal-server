@@ -129,7 +129,7 @@ export const resolvers = {
             if(args.title) updates.title = args.title
             if(args.complete !== null) updates.complete = args.complete
             if(args.description) updates.description = args.description
-            if(args.goal) updates.goal = args.goal
+            updates.goal = args.goal //setting null if no goal.
 
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},

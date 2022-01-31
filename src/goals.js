@@ -7,7 +7,7 @@ let pjson = require('../package.json')
 
 export const typeDefs = `
     extend type Query {
-        goals(area: String!): [Goal]
+        goals(area: String): [Goal]
         goalTags(area: String, goal: String, search: String, date: String): [GoalTag]
         readPomoData(area: String): PomodoroData
         readGoalPomoData(goal: String): PomodoroData
