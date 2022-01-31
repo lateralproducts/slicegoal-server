@@ -11,7 +11,7 @@ const auth = {
     user: `${process.env.EMAILCLIENT_USR}`,
     pass: `${process.env.EMAILCLIENT_PWD}`
 }
-const sender = 'CAVESTEP<' + auth.user + '>'
+const sender = 'Cavestep<' + auth.user + '>'
 
 const PATH_URL = `${process.env.PATH_URL}`
 const APP_PATH_URL = `${PATH_URL}/app`
