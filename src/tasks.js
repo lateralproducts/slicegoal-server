@@ -117,8 +117,6 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
 
             var updates = new Object()
-            updates.starttime = args.starttime ? new Date(args.starttime) : null
-            if(args.setdate && !args.starttime) updates.starttime = new Date(args.setdate)
             if (args.endtime) {
                 updates.endtime = new Date(args.endtime),
                 updates.daytask = false
@@ -127,6 +125,10 @@ export const resolvers = {
                 updates.daytask = true
                 updates.endtime = null
             }
+            if(args.setdate || args.starttime) 
+                {updates.starttime = args.starttime ? new Date(args.starttime) : new Date(args.setdate)} 
+            else 
+                updates.starttime = null
             if(args.title) updates.title = args.title
             if(args.complete !== null) updates.complete = args.complete
             if(args.description) updates.description = args.description
