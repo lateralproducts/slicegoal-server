@@ -29,6 +29,7 @@ export const typeDefs = `
         scheduleTask(taskid: String!, schedule: Boolean) : Boolean
         checkTask(taskid: String!, checked: Boolean) : Boolean
         removeTaskGoal(taskid: String!): Boolean
+        updateDayTaskOrder(tasks: [String]): Boolean
     }
 `
 
@@ -66,10 +67,10 @@ export const resolvers = {
                         ]}]
                     }
                 ).toArray()
-            } else {
+            } else { //return list of tasks for the day.
                 const starttime = new Date(args.starttime)
                 const endtime = new Date(args.endtime)
-                //return list of tasks for the day.
+                
                 return await Tasks.find(
                     {
                         profile: getprofileid(req.session),
@@ -80,7 +81,7 @@ export const resolvers = {
                         ]
                     }
                 )
-                .sort({starttime: 1}).toArray()
+                .sort({dayorder: 1}).toArray()
             }
         }
     },
@@ -145,6 +146,18 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
 
             return (await Tasks.deleteOne({_id: ObjectId(args.taskid)})).result.ok === 1
+        },
+        updateDayTaskOrder: async(parent, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            args.tasks.map(function(_id, count) {
+                Tasks.updateOne(
+                    { _id: ObjectId(_id) },
+                    { $set: { dayorder: count } },
+                )
+            })
+            return true
         },
         scheduleTask: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
