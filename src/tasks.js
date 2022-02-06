@@ -13,18 +13,19 @@ export const schema = `
         description: String
         goal: Goal,
         complete: Boolean,
-        schedule: Boolean
+        schedule: Boolean,
+        rescheduled: Int
     }
 `
 
 export const typeDefs = `
     extend type Query {
-        tasks(starttime: String, endtime: String, scheduled: Boolean, today: String, goal: String) : [Task]
+        tasks(starttime: String, endtime: String, scheduled: Boolean, complete: Boolean, today: String, goal: String) : [Task]
     }
     
     extend type Mutation {
         newTask(starttime: String, endtime: String, title: String, description: String, goal: String, complete: Boolean, schedule: Boolean) : String
-        editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, complete: Boolean, schedule: Boolean) : Boolean
+        editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, complete: Boolean, schedule: Boolean, reschedule: Boolean) : Boolean
         deleteTask(taskid: String!) : Boolean
         scheduleTask(taskid: String!, schedule: Boolean) : Boolean
         checkTask(taskid: String!, checked: Boolean) : Boolean
@@ -71,16 +72,20 @@ export const resolvers = {
                 const starttime = new Date(args.starttime)
                 const endtime = new Date(args.endtime)
                 
-                return await Tasks.find(
-                    {
-                        profile: getprofileid(req.session),
-                        schedule: true,
-                        $and: [
-                            {'starttime': {$gte: starttime}},
-                            {'starttime': {$lt: endtime}}
-                        ]
-                    }
-                )
+                let query = new Object()
+                query = { //find tasks scheduled for that day
+                    $and: [
+                        {'starttime': {$gte: starttime}},
+                        {'starttime': {$lt: endtime}}
+                    ]
+                }
+                query.profile = getprofileid(req.session)
+                query.schedule = true
+                if(!args.complete){
+                    query.$or = [{complete: false}, {complete: null}]
+                }
+
+                return await Tasks.find(query)
                 .sort({dayorder: 1}).toArray()
             }
         }
@@ -135,9 +140,15 @@ export const resolvers = {
             if(args.description) updates.description = args.description
             if(args.goal) updates.goal = args.goal
 
+            var updatetask = new Object()
+            updatetask.$set = updates
+            if (args.reschedule){
+                updatetask.$inc = { rescheduled: 1}
+            }
+
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
-                {$set: updates}
+                updatetask
             )).result.ok === 1
         },
         deleteTask: async(_, args, { req }) => {
