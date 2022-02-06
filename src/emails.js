@@ -17,17 +17,16 @@ const PATH_URL = `${process.env.PATH_URL}`
 const APP_PATH_URL = `${PATH_URL}/app`
 const LOGO_PATH_URL = `${PATH_URL}/files/cavesteplong.png`
 
-const transporter = `${process.env.NODE_ENV}` === 'production' ? 
-nodemailer.createTransport({
-    service: 'gmail',
-    auth
-}) :
-nodemailer.createTransport({
+const transporter = `${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test' ? 
+nodemailer.createTransport({ //test and development email client
     port: 1025,
     tls: {
         ciphers: 'SSLv3'
     }
-}) 
+}) : nodemailer.createTransport({ //production email client.
+    service: 'gmail',
+    auth
+})
 
 const Mustache = require('mustache')
 
