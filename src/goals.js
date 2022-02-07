@@ -98,15 +98,13 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
-            return await Goals.find(
-                {
-                    area: args.area,
-                    profileid: getprofileid(req.session),
-                    complete: { $eq: null }
-                }, //update sort at some stage.
-            )
-                .sort({ orderrank: 1 })
-                .toArray()
+
+            let query = new Object()
+            if(args.area) query.area = args.area
+            query.profileid = getprofileid(req.session)
+            query.complete = { $eq: null }
+
+            return await Goals.find(query).sort({ orderrank: 1 }).toArray()
         },
         goalTags: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')

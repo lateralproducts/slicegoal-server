@@ -211,9 +211,8 @@ export async function emailFeedback(user, feedback, datetime) {
 
 export async function newUserNotificationEmail(user) {
     let to = `${process.env.NOTIFICATION_EMAIL}`
-    let subject = `New Cavestep user! ${user.firstname} ${user.lastname || ''}`
+    let subject = `New Cavestep User!`
     let email = Mustache.render(newUserTemplate, {
-        name: `${user.firstname} ${user.lastname || ''}`,
         email: `${user.email}`
     })
     return await sendEmail(to, subject, email)
