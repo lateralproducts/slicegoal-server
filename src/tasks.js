@@ -24,7 +24,7 @@ export const typeDefs = `
     }
     
     extend type Mutation {
-        newTask(starttime: String, endtime: String, title: String, description: String, goal: String, complete: Boolean, schedule: Boolean) : String
+        newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, goal: String, complete: Boolean, schedule: Boolean) : String
         editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, complete: Boolean, schedule: Boolean, reschedule: Boolean) : Boolean
         deleteTask(taskid: String!) : Boolean
         scheduleTask(taskid: String!, schedule: Boolean) : Boolean
@@ -104,7 +104,7 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
 
             var task = new Object(args)
-            task.starttime = args.starttime ? new Date(args.starttime) : null
+            task.starttime = args.starttime ? new Date(args.starttime) : (args.setdate ? new Date(args.setdate) : null)
             if (args.endtime) {
                 task.endtime = new Date(args.endtime),
                 task.daytask = false
