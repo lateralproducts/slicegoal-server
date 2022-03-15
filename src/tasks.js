@@ -67,7 +67,7 @@ export const resolvers = {
                             {starttime: {$lt: today}}
                         ]}]
                     }
-                ).toArray()
+                ).sort({rescheduled: -1}).toArray()
             } else { //return list of tasks for the day.
                 const starttime = new Date(args.starttime)
                 const endtime = new Date(args.endtime)
