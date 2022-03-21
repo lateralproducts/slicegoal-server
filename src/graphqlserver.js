@@ -25,6 +25,7 @@ import { schema as goalSchema } from './goals'
 import { schema as tagSchema } from './tags'
 import { schema as taskSchema } from './tasks'
 import { schema as sourceSchema } from './sources'
+import { schema as paymentSchema } from './payments'
 
 //import queries and mutations
 import { typeDefs as userQueryMutation } from './users'
@@ -98,6 +99,7 @@ export const graphql = async() => {
                 tagSchema,
                 taskSchema,
                 sourceSchema,
+                paymentSchema,
                 paymentQueryMutation,
                 userQueryMutation,
                 insightQueryMutation,

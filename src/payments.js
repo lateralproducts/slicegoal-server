@@ -7,16 +7,17 @@ var apiKey = `${process.env.PAYMENT_API_KEY}`,
     password = `${process.env.PAYMENT_API_PASS}`,
     rapidEndpoint = `${process.env.PAYMENT_API_ENV}`
 
-var client = rapid.createClient(apiKey, password, rapidEndpoint)
+var ewayclient = rapid.createClient(apiKey, password, rapidEndpoint)
 
 export const typeDefs = `
     extend type Query {
         transactionStatus(accessCode: String!): String
         lastNameRecorded: Boolean
+        offers: Offers
     }
 
     extend type Mutation {
-        getAccessCode: PaymentFormFields
+        getAccessCode(offerid: Int): PaymentFormFields
         addLastNameToUser(lastname: String!): Boolean
     }
 
@@ -27,8 +28,153 @@ export const typeDefs = `
         accessCode: String
         formActionUrl: String
     }
-
 `
+
+export const schema = `
+    type Offers {
+        activeid: Int
+        highlightid: Int
+        offers: [Offer]
+    }
+    type Offer {
+        offerid: Int
+        inclusions: [String]
+        offer: String
+        price: Price
+        highlight: Boolean
+    }
+    type Price {
+        amount: Int
+        period: String
+    }
+`
+
+//masked credit card on eway: 444433XXXXXX1111
+//to get the masked card number, query: client.queryCustomer("917758625852") where "917758625852" is the TokenCustomerID
+//TokenPayment function will be used to 
+
+//Old Packages:
+//'• 1 single-layer personal wheel \n• 1 single-layer coach/team wheel \n • up to 3 clients or team members \n • free for clients & team members \n • access to free templates'
+//'• 4 single-layer personal wheels \n• 2 single-layer coach/team wheels \n • 4 to 10 clients or team members \n • free for clients & team members \n • access to expert templates'
+//'• 4 multi-layer personal wheels\n• 8 single-layer coach/team wheels\n• 11 to 30 clients or team members \n • free for clients & team members\n • access to expert templates'
+
+//Do I control the feature switch in the server?
+//How do we load the feature switch in the front end?
+//How do we control the feature usage in the server?
+//Need to decide where the subscription sits. Has to be the account.
+
+//Need to log charges. Then log transactions against those charges.
+//Need state management for accounts... ie. if paid, account active, if not paid, disable certain features (if already enabled)
+
+const offers = [
+    {
+        offerid: 0,
+        offer: 'Free Plan',
+        inclusions: [
+            'Productivity tools',
+            'Memory tools',
+            'Goal setting',
+            'Access to free templates'
+        ],
+        price: {
+            amount: 0 //0 dollars
+        }
+    },
+    {
+        offerid: 1,
+        offer: 'Coaching Enabled',
+        inclusions: [
+            'Enable coaching functions',
+            'Get coaching direction and support',
+            'Unlimited insights',
+            'Unlimited sources',
+            'Access to expert templates',
+            'Plus all free tools'
+        ],
+        price: {
+            amount: 15, //15 dollars
+            period: 'month'
+        },
+        highlight: true
+    },
+    {
+        offerid: 2,
+        offer: 'Super Coach',
+        inclusions: [
+            'Coach your own clients',
+            'Create custom templates',
+            'Multiple wheels for clients',
+            'Plus coaching enabled features',
+            'Plus all free tools',
+        ],
+        price: {
+            amount: 30, //30 dollars
+            period: 'month'
+        }
+    },
+]
+
+/* function returnResult(result) {
+    switch (result) {
+        case '':
+            return 'Processing... '
+        case 'error':
+        case 'failed':
+            return 'Transaction failed'
+        case 'success':
+            return 'Upgrade successful!'
+        default:
+            return result
+    }
+} */
+
+//use for messaging in-app, and also, to apply to the subscription on payment.
+const campaigns = [
+    { 
+        promo: 'Free First Month',
+        discount: {
+            type: 'onceoff',
+            amount: 1.0, //as percentage? this is a voucher...
+        },
+        validofferids: [0,1,2],
+        active: {
+            startdate: '01-01-2022',
+            enddate: '01-02-2022'
+        }
+    },
+    { 
+        promo: '30% Off For Life - Limited',
+        promoid: 1,
+        message: 'To celebrate the launch of Cavestep, we\'re offering a limited time offer. If you sign up now, you\'ll get 30% off for life.',
+        discount: {
+            type: 'percentage',
+            amount: 0.3,
+            valid: 'life'
+        },
+        validofferids: [0,1,2],
+        active: {
+            startdate: '01-01-2022',
+            enddate: '01-02-2022'
+        }
+    },
+    { 
+        promo: '30% Off For First 2 Months',
+        promoid: 1,
+        message: 'To celebrate the launch of Cavestep, we\'re offering a limited time offer. If you sign up now, you\'ll get 30% off for life.',
+        discount: {
+            type: 'percentage',
+            amount: 0.3,
+            valid: '2 months'
+        },
+        validofferids: [0,1,2],
+        active: {
+            startdate: '01-01-2022',
+            enddate: '01-02-2022'
+        }
+    },
+]
+
+//how do I track credit and payments on accounts, profiles, and wheels?
 
 export const resolvers = {
     Query: {
@@ -37,44 +183,56 @@ export const resolvers = {
             const Transactions = db.collection('transactions')
             const Users = db.collection('users')
 
+            const transaction = await Transactions.findOne(
+                { accessCode: accessCode }
+            )
+
             return new Promise((resolve, reject) => {
                 //IIFE
                 (async function check() {
-                    let response = await client.queryTransaction(accessCode)
-                    const transaction = response.attributes.Transactions[0]
-                    if (transaction == null) {
+                    let response = await ewayclient.queryTransaction(accessCode)
+                    const txnresponse = response.attributes.Transactions[0]
+                    if (txnresponse == null) {
                         return reject(new Error('Transaction not found'))
                     }
 
-                    const TokenCustomerID = transaction.TokenCustomerID
-
-                    // Attach TokenCustomerID to user
-                    const user_id = getuserid(req.session)
-                    Users.updateOne(
-                        { _id: ObjectId(user_id) },
-                        { $set: { TokenCustomerId: TokenCustomerID } },
-                    )
-
-                    // Record transaction
+                    // Update/Record transaction details
                     Transactions.updateOne(
                         { accessCode: accessCode },
                         {
                             $set: {
-                                response: transaction,
-                                responsetimestamp: new Date()
+                                response: txnresponse,
+                                responsetimestamp: new Date(),
+                                status: 'checked'
                             }
                         },
                     )
 
-                    if (transaction.ResponseCode) {
-                        return resolve(transaction.ResponseCode) //This will give messages for success and common errors
+                    //const TokenCustomerID = transaction.TokenCustomerID
+
+                    if (txnresponse.ResponseCode) {
+                        return resolve(txnresponse) //This will give messages for success and common errors
                     } else if (response.Errors) {
                         return reject('An error has occurred') //could interpret the errors? -
                     }
                 })()
             }).then(
-                result => {
-                    let message = responseMessage(result)
+                (txnresponse) => {
+                    let message = responseMessage(txnresponse.ResponseCode)
+                    // Attach TokenCustomerID to user
+                    const user_id = getuserid(req.session)
+
+                    Users.updateOne(
+                        { _id: ObjectId(user_id) },
+                        { $set: { 
+                            TokenCustomerId: txnresponse.TokenCustomerID,
+                            hideupgrade: (txnresponse.ResponseCode === '00' || txnresponse.ResponseCode === '08' ) ? true: false,
+                            activeofferid: transaction.offer.offerid,
+                            offeractive: transaction.offer.offer,
+                            lastpaid: new Date()
+                        } },
+                    )
+
                     return message
                 },
                 error => {
@@ -86,17 +244,31 @@ export const resolvers = {
         lastNameRecorded: async(_, __, { req }) => {
             if (req.session.lastname == null) return false
             return true
+        },
+        offers: async(_, __, { req }) => {
+            var returnoffers = new Object()
+            if(req.session.user.activeofferid) returnoffers.activeid = req.session.user.activeofferid
+            returnoffers.highlightid = (req.session.user.activeofferid === 1 ? 2 : 1)
+            returnoffers.offers = offers
+            return returnoffers
         }
     },
     Mutation: {
-        getAccessCode: async(_, __, { req }) => {
+        //the transaction itself is triggered from the form directly to EWay.
+        //Test credit card no. "4444333322221111"
+        getAccessCode: async(_, args, { req }) => {
             const db = await DbConnection.Get()
             const Transactions = db.collection('transactions')
 
             let firstname = req.session.user.firstname
             let lastname = req.session.user.lastname
 
-            return client
+            const offer = offers.find(offer => offer.offerid === args.offerid)
+            
+            //future build to check validity when offering promos.
+            //if(offer.active.startdate <= today && offer.active.enddate >= today) //need to work out timezones
+
+            return ewayclient
                 .createTransaction(rapid.Enum.Method.TRANSPARENT_REDIRECT, {
                     Customer: {
                         FirstName: firstname,
@@ -104,7 +276,7 @@ export const resolvers = {
                         Country: 'au'
                     },
                     Payment: {
-                        TotalAmount: 1900 //to get the access code, we just send 0
+                        TotalAmount: offer.price.amount * 100 //to just get the access code, we can just send 0
                     },
                     RedirectUrl: `${process.env.PAYMENT_REDIRECT_URL}`,
                     Method: 'ProcessPayment',
@@ -118,7 +290,9 @@ export const resolvers = {
                         initiated: new Date(),
                         ipaddress: getipaddress(req),
                         user: getuserid(req.session),
-                        accessCode: result.AccessCode
+                        accessCode: result.AccessCode,
+                        offer: offer,
+                        status: 'pending'
                     })
 
                     return {
@@ -183,19 +357,13 @@ function responseMessage(responseCode) {
     let result = {
         '00': 'success',
         '08': 'success',
-        '01': 'Issuer has indicated problem with card number',
-        '03':
-            'No Merchant - please contact your bank to ensure \
-        your merchant account is active and is an Ecommerce terminal',
-        '05':
-            'Your bank has declined your payment for an \
-        unspecified reason',
-        '06': 'Please ensure card details are correct',
-        '12': 'Please ensure card details are correct',
-        '14': 'Please ensure card details are correct',
-        '51':
-            'Your card issuer has declined the transaction \
-        on basis of insufficient funds'
+        '01': 'Your card issuer has indicated problem with card number. Please contact your bank.',
+        '03': 'No Merchant - please contact your bank to ensure your merchant account is active and is an Ecommerce terminal.',
+        '05': 'Your bank has declined your payment for an unspecified reason.',
+        '06': 'Transaction failed. Please ensure card details are correct.',
+        '12': 'Transaction failed. Please ensure card details are correct.',
+        '14': 'Transaction failed. Please ensure card details are correct.',
+        '51': 'Your card issuer has declined the transaction because of insufficient funds.'
     }[responseCode]
 
     return result === undefined ? responseCode : result

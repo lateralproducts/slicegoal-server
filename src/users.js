@@ -58,6 +58,8 @@ export const schema = `
     currentview: View
     url: String
     state: String
+    offeractive: String
+    hideupgrade: Boolean
   }
 
   type createClientResponse {
