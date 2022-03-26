@@ -8,6 +8,7 @@ let pjson = require('../package.json')
 export const typeDefs = `
     extend type Query {
         goals(area: String): [Goal]
+        goalstolink: [Goal]
         goalTags(area: String, goal: String, search: String, date: String): [GoalTag]
         readPomoData(area: String): PomodoroData
         readGoalPomoData(goal: String): PomodoroData
@@ -105,6 +106,17 @@ export const resolvers = {
             query.complete = { $eq: null }
 
             return await Goals.find(query).sort({ orderrank: 1 }).toArray()
+        },
+        goalstolink: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Goals = db.collection('goals')
+
+            let query = new Object()
+            query.profileid = getprofileid(req.session)
+            query.complete = { $eq: null }
+
+            return await Goals.find(query).sort({ datecreated: -1 }).toArray()
         },
         goalTags: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')

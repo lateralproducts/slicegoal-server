@@ -71,10 +71,13 @@ const offers = [
         offerid: 0,
         offer: 'Free Plan',
         inclusions: [
-            'Productivity tools',
-            'Memory tools',
-            'Goal setting',
-            'Access to free templates'
+            'Productivity tips',
+            'Goal setting and tracking',
+            'Task setting and tracking',
+            'Access to free templates',
+            '5000 insights',
+            '100 sources',
+            'Break down goals and tasks'
         ],
         price: {
             amount: 0 //0 dollars
@@ -82,14 +85,14 @@ const offers = [
     },
     {
         offerid: 1,
-        offer: 'Coaching Enabled',
+        offer: 'Productivity Pack',
         inclusions: [
-            'Enable coaching functions',
-            'Get coaching direction and support',
-            'Unlimited insights',
-            'Unlimited sources',
-            'Access to expert templates',
-            'Plus all free tools'
+            'Memory tools',
+            'Pomodoros',
+            'Data Insights for Productivity',
+            '20,000 insights',
+            '1000 sources',
+            'everything in Free Plan'
         ],
         price: {
             amount: 15, //15 dollars
@@ -99,6 +102,22 @@ const offers = [
     },
     {
         offerid: 2,
+        offer: 'Coaching Enabled',
+        inclusions: [
+            'Enable coaching functions',
+            'Get coaching direction and support',
+            'Access to expert templates',
+            'Everything in Productivity Pack',
+            'Everything in Free Plan'
+        ],
+        price: {
+            amount: 30, //30 dollars
+            period: 'month'
+        }
+    },
+    {
+        offerid: 3, //offer disabled for now until I work through what is a good offer. Trying productivity tools.
+        disabled: true,
         offer: 'Super Coach',
         inclusions: [
             'Coach your own clients',
@@ -249,7 +268,9 @@ export const resolvers = {
             var returnoffers = new Object()
             if(req.session.user.activeofferid) returnoffers.activeid = req.session.user.activeofferid
             returnoffers.highlightid = (req.session.user.activeofferid === 1 ? 2 : 1)
-            returnoffers.offers = offers
+            returnoffers.offers = offers.filter(offer => {
+                return offer.disabled != true
+            })
             return returnoffers
         }
     },

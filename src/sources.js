@@ -64,7 +64,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
-            return await Sources.find({profileid: getprofileid(req.session)}).toArray()
+            return await Sources.find({profileid: getprofileid(req.session)}).sort({datetime: -1}).toArray()
         },
         // all sources on an insight
         insightSources: async function(_, { insightid }, { req }) {
