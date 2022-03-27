@@ -304,9 +304,10 @@ export const resolvers = {
             //const user = data[email];
 
             if (user) {
-                if (!user.password)
+                if (!user.password){
                     sessiontrack(req, args, 'app', 'emaillogin', 'failed - not verified')
                     throw new Error('Account has not been verified.')
+                }
 
                 if (await bcrypt.compareSync(args.pwd, user.password)) {
                     return await login(user, args, req)
