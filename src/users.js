@@ -305,6 +305,7 @@ export const resolvers = {
 
             if (user) {
                 if (!user.password)
+                    sessiontrack(req, args, 'app', 'emaillogin', 'failed - not verified')
                     throw new Error('Account has not been verified.')
 
                 if (await bcrypt.compareSync(args.pwd, user.password)) {
@@ -322,12 +323,12 @@ export const resolvers = {
                         },
                     )
 
-                    sessiontrack(req, args, 'app', 'login', 'failed')
+                    sessiontrack(req, args, 'app', 'emaillogin', 'failed - wrong password')
                     throw new Error('Incorrect password.')
                 }
             }
 
-            sessiontrack(req, args, 'app', 'login', 'not registered')
+            sessiontrack(req, args, 'app', 'emaillogin', 'failed - not registered')
             throw new Error('Email not registered')
         },
 
@@ -655,9 +656,10 @@ async function login(user, args, req) {
 
             if (profile) req.session.profile = profile
         }
-        sessiontrack(req, args, 'app', 'emaillogin', 'success')
+        sessiontrack(req, args, 'app', 'login', 'success - user profile loaded')
 
-        await Users.updateOne(
+        //update user profile with last login details.
+        await Users.updateOne( 
             { _id: ObjectId(user._id) },
             {
                 $set: {
@@ -670,7 +672,7 @@ async function login(user, args, req) {
         user.url = req.session.url
         return user
     }
-    sessiontrack(req, args, 'app', 'emaillogin', 'failed')
+    sessiontrack(req, args, 'app', 'login', 'failed - too many incorrect tries or not verified')
 
     await Users.updateOne(
         { _id: ObjectId(user._id) },
