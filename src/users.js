@@ -38,7 +38,7 @@ export const typeDefs = `
     login(email: String!, pwd: String!, setView: String, uiversion: String): User
     setSignUpContext(account: String): Boolean
     signup(email: String, firstname: String, uiversion: String, account: String, queryStringParams: String): Boolean!
-    googleLogin(firstname: String!, lastname: String!, email: String!, token: String!, googleid: String!, uiversion: String, urlparams: String): User
+    googleLogin(firstname: String, lastname: String, email: String, token: String, googleid: String, uiversion: String, urlparams: String): User
     logout: Boolean!
   }
 
@@ -306,8 +306,7 @@ export const resolvers = {
             if (user) {
                 if (!user.password){
                     sessiontrack(req, args, 'app', 'emaillogin', 'failed - not verified')
-                    throw new Error('Account has not been verified.')
-                }
+                    throw new Error('Account has not been verified.')}
 
                 if (await bcrypt.compareSync(args.pwd, user.password)) {
                     return await login(user, args, req)
@@ -477,11 +476,24 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const tokenInfo = await oAuth2Client.getTokenInfo(args.token)
+
+            if(!args.email) {
+                sessiontrack(req, args, 'app', 'googlelogin', 'error: no email')
+                throw new Error('Error authenticating with google. Email not found.')
+            }
+            if(!args.token) {
+                sessiontrack(req, args, 'app', 'googlelogin', 'error: no token')
+                throw new Error('Error authenticating with google. Token not found.')
+            }
+            if(!args.googleid) {
+                sessiontrack(req, args, 'app', 'googlelogin', 'error: no googleid')
+                throw new Error('Error authenticating with google. Googleid not found.')
+            }
+
             req.session.googleToken = args.token
             delete args.token //don't save google token to DB for security.
             if ((tokenInfo.email = args.email)) {
                 //check token authentication...
-
                 let user = await Users.findOne({
                     email: args.email.toLowerCase()
                 })
