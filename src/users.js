@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import {
     emailNewClient,
     emailNewPersonal,
+    emailResetPassword,
     newUserNotificationEmail
 } from './emails'
 
@@ -34,6 +35,7 @@ export const typeDefs = `
     updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
     createClient(email: String!, firstname: String, lastname: String): createClientResponse
     verifyAccount(userid: String, code: String, setView: String, password: String, firstname: String, lastname: String): User
+    resetPassword(email: String): Boolean
     updatePassword(userid: String, oldpassword: String, newpassword: String): User
     login(email: String!, pwd: String!, setView: String, uiversion: String): User
     setSignUpContext(account: String): Boolean
@@ -267,7 +269,15 @@ export const resolvers = {
             let user = await Users.findOne({
                 $and: [{ _id: ObjectId(args.userid) }, { code: args.code }]
             })
-            if (user.state !== 'new') {
+            if(!user) throw new Error('Verify details not found. You can try and reset password again.')
+
+            if(user.lastreset){
+                let validdate = new Date() //valid to reset for 24 hours.
+                validdate.setDate(user.lastreset.getDate() + 1)
+                if(validdate < new Date()){
+                    throw new Error("Your link has expired. Please try and reset again.")
+                }
+            }else if (user.state !== 'new') {
                 sessiontrack(req, args, 'app', 'verify', 'already registered')
                 throw new Error(
                     "Your account didn't verify. If you've signed up before, try logging in.",
@@ -277,7 +287,7 @@ export const resolvers = {
             checkPasswordFormat(args.password)
 
             user = await Users.findOneAndUpdate(
-                { _id: ObjectId(args.userid), code: args.code, state: 'new' },
+                { _id: ObjectId(args.userid), code: args.code },
                 {
                     $set: {
                         state: 'verified',
@@ -468,6 +478,68 @@ export const resolvers = {
             emailNewPersonal(emailuser, queryStringParams)
             sessiontrack(req, args, 'app', 'signup', 'success')
         
+            return true
+        },
+        resetPassword: async(_, args, { req }) => {
+            //This is publicly accessible
+            const db = await DbConnection.Get()
+            const IPAddresses = db.collection('ipaddresses')
+            const Users = db.collection('users')
+        
+            //possibly threatening check: checking if ip is blacklisted.
+            const ipprofile = await IPAddresses.findOne({
+                ip: getipaddress(req)
+            })
+        
+            if (ipprofile) {
+                if (ipprofile.block === true) {
+                    sessiontrack(
+                        req,
+                        args,
+                        'app',
+                        'signup',
+                        'failed, blocked ip',
+                    )
+                    throw new Error(
+                        'An error has occured', //don't be descriptive with error in case malicious
+                    )
+                }
+            }
+
+            //Get user profile.
+            const date = new Date()
+            const newcode = bcrypt.hashSync(date.toString(), 7)
+            const user = await Users.findOneAndUpdate(
+                { email: args.email.toLowerCase() },
+                { $set: {
+                    code: newcode,
+                    lastreset: new Date()
+                }}
+            )
+            
+            let emailuser 
+            if (user.value) {
+                emailuser = user.value
+            }
+            else {
+                //const date = new Date()
+                let newuser = {
+                    email: args.email.toLowerCase(),
+                    firstname: args.firstname,
+                    code: newcode,
+                    uiversion: args.uiversion,
+                    serverversion: pjson.version,
+                    state: 'new',
+                    profile: args.account,
+                    created: date,
+                    createdip: getipaddress(req)
+                }
+                emailuser = await signup(newuser, args, req)
+            }
+
+            const queryStringParams = args.queryStringParams ? args.queryStringParams : '' 
+            emailResetPassword(emailuser, newcode, queryStringParams)
+            sessiontrack(req, args, 'app', 'resetpassword', 'success')
             return true
         },
 

@@ -34,6 +34,10 @@ const newpersonal = fs
     .readFileSync(__dirname + '/emailtemplates/newpersonal.html')
     .toString()
 
+const resetpassword = fs
+    .readFileSync(__dirname + '/emailtemplates/resetpassword.html')
+    .toString()
+
 const rerank = fs
     .readFileSync(__dirname + '/emailtemplates/rerank.html')
     .toString()
@@ -166,6 +170,20 @@ export async function emailNewPersonal(personal, queryStringParams) {
         pathurl: APP_PATH_URL,
         personalid: personal._id,
         personalcode: personal.code,
+        logopath: LOGO_PATH_URL,
+        queryStringParams: queryStringParams
+    })
+
+    sendEmail(to, subject, email)
+}
+
+export async function emailResetPassword(personal, newcode, queryStringParams) {
+    let to = personal.email
+    let subject = "Looks like you asked for a password reset"
+    let email = Mustache.render(resetpassword, {
+        pathurl: APP_PATH_URL,
+        personalid: personal._id,
+        personalcode: newcode,
         logopath: LOGO_PATH_URL,
         queryStringParams: queryStringParams
     })
