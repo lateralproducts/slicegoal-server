@@ -35,7 +35,7 @@ const newpersonal = fs
     .toString()
 
 const resetpassword = fs
-    .readFileSync(__dirname + '/emailtemplates/resetpassword.html')
+    .readFileSync(__dirname + '/emailtemplates/resetPassword.html')
     .toString()
 
 const rerank = fs
