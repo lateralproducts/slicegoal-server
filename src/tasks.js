@@ -86,7 +86,7 @@ export const resolvers = {
                 }
 
                 return await Tasks.find(query)
-                .sort({dayorder: 1}).toArray()
+                .sort({complete: 1, dayorder: 1}).toArray()
             }
         }
     },
