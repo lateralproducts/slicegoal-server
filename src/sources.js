@@ -64,7 +64,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
-            return await Sources.find({profileid: getprofileid(req.session)}).sort({datetime: -1}).toArray()
+            return await Sources.find({profileid: getprofileid(req.session)}).sort({accessedit: -1}).toArray()
         },
         // all sources on an insight
         insightSources: async function(_, { insightid }, { req }) {
@@ -120,6 +120,7 @@ export const resolvers = {
                 {
                     profileid: getprofileid(req.session),
                     datetime: new Date(),
+                    accessedit: new Date(),
                     name: args.name,
                     url: args.url,
                     notes: args.notes
@@ -182,6 +183,7 @@ export async function attachSources(sourcelist, resourcetype, resourceid, profil
 
     const db = await DbConnection.Get()
     const SourceTags = db.collection('sourcetags')
+    const Sources = db.collection('sources')
 
     const newsourcetags = sourcelist.map(source => {
         return {
@@ -212,9 +214,10 @@ export async function attachSources(sourcelist, resourcetype, resourceid, profil
 
 
     // Update/add tags
-    const updatepromisearray = []
+    //const updatepromisearray = []
     newsourcetags.forEach(sourcetag => {
-        updatepromisearray.push(SourceTags.updateOne(
+        //updatepromisearray.push(
+            SourceTags.updateOne(
                 {
                     sourceid: sourcetag._id,
                     resourceid: resourceid
@@ -229,8 +232,16 @@ export async function attachSources(sourcelist, resourcetype, resourceid, profil
                 },
                 {upsert: true}
             )
-        )
+
+            Sources.updateOne(
+                {
+                    _id: ObjectId(sourcetag._id),
+                    profileid: profileid
+                },  
+                {$set: {accessedit: new Date()}}
+            )
+        //)
     })
 
-    return await Promise.all(updatepromisearray)
+    return //await Promise.all(updatepromisearray) //not using this at the moment, so removing it.
 }
