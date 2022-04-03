@@ -51,6 +51,11 @@ export async function sessiontrack(
     if (page === 'signup' || page === 'googlesignup')
         update.signedup = { email: update.email, time: new Date() }
 
+    //check if bot and tag as bot for tracking records.
+    const ipaddress = getipaddress(req)
+    const botRegexList = [/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./];
+    const isBot = botRegexList.some(rx => rx.test(ipaddress));
+
     if (Session) {
         const pageentry = new Object()
         pageentry.time = new Date()
@@ -60,6 +65,7 @@ export async function sessiontrack(
         if (actioninfo) pageentry.actioninfo = actioninfo
         if (result) pageentry.result = result
         if (query) pageentry.query = query
+        if (isBot) pageentry.bot = isBot
         pageentry.ip = getipaddress(req)
         pageentry.email = update.email
 

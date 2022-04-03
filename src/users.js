@@ -476,7 +476,7 @@ export const resolvers = {
             const queryStringParams = args.queryStringParams ? args.queryStringParams : '' 
             //if (args.account === 'coach') emailNewCoach(emailuser, queryStringParams)
             emailNewPersonal(emailuser, queryStringParams)
-            sessiontrack(req, args, 'app', 'signup', 'success')
+            sessiontrack(req, args, 'app', 'signup-success', 'success','email')
         
             return true
         },
@@ -539,7 +539,7 @@ export const resolvers = {
 
             const queryStringParams = args.queryStringParams ? args.queryStringParams : '' 
             emailResetPassword(emailuser, newcode, queryStringParams)
-            sessiontrack(req, args, 'app', 'resetpassword', 'success')
+            sessiontrack(req, args, 'app', 'password-reset', 'success','email')
             return true
         },
 
@@ -550,15 +550,15 @@ export const resolvers = {
             const tokenInfo = await oAuth2Client.getTokenInfo(args.token)
 
             if(!args.email) {
-                sessiontrack(req, args, 'app', 'googlelogin', 'error: no email')
+                sessiontrack(req, args, 'app', 'login-failed', 'error: no email','google')
                 throw new Error('Error authenticating with google. Email not found.')
             }
             if(!args.token) {
-                sessiontrack(req, args, 'app', 'googlelogin', 'error: no token')
+                sessiontrack(req, args, 'app', 'login-failed', 'error: no token','google')
                 throw new Error('Error authenticating with google. Token not found.')
             }
             if(!args.googleid) {
-                sessiontrack(req, args, 'app', 'googlelogin', 'error: no googleid')
+                sessiontrack(req, args, 'app', 'login-failed', 'error: no googleid','google')
                 throw new Error('Error authenticating with google. Googleid not found.')
             }
 
@@ -580,7 +580,7 @@ export const resolvers = {
                     args.created = new Date()
                     user = args
                     let newuser = await signup(user, args, req) //automatically sign up google login.
-                    sessiontrack(req, args, 'app', 'googlesignup', 'success')
+                    sessiontrack(req, args, 'app', 'signup-success', 'success','google')
                     return await login(newuser, args, req)
                 } else {
                     if (user.state !== 'verified') {
@@ -608,11 +608,11 @@ export const resolvers = {
                             },
                         )
                     }
-                    sessiontrack(req, args, 'app', 'googlelogin', 'success')
+                    sessiontrack(req, args, 'app', 'login-success', 'successful google login','google')
                     return await login(user, args, req)
                 }
             }
-            sessiontrack(req, args, 'app', 'googlelogin', 'failed')
+            sessiontrack(req, args, 'app', 'login-failed', 'failed google login','google')
             throw new Error('Error authenticating with google')
 
             // https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
@@ -741,7 +741,7 @@ async function login(user, args, req) {
 
             if (profile) req.session.profile = profile
         }
-        sessiontrack(req, args, 'app', 'login', 'success - user profile loaded')
+        sessiontrack(req, args, 'app', 'login-success', 'success - user profile loaded', 'email')
 
         //update user profile with last login details.
         await Users.updateOne( 
@@ -757,7 +757,7 @@ async function login(user, args, req) {
         user.url = req.session.url
         return user
     }
-    sessiontrack(req, args, 'app', 'login', 'failed - too many incorrect tries or not verified')
+    sessiontrack(req, args, 'app', 'login-failed', 'failed - too many incorrect tries or not verified', 'email')
 
     await Users.updateOne(
         { _id: ObjectId(user._id) },
