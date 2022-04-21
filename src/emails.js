@@ -74,14 +74,15 @@ const newCoach = fs
     .readFileSync(__dirname + '/emailtemplates/newCoach.html')
     .toString()
 
-async function sendEmail(to, subject, email) {
+async function sendEmail(to, subject, email, attachments) {
     const db = await DbConnection.Get()
     const Emails = db.collection('emails')
     let mailOptions = {
         from: sender,
         to: to,
         subject: subject,
-        html: email
+        html: email,
+        attachments: attachments
     }
     let response = await new Promise(function(resolve) {
         transporter.sendMail(mailOptions, function(error, info) {
@@ -213,6 +214,19 @@ export async function emailNewCoach(coach, queryStringParams) {
         logopath: LOGO_PATH_URL
     })
     sendEmail(to, subject, email)
+}
+
+export async function emailHabitGuide(name, toemail) {
+    let to = toemail
+    let subject = 'Your Free Habit Guide!'
+    let email = Mustache.render(habitGuide, {
+        name: name,
+        logopath: LOGO_PATH_URL
+    })
+    let attachments = [{   // filename and content type is derived from path
+        path: `${PATH_URL}/files/5StepHabitBuilderGuide.pdf`
+    }]
+    sendEmail(to, subject, email, attachments)
 }
 
 export async function emailFeedback(user, feedback, datetime) {

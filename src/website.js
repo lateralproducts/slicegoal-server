@@ -1,9 +1,14 @@
 import DbConnection from './database'
 import { getipaddress } from './users'
 
+import {
+    emailHabitGuide
+} from './emails'
+
 export const typeDefs = `   
     extend type Mutation {
         trackpage(page: String, search: String, action: String, actioninfo: String, abconfig: String, pagetrack: String, screenwidth: Int): Boolean
+        sendhabitguide(name: String, email: String!): Boolean
     }
 `
 export const resolvers = {
@@ -24,6 +29,15 @@ export const resolvers = {
                 args.abconfig,
                 args.screenwidth,
             )
+        },
+        sendhabitguide: async(_, args, { req }) => {
+            emailHabitGuide(args.name, args.email)
+            const db = await DbConnection.Get()
+            const Leads = db.collection('leads')
+            args.date = new Date()
+            args.leadmagnet = '5stephabitguide'
+            await Leads.insertOne(args)
+            return true
         }
     }
 }
