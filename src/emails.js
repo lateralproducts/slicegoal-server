@@ -74,6 +74,10 @@ const newCoach = fs
     .readFileSync(__dirname + '/emailtemplates/newCoach.html')
     .toString()
 
+const habitGuide = fs  
+    .readFileSync(__dirname + '/emailtemplates/habitGuide.html')
+    .toString()
+
 async function sendEmail(to, subject, email, attachments) {
     const db = await DbConnection.Get()
     const Emails = db.collection('emails')
