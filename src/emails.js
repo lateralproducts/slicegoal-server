@@ -227,8 +227,9 @@ export async function emailHabitGuide(name, toemail) {
         name: name,
         logopath: LOGO_PATH_URL
     })
-    let attachments = [{   // filename and content type is derived from path
-        path: `${PATH_URL}/files/5StepHabitBuilderGuide.pdf`
+    let attachments = [{
+        filename: '5StepHabitBuilderGuide.pdf',
+        content: fs.createReadStream(__dirname + '/files/5StepHabitBuilderGuide.pdf')
     }]
     sendEmail(to, subject, email, attachments)
 }
