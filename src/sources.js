@@ -12,8 +12,8 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        createSource(name: String!, url: String, notes: String): Source
-        editSource(sourceid: String!, name: String, url: String, notes: String) : Boolean
+        createSource(name: String!, url: String, type: String, notes: String): Source
+        editSource(sourceid: String!, name: String, url: String, type: String, notes: String) : Boolean
         deleteSource(sourceid: String!): Boolean
     }
 `
@@ -26,6 +26,7 @@ export const schema = `
         datetime: String
         profileid: String
         notes: String
+        type: String
         url: String
     }
 
@@ -48,6 +49,7 @@ export const schema = `
     type SourceInsightList {
         insightlist: [SourceInsight]
         notes: String
+        type: String
         url: String
     }
 
@@ -106,6 +108,7 @@ export const resolvers = {
             return {
                 notes: source.notes,
                 url: source.url,
+                type: source.type,
                 insightlist: insightlist
             }
         }
@@ -123,7 +126,8 @@ export const resolvers = {
                     accessedit: new Date(),
                     name: args.name,
                     url: args.url,
-                    notes: args.notes
+                    notes: args.notes,
+                    type: args.type
                 }
             )
             .then(source => {
@@ -140,7 +144,7 @@ export const resolvers = {
 
             return (await Sources.updateOne(
                 {_id: ObjectId(args.sourceid)},
-                {$set: {name: args.name, url: args.url, notes: args.notes}}
+                {$set: {name: args.name, url: args.url, type: args.type, notes: args.notes}}
             )).matchedCount === 1
 
         },

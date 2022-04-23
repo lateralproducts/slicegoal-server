@@ -15,7 +15,7 @@ export async function createreport(to,fromdate,todate){
         landed: {$gte: fromdate, $lt: todate},
         landedip:{$nin:[/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./]}
     }).toArray()
-    stats.push({metric: "website landed", measure: websitelanded.length, notes: websitelanded.map(session => { return session.screenwidth })})
+    stats.push({metric: "website landed", measure: websitelanded.length, notes: websitelanded.map(session => { return session.screenwidth + 'px' })})
 
     //Campaign landed and bouncing.
     const campaignlanded = await Sessions.find({

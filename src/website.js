@@ -4,11 +4,19 @@ import { getipaddress } from './users'
 import {
     emailHabitGuide
 } from './emails'
+import { validateemail } from './functions';
 
 export const typeDefs = `   
     extend type Mutation {
-        trackpage(page: String, search: String, action: String, actioninfo: String, abconfig: String, pagetrack: String, screenwidth: Int): Boolean
+        trackpage(page: String, search: String, action: String, actioninfo: String, abconfig: String, pagetrack: String, screenwidth: Int, browser: Browser): Boolean
         sendhabitguide(name: String, email: String!): Boolean
+    }
+`
+
+export const schema = `
+    input Browser {         
+        name: String         
+        version: String
     }
 `
 export const resolvers = {
@@ -28,16 +36,19 @@ export const resolvers = {
                 args.actioninfo,
                 args.abconfig,
                 args.screenwidth,
+                args.browser,
             )
         },
         sendhabitguide: async(_, args, { req }) => {
-            emailHabitGuide(args.name, args.email)
-            const db = await DbConnection.Get()
-            const Leads = db.collection('leads')
-            args.date = new Date()
-            args.leadmagnet = '5stephabitguide'
-            await Leads.insertOne(args)
-            return true
+            if(validateemail(args.email)){ //check that the email is valid
+                emailHabitGuide(args.name, args.email)
+                const db = await DbConnection.Get()
+                const Leads = db.collection('leads')
+                args.date = new Date()
+                args.leadmagnet = '5stephabitguide'
+                await Leads.insertOne(args)
+                return true
+            } else throw new Error('Invalid email.')
         }
     }
 }
@@ -51,6 +62,7 @@ export async function sessiontrack(
     actioninfo,
     abconfig,
     screenwidth,
+    browser,
 ) {
     const db = await DbConnection.Get()
     const Sessions = db.collection('sessions')
@@ -101,6 +113,7 @@ export async function sessiontrack(
         newsession.email = args.email
         newsession.landpage = page ? page : 'app'
         if (screenwidth) newsession.screenwidth = screenwidth
+        if (browser) newsession.browser = browser
         if (abconfig) newsession.abconfig = querytojson(abconfig)
         newsession.landed = new Date()
         newsession.lastrequest = new Date()
