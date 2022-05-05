@@ -9,7 +9,7 @@ import { validateemail } from './functions';
 export const typeDefs = `   
     extend type Mutation {
         trackpage(page: String, search: String, action: String, actioninfo: String, abconfig: String, pagetrack: String, screenwidth: Int, browser: Browser): Boolean
-        sendhabitguide(name: String, email: String!): Boolean
+        sendofferrequest(name: String, email: String!, offer: String!): Boolean
     }
 `
 
@@ -26,7 +26,7 @@ export const resolvers = {
             //actioninfo: pass parameters (like wheel name, etc)
             //abconfig: pass parameter to log for A/B testing
             //pagetrack: if loading a webpage with a unique identifer, to track over sessions
-            if(args.actioninfo) console.log(args.actioninfo)
+            //if(args.actioninfo) console.log(args.actioninfo)
             sessiontrack(
                 req,
                 args,
@@ -39,17 +39,29 @@ export const resolvers = {
                 args.browser,
             )
         },
-        sendhabitguide: async(_, args, { req }) => {
+        sendofferrequest: async(_, args, { req }) => {
             if(validateemail(args.email)){ //check that the email is valid
-                emailHabitGuide(args.name, args.email)
                 const db = await DbConnection.Get()
                 const Leads = db.collection('leads')
+                offeraction(args)
                 args.date = new Date()
-                args.leadmagnet = '5stephabitguide'
-                await Leads.insertOne(args)
-                return true
+                await Leads.insertOne(args) //insert request into leads database.
+                return true //assume everything processed.
             } else throw new Error('Invalid email.')
         }
+    }
+}
+
+function offeraction(args) {
+    switch(args.offer){
+        case '5stephabitguide':
+            emailHabitGuide(args.name, args.email)
+            return
+        case 'freeintrosession':
+            //emailFreeIntroSession(args.name, args.email)    
+            return   
+        default:
+            throw new Error('Sorry, we can\'t find that offer.')
     }
 }
 

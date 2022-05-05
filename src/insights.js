@@ -12,6 +12,7 @@ export const typeDefs = `
 
   extend type Query {
     insights(areas: [AreaId]): [InsightTag]
+    insightList(page: Int): [Insight]
     insightTags(insightid: String): [InsightTag]
     searchinsights(search: String!): [Insight]
     spaced(areas: [AreaId]): FilteredSpaced
@@ -172,7 +173,9 @@ export const resolvers = {
             let insights = await Insights.find({ _id: {$in: insightidspromptdue} }).toArray()
 
             if(areas.length > 0) {
-                const insighttags = await InsightTags.find({}).toArray()
+                const insighttags = await InsightTags.find({
+                    profileid: getprofileid(req.session),
+                }).toArray()
 
                 insights = insights.filter(insight => 
                     areas.every(area => 
@@ -207,6 +210,14 @@ export const resolvers = {
                 { sort: { datecreated: -1 } }, //return reverse chron. Last note created at top of list.
             ).toArray()
 
+            return insights
+        },
+        insightList: async(_, args, { req }) => {
+            //if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+
+            const insights = await Insights.find({profileid: getprofileid(req.session)}).sort({datecreated: -1 }).skip(args.page*10).limit(10).toArray()
             return insights
         },
         newsharedinsights: async(_, __, { req }) => {

@@ -30,8 +30,6 @@ export const resolvers = {
             let alltags // goaltags or insighttags
             let tagsonarea
 
-            // ignore first area (start area) for spaced scenario (want to return a tag for it)
-            args.type === 'spaced' ? args.areas.splice(0, 1) : null
             const inputareas = args.areas
 
             if(args.type === 'insights') {
@@ -47,35 +45,38 @@ export const resolvers = {
                     .toArray()
             } 
 
-            // Check insights for which prompt is set 
-            const insightspromptset = (await Insights.find({
-                profileid: getprofileid(req.session),
-                $and: [
-                    { prompt: {$ne: null} },
-                    { prompt: {$ne: ''} }
-                ]
-            })
-            .toArray())
-            .map(insight => {
-                return insight._id.toString()
-            })
-
-            // Check spaced entries which have a memory prompt due
-            const insightspromptdue = (await Spaced.find(
-                {
-                    profileid: getprofileid(req.session),
-                    $or: [
-                        { datenext: null },
-                        { datenext: { $lte: new Date() } }
-                    ]
-                }
-            )
-            .toArray())
-            .map(spaced => {
-                return spaced.insightid.toString()
-            })
+            let insightspromptset = []
+            let insightspromptdue = []
 
             if(args.type === 'spaced') {
+
+                // Check insights for which prompt is set 
+                insightspromptset = (await Insights.find({
+                    profileid: getprofileid(req.session),
+                    $and: [
+                        { prompt: {$ne: null} },
+                        { prompt: {$ne: ''} }
+                    ]
+                })
+                .toArray())
+                .map(insight => {
+                    return insight._id.toString()
+                })
+
+                // Check spaced entries which have a memory prompt due
+                insightspromptdue = (await Spaced.find(
+                    {
+                        profileid: getprofileid(req.session),
+                        $or: [
+                            { datenext: null },
+                            { datenext: { $lte: new Date() } }
+                        ]
+                    }
+                )
+                .toArray())
+                .map(spaced => {
+                    return spaced.insightid.toString()
+                })
 
                 alltags = await InsightTags.find({ 
                     $and: [

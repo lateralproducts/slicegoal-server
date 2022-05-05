@@ -166,16 +166,18 @@ export const graphql = async() => {
             if(req.session.user) console.log(req.session.user.firstname)
             console.log("ip address - " + getipaddress(req))
 
-            //logaccess
-            if (path.basename(req.path)=== 'cavesteplong.png') {
-                getfile(path.basename(req.path), res)
+            const filename = path.basename(req.path);
+            
+            if (filename === 'cavesteplong.png' || filename === 'pixel.png') {
+                //logaccess
+                getfile(filename, res)
                 const item = req.query
                 if(item.ix) {
                     updateIx(item.ix,'seen','open','email')
                     console.log('cavestep image accessed - ' + item.ix)
                 }
             } else {
-                getfile(path.basename(req.path), res)
+                getfile(filename, res)
             }
 
         }) // ✔️🚀
