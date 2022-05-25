@@ -2,7 +2,8 @@ import DbConnection from './database'
 import { getipaddress } from './users'
 
 import {
-    emailHabitGuide
+    emailHabitGuide,
+    emailNotifyNewLeadCoaching
 } from './emails'
 import { validateemail } from './functions';
 
@@ -58,7 +59,8 @@ function offeraction(args) {
             emailHabitGuide(args.name, args.email)
             return
         case 'freeintrosession':
-            //emailFreeIntroSession(args.name, args.email)    
+            //emailFreeIntroSession(args.name, args.email)
+            emailNotifyNewLeadCoaching(args.name, args.email)   
             return   
         default:
             throw new Error('Sorry, we can\'t find that offer.')
@@ -131,8 +133,25 @@ export async function sessiontrack(
         newsession.lastrequest = new Date()
         if (query) {
             newsession.campaignquery = query
-            newsession.campaign = querytojson(query)
+            newsession.campaign = querytojson(query) 
         }
+        
+        // utm parameters use lowercase and separated by - ie. utm_campaign=habits-promotion_version-2
+        // utm_source: referrer, ie. google, newsletter, facebook, etc.
+        // utm_medium: marketing medium, ie. cpc, banner, email
+        // utm_campaign: campaign name, ie. 'build habits' etc.
+        // utm_term: identify segment, category or author of the post, position of link, audience (acquisition, retargeting)
+        // utm_content: 
+        // ?utm_source=google&utm_medium=cpc&utm_term=acquisition&utm_campaign=habit-builder-guide&utm_content=version-1
+
+
+        //test messages: 'build your habits in 5 steps without frustration'
+        //test messages: '5 steps to build your habits without frustration'
+        //test messages: '5 steps for good habits without the struggle' //not using 'your'
+        //test messages: 'the secret 5 step guide to building your habits' //using number
+        //test messages: 'the secret guide to building habits' //not using number
+        //test messages: 'the 5 steps to achieve your goals, without frustration'
+        //test messages: 'the secret 5 step guide to building your habits, without frustration'
 
         const pageentry = new Object()
         pageentry.time = new Date()

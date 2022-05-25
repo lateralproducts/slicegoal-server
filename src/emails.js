@@ -78,6 +78,10 @@ const habitGuide = fs
     .readFileSync(__dirname + '/emailtemplates/habitGuide.html')
     .toString()
 
+    const newSessionLead = fs  
+    .readFileSync(__dirname + '/emailtemplates/newLeadSession.html')
+    .toString()
+
 async function sendEmail(to, subject, email, attachments) {
     const db = await DbConnection.Get()
     const Emails = db.collection('emails')
@@ -222,9 +226,9 @@ export async function emailNewCoach(coach, queryStringParams) {
 
 export async function emailHabitGuide(name, toemail) {
     let to = toemail
-    let subject = 'Your Free Habit Guide!'
+    let subject = 'Here\'s your Free Habit Guide'
     let email = Mustache.render(habitGuide, {
-        name: name,
+        name: name === '' ? '!' : ' ' + name + ',',
         logopath: LOGO_PATH_URL
     })
     let attachments = [{
@@ -232,6 +236,17 @@ export async function emailHabitGuide(name, toemail) {
         content: fs.createReadStream(__dirname + '/files/5StepHabitBuilderGuide.pdf')
     }]
     sendEmail(to, subject, email, attachments)
+}
+
+export async function emailNotifyNewLeadCoaching(name, toemail) {
+    let to = `${process.env.NOTIFICATION_EMAIL}`
+    let subject = 'New Coaching Lead! Session request'
+    let email = Mustache.render(newSessionLead, {
+        name: name === '' ? '!' : ' ' + name + ',',
+        email: toemail,
+        logopath: LOGO_PATH_URL
+    })
+    sendEmail(to, subject, email)
 }
 
 export async function emailFeedback(user, feedback, datetime) {
