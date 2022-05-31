@@ -20,7 +20,7 @@ export async function createreport(to,fromdate,todate){
     //Campaign landed and bouncing.
     const campaignlanded = await Sessions.find({
         'pages.1': {$exists: true}, 
-        'campaign.campaign': {$exists: true},
+        'campaign.utm_campaign': {$exists: true}, //reading the data where a campaign exists.
         email: null,
         landed: {$gte: fromdate, $lt: todate},
         landedip:{$nin:[/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./]}
