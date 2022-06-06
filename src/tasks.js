@@ -20,7 +20,7 @@ export const schema = `
 
 export const typeDefs = `
     extend type Query {
-        tasks(starttime: String, endtime: String, scheduled: Boolean, complete: Boolean, today: String, goal: String) : [Task]
+        tasks(starttime: String, endtime: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String) : [Task]
     }
     
     extend type Mutation {
@@ -31,6 +31,7 @@ export const typeDefs = `
         checkTask(taskid: String!, checked: Boolean) : Boolean
         removeTaskGoal(taskid: String!): Boolean
         updateDayTaskOrder(tasks: [String]): Boolean
+        updateTaskListOrder(tasks: [String]): Boolean
     }
 `
 
@@ -69,24 +70,28 @@ export const resolvers = {
                     }
                 ).sort({rescheduled: -1}).toArray()
             } else { //return list of tasks for the day.
-                const starttime = new Date(args.starttime)
-                const endtime = new Date(args.endtime)
-                
                 let query = new Object()
-                query = { //find tasks scheduled for that day
-                    $and: [
-                        {'starttime': {$gte: starttime}},
-                        {'starttime': {$lt: endtime}}
-                    ]
-                }
                 query.profile = getprofileid(req.session)
-                query.schedule = true
+                if(args.starttime || args.endtime){
+                    const starttime = new Date(args.starttime)
+                    const endtime = new Date(args.endtime) 
+                    query = { //find tasks scheduled for that day
+                        $and: [
+                            {'starttime': {$gte: starttime}},
+                            {'starttime': {$lt: endtime}}
+                        ]
+                }}
+                if (args.scheduled) query.schedule = args.scheduled
                 if(!args.complete){
                     query.$or = [{complete: false}, {complete: null}]
                 }
+                let sort = new Object()
+                sort.complete = 1
+                if(args.list == 'day') sort.dayorder = 1 
+                else sort.listorder = 1
 
                 return await Tasks.find(query)
-                .sort({complete: 1, dayorder: 1}).toArray()
+                .sort(sort).toArray()
             }
         }
     },
@@ -166,6 +171,18 @@ export const resolvers = {
                 Tasks.updateOne(
                     { _id: ObjectId(_id) },
                     { $set: { dayorder: count } },
+                )
+            })
+            return true
+        },
+        updateTaskListOrder: async(parent, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            args.tasks.map(function(_id, count) {
+                Tasks.updateOne(
+                    { _id: ObjectId(_id) },
+                    { $set: { listorder: count } },
                 )
             })
             return true
