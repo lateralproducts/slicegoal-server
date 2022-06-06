@@ -51,7 +51,7 @@ export const resolvers = {
                 ).toArray()
             }
 
-            if (args.scheduled) { //return list of unscheduled/unfinished tasks
+            if (args.scheduled && args.list === 'day') { //return list of unscheduled/unfinished tasks for scheduler
                 const today = new Date(args.today)
                 return await Tasks.find(
                     {
@@ -69,7 +69,7 @@ export const resolvers = {
                         ]}]
                     }
                 ).sort({rescheduled: -1}).toArray()
-            } else { //return list of tasks for the day.
+            } else { //return list of tasks for the day OR main list.
                 let query = new Object()
                 query.profile = getprofileid(req.session)
                 if(args.starttime || args.endtime){
