@@ -175,6 +175,7 @@ export function querytojson(search) {
         const json = JSON.parse(
             '{"' +
                 decodeURI(search)
+                    .replace(/\n/g, '')
                     .replace(/"/g, '\\"')
                     .replace(/&/g, '","')
                     .replace(/=/g, '":"') +
