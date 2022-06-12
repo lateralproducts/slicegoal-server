@@ -36,6 +36,14 @@ export async function createreport(to,fromdate,todate){
     }).toArray()
     stats.push({metric: "website sessions", measure: websitesessions.length, notes: websitesessions.map(session => { return session.screenwidth + 'px' })})
 
+    //New Leads - Downloaded Lead Magnet
+    const newleads = await Sessions.find({
+        'pages.page':'/offer/building-habits/success',
+        landed: {$gte: fromdate, $lt: todate}
+    }).toArray()
+    stats.push({metric: "leads", measure: newleads.length, notes: newleads.map(session => { return session.email + ' : ' + session.screenwidth + 'px' })})
+
+
     //New Signups - Sessions with Signup
     const newsignups = await Sessions.find({
         'pages.action':'signup-success',
