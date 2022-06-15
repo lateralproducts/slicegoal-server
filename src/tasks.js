@@ -81,10 +81,8 @@ export const resolvers = {
                             {'starttime': {$lt: endtime}}
                         ]
                 }}
-                if (args.scheduled) query.schedule = args.scheduled
-                if(!args.complete){
-                    query.$or = [{complete: false}, {complete: null}]
-                }
+                query.schedule = true //only return 'scheduled' tasks.
+                if(!args.complete) query.$or = [{complete: false}, {complete: null}]
                 let sort = new Object()
                 sort.complete = 1
                 if(args.list == 'day') sort.dayorder = 1 

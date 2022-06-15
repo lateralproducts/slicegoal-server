@@ -7,9 +7,9 @@ let pjson = require('../package.json')
 
 export const typeDefs = `
     extend type Query {
-        goals(area: String): [Goal]
+        goals(area: String, search: String, date: String): [Goal]
         goalstolink: [Goal]
-        goalTags(area: String, goal: String, search: String, date: String): [GoalTag]
+        goalTags(area: String, goal: String): [GoalTag]
         readPomoData(area: String): PomodoroData
         readGoalPomoData(goal: String): PomodoroData
         pomodoros(goalId: String): [Pomodoro]
@@ -19,7 +19,9 @@ export const typeDefs = `
         createGoal(datetime: String, goal: String, notes: String, tasks:[KeyIn], areatags: [AreaTagIn], links: [String]): Goal
         updateGoal(goalId: String!, goal: String, notes: String, datetime: String, complete: String): Goal
         removeGoal(goalid: String!): Boolean
+        snoozeGoal(goalid: String!, snooze: String!): Boolean
         updateGoalOrder(goals: [String]): Boolean
+        updateGoalListOrder(goals: [String]): Boolean
         savePomodoro(area: String, links: [String], notes: String, goal: String, datetime: String, minutes: Int): Boolean!
         checkKey(goalId: String!, index: Int, check: Boolean): Boolean
         removeKey(goalid: String!, index: Int): Boolean
@@ -29,13 +31,6 @@ export const typeDefs = `
         createGoalTag(goalid: String, areaid: String, areaname: String): Tag
         updateGoalTag(tagid: String!, notes: String, snooze: String): Boolean
         removeGoalTag(tagid: String!): Boolean
-        snoozeGoalTag(goalid: String!, snooze: String!): Boolean
-    }
-
-    extend type Mutation {
-        updateFocusOrder(goals: [String]): Boolean
-        saveFocusLink(area: String!, goal: String!, datetime: String!, links: [String]): Boolean
-        snoozeFocusLink(goalid: String!, snooze: String!): Boolean
     }
 `
 
@@ -105,6 +100,16 @@ export const resolvers = {
             query.profileid = getprofileid(req.session)
             query.complete = { $eq: null }
 
+            if (args.search || args.date) { //this is the search query on a goal.
+                query.profileid = getprofileid(req.session)
+                query.complete = { $eq: null }
+                if (args.search) query.goal = new RegExp(args.search, 'i')
+                if (args.date)
+                    query.$or = [
+                        { date: null },
+                        { date: { $lte: new Date(args.date) } }
+                    ]
+            } else query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }] //if not a search query, only show unsnoozed goals.
             return await Goals.find(query).sort({ orderrank: 1 }).toArray()
         },
         goalstolink: async(_, args, { req }) => {
@@ -121,67 +126,19 @@ export const resolvers = {
         goalTags: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const Goals = db.collection('goals')
             const GoalTags = db.collection('goaltags')
-            if (args.search || args.date) {
-                let query = new Object()
-                query.profileid = getprofileid(req.session)
-                query.complete = { $eq: null }
-                if (args.search) query.goal = new RegExp(args.search, 'i')
-                if (args.date)
-                    query.$or = [
-                        { date: null },
-                        { date: { $lte: new Date(args.date) } }
-                    ]
-
-                const goals = await Goals.find(query).toArray()
-
-                query = {
-                    profileid: getprofileid(req.session),
-                    goalid: {
-                        $in: goals.map(function(goal) {
-                            return goal._id ? goal._id.toString() : null
-                        })
-                    }
-                }
-
-                const ObjLinksReturn = new Promise(function(resolve) {
-                    GoalTags.aggregate(
-                        {
-                            $match: query
-                        },
-                        {
-                            $group: {
-                                _id: '$goalid',
-                                doc: { $first: '$$ROOT' }
-                            }
-                        },
-                        {
-                            $replaceRoot: {
-                                newRoot: '$doc'
-                            }
-                        },
-                        { $sort: { date: -1 } },
-
-                        function(err, goaltags) {
-                            if (err) throw err
-                            resolve(goaltags)
-                        },
-                    )
-                })
-                return ObjLinksReturn
-            } else {
-                let query = Object()
-                args.area ? (query.areaid = args.area) : ''
-                args.goal ? (query.goalid = args.goal) : ''
-                query.profileid = getprofileid(req.session)
-                query.complete = { $eq: null }
-                query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }]
-
-                return await GoalTags.find(query, {
-                    sort: { orderrank: 1 }
-                }).toArray()
-            }
+            
+            let query = Object()
+            args.area ? (query.areaid = args.area) : ''
+            args.goal ? (query.goalid = args.goal) : ''
+            query.profileid = getprofileid(req.session)
+            query.complete = { $eq: null }
+            query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }]
+            
+            return await GoalTags.find(query, {
+                sort: { orderrank: 1 }
+            }).toArray()
+            
         },
         pomodoros: async(_, { goalId }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -341,22 +298,6 @@ export const resolvers = {
             return await Goals.findOne({ _id: ObjectId(goalid) })
         }
     },
-    Focus: {
-        area: async({ area }) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            return await Areas.findOne({
-                _id: ObjectId(area)
-            })
-        },
-        goal: async({ goal }) => {
-            const db = await DbConnection.Get()
-            const Goals = db.collection('goals')
-            return await Goals.findOne({
-                _id: ObjectId(goal)
-            })
-        }
-    },
     Mutation: {
         createGoal: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -493,7 +434,6 @@ export const resolvers = {
                     },
                     { multi: true },
                 )
-                removefocuslink(req, goalId)
             }
             return goal.value
         },
@@ -504,6 +444,19 @@ export const resolvers = {
             const Goals = db.collection('goals')
             await GoalTags.deleteMany({ goalid: goalid, profileid: getprofileid(req.session) })
             await Goals.deleteOne({ _id: ObjectId(goalid), profileid: getprofileid(req.session) })
+            return true
+        },
+        updateGoalListOrder: async(parent, args, { req }) => {
+            //update the main goal list order rank. persist in database.
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Goals = db.collection('goals')
+            args.goals.map(function(_id, count) {
+                Goals.updateOne(
+                    { _id: ObjectId(_id) },
+                    { $set: { orderrank: count } },
+                )
+            })
             return true
         },
         updateGoalOrder: async(parent, args, { req }) => {
@@ -518,77 +471,29 @@ export const resolvers = {
             })
             return true
         },
-        updateFocusOrder: async(parent, args, { req }) => {
+        snoozeGoal: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const FocusLinks = db.collection('focuslinks')
-            args.goals.map(function(_id, count) {
-                FocusLinks.updateOne(
-                    { _id: ObjectId(_id) },
-                    { $set: { orderrank: count } },
-                )
-            })
-            return true
-        },
-        saveFocusLink: async(root, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const FocusLinks = db.collection('focuslinks')
-            let focuslink = await FocusLinks.findOne(
-                {
-                    userid: getprofileid(req.session),
-                    goal: args.goal
-                },
-                { sort: { date: -1 } }, //update sort at some stage.
-            )
-
-            if (focuslink) {
-                args.userid = getprofileid(req.session)
-                await FocusLinks.deleteOne({
-                    _id: focuslink._id,
-                    userid: args.userid
-                })
-                return true
-            } else {
-                args.userid = getprofileid(req.session)
-                args.serverversion = pjson.version
-                args.uiversion = getuiversion(req.session)
-                args.date = new Date(args.datetime)
-                await FocusLinks.insertOne(args)
-                return true
-            }
-        },
-        snoozeFocusLink: async(root, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const FocusLinks = db.collection('focuslinks')
-            args.userid = getprofileid(req.session)
-            args.snoozedate = new Date(args.snooze)
-            args.snoozedate.setHours(0, 0, 0, 0)
-            await FocusLinks.updateMany(
-                { goal: args.goalid, userid: args.userid },
-                {
-                    $set: {
-                        snooze: args.snoozedate
-                    }
-                },
-            )
-            return true
-        },
-        snoozeGoalTag: async(root, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
+            const Goals = db.collection('goals')
             const GoalTags = db.collection('goaltags')
             args.profileid = getprofileid(req.session)
             args.snoozedate = new Date(args.snooze)
             args.snoozedate.setHours(0, 0, 0, 0)
+            await Goals.update(
+                { _id: ObjectId(args.goalid) },
+                {
+                    $set: {
+                        snooze: args.snoozedate
+                    }
+                }
+            )
             await GoalTags.updateMany(
                 { goalid: args.goalid, profileid: args.profileid },
                 {
                     $set: {
                         snooze: args.snoozedate
                     }
-                },
+                }
             )
             return true
         },
@@ -666,15 +571,4 @@ async function creategoal(newgoal, req) {
     } catch (error) {
         console.log(error)
     }
-}
-
-async function removefocuslink(req, goalid) {
-    const db = await DbConnection.Get()
-    const FocusLinks = db.collection('focuslinks')
-    await FocusLinks.deleteOne({
-        goal: goalid,
-        userid: getprofileid(req.session)
-    })
-
-    return true
 }

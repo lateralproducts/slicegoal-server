@@ -33,20 +33,11 @@ schedule.scheduleJob({ hour: 15, minute: 0 }, function() { //15:00 UTC = 2:00am,
 async function goalnudge(email) {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
-    const FocusLinks = db.collection('focuslinks')
     const Goals = db.collection('goals')
 
     const user = await Users.findOne({ email: email })
 
     if (user) {
-        const links = await FocusLinks.find({
-            userid: user._id.toString(),
-            $or: [{ snooze: null }, { snooze: { $lt: new Date() } }]
-        })
-            .sort({ orderrank: 1 })
-            .limit(3)
-            .toArray()
-
         const goals = await Goals.find({
             _id: {
                 $in: links.map(function(link) {

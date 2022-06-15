@@ -20,8 +20,6 @@ export const typeDefs = `
         lastranktime(areaId: String): RankTime
         goaltimes(areaId: String): [GoalTime]
         lastgoaltime(areaId: String): GoalTime
-        focusLinks(limit: Int, area: String): [Focus]
-        focusLink(focuslink: String): Focus
         viewsOnOwnWheel(wheelid: String!): [View]
     }
     
@@ -189,31 +187,6 @@ export const resolvers = {
             return await Wheels.find(query)
                 .sort({ templateorder: -1 })
                 .toArray()
-        },
-        focusLinks: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const FocusLinks = db.collection('focuslinks')
-            return await FocusLinks.find({
-                userid: getprofileid(req.session),
-                $or: [{ snooze: null }, { snooze: { $lt: new Date() } }],
-                links: args.area
-            }) //update sort at some stage.
-                .sort({ orderrank: 1 })
-                .limit(args.limit)
-                .toArray()
-        },
-        focusLink: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const FocusLinks = db.collection('focuslinks')
-            return await FocusLinks.findOne(
-                {
-                    userid: getprofileid(req.session),
-                    _id: ObjectId(args.focuslink)
-                },
-                { sort: { date: -1 } }, //update sort at some stage.
-            )
         },
         areas: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
