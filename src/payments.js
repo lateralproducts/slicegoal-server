@@ -220,6 +220,8 @@ export const resolvers = {
                         { accessCode: accessCode },
                         {
                             $set: {
+                                customer: req.session.user ? req.session.user.email : 'not found',
+                                ewayresponse: responseMessage(txnresponse.ResponseCode),
                                 response: txnresponse,
                                 responsetimestamp: new Date(),
                                 status: 'checked'
@@ -237,21 +239,22 @@ export const resolvers = {
                 })()
             }).then(
                 (txnresponse) => {
+                    if(txnresponse.ResponseCode === '00' || txnresponse.ResponseCode === '08') 
+                    {
+                        const user_id = getuserid(req.session)
+                        Users.updateOne( //update the user profile with payments and active offer information
+                            { _id: ObjectId(user_id) },
+                            { $set: { 
+                                TokenCustomerId: txnresponse.TokenCustomerID, // Attach TokenCustomerID to user for future payments
+                                hideupgrade:  true, // Hide upgrade on profile
+                                activeofferid: transaction.offer.offerid, //attach the active offerid
+                                offeractive: transaction.offer.offer, //attach the active offer
+                                lastpaid: new Date() //update the last paid reference.
+                            } },
+                        )
+                    }
+
                     let message = responseMessage(txnresponse.ResponseCode)
-                    // Attach TokenCustomerID to user
-                    const user_id = getuserid(req.session)
-
-                    Users.updateOne(
-                        { _id: ObjectId(user_id) },
-                        { $set: { 
-                            TokenCustomerId: txnresponse.TokenCustomerID,
-                            hideupgrade: (txnresponse.ResponseCode === '00' || txnresponse.ResponseCode === '08' ) ? true: false,
-                            activeofferid: transaction.offer.offerid,
-                            offeractive: transaction.offer.offer,
-                            lastpaid: new Date()
-                        } },
-                    )
-
                     return message
                 },
                 error => {
@@ -376,10 +379,10 @@ export const resolvers = {
 
 function responseMessage(responseCode) {
     let result = {
-        '00': 'success',
-        '08': 'success',
+        '00': 'Payment made successfully.', //success
+        '08': 'Payment made successfully.', //success
         '01': 'Your card issuer has indicated problem with card number. Please contact your bank.',
-        '03': 'No Merchant - please contact your bank to ensure your merchant account is active and is an Ecommerce terminal.',
+        '03': 'Error. No Merchant Account',
         '05': 'Your bank has declined your payment for an unspecified reason.',
         '06': 'Transaction failed. Please ensure card details are correct.',
         '12': 'Transaction failed. Please ensure card details are correct.',
