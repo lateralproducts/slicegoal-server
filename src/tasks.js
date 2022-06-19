@@ -82,9 +82,12 @@ export const resolvers = {
                         ]
                 }}
                 query.schedule = true //only return 'scheduled' tasks.
-                if(!args.complete) query.$or = [{complete: false}, {complete: null}]
+                if(!args.complete) query.$or = [ //only return if complete not equal to true (or doesn't exist)
+                    {complete: null},
+                    {complete: false},
+                    {complete: {$exists: false}}]
                 let sort = new Object()
-                sort.complete = 1
+                //sort.complete = 1
                 if(args.list == 'day') sort.dayorder = 1 
                 else sort.listorder = 1
 
@@ -136,8 +139,8 @@ export const resolvers = {
             }
             if(args.setdate || args.starttime) 
                 {updates.starttime = args.starttime ? new Date(args.starttime) : new Date(args.setdate)} 
-            else 
-                updates.starttime = null
+            /* else 
+                updates.starttime = null */
             if(args.title) updates.title = args.title
             if(args.complete !== null) updates.complete = args.complete
             if(args.description) updates.description = args.description
