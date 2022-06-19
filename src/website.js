@@ -48,7 +48,7 @@ export const resolvers = {
                 args.date = new Date()
                 await Leads.insertOne(args) //insert request into leads database.
                 return true //assume everything processed.
-            } else throw new Error('Invalid email.')
+            } else throw new Error('That email format doesn\'t look right. Can you check it?')
         }
     }
 }
