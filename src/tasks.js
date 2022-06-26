@@ -31,6 +31,7 @@ export const typeDefs = `
         checkTask(taskid: String!, checked: Boolean) : Boolean
         removeTaskGoal(taskid: String!): Boolean
         updateDayTaskOrder(tasks: [String]): Boolean
+        updateGoalTaskOrder(tasks: [String]): Boolean
         updateTaskListOrder(tasks: [String]): Boolean
     }
 `
@@ -48,7 +49,7 @@ export const resolvers = {
                         profile: getprofileid(req.session),
                         goal: args.goal,
                     }
-                ).toArray()
+                ).sort({goalorder: 1}).toArray()
             }
 
             if (args.scheduled && args.list === 'day') { //return list of unscheduled/unfinished tasks for scheduler
@@ -172,6 +173,18 @@ export const resolvers = {
                 Tasks.updateOne(
                     { _id: ObjectId(_id) },
                     { $set: { dayorder: count } },
+                )
+            })
+            return true
+        },
+        updateGoalTaskOrder: async(parent, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            args.tasks.map(function(_id, count) {
+                Tasks.updateOne(
+                    { _id: ObjectId(_id) },
+                    { $set: { goalorder: count } },
                 )
             })
             return true

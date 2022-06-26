@@ -22,7 +22,7 @@ export const typeDefs = `
         snoozeGoal(goalid: String!, snooze: String!): Boolean
         updateGoalOrder(goals: [String]): Boolean
         updateGoalListOrder(goals: [String]): Boolean
-        savePomodoro(area: String, links: [String], notes: String, goal: String, datetime: String, minutes: Int): Boolean!
+        savePomodoro(notes: String, goal: String, datetime: String, minutes: Int): Boolean!
         checkKey(goalId: String!, index: Int, check: Boolean): Boolean
         removeKey(goalid: String!, index: Int): Boolean
     }
