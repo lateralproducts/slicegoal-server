@@ -224,12 +224,19 @@ export async function emailNewCoach(coach, queryStringParams) {
     sendEmail(to, subject, email)
 }
 
-export async function emailHabitGuide(name, toemail) {
+export async function emailHabitGuide(
+        name, 
+        toemail,
+        interactionid
+    ){
     let to = toemail
     let subject = 'Here\'s your Free Habit Guide'
     let email = Mustache.render(habitGuide, {
         name: name === '' ? '!' : ' ' + name + ',',
-        logopath: LOGO_PATH_URL
+        pathurl: PATH_URL,
+        logopath: LOGO_PATH_URL,
+        email: toemail,
+        interactionid: interactionid
     })
     let attachments = [{
         filename: '5StepHabitBuilderGuide.pdf',
@@ -285,7 +292,7 @@ export async function shareInsightEmail(
             sharerName: sharerName,
             sharerEmail: `${sharer.email}`,
             logopath: LOGO_PATH_URL,
-            acceptLink: acceptLink,
+            acceptLink: `${APP_PATH_URL}` + acceptLink,
             shareNote: shareNote,
             interactionid: interactionid
         })

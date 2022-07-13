@@ -2,6 +2,7 @@ import { ObjectId } from 'mongodb'
 
 import DbConnection from './database'
 import { getprofileid } from './users'
+import { activityrecord } from './goals';
 
 export const schema = `
     type Task {
@@ -214,10 +215,18 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
+            var updatetask = new Object()
+
+            if(args.checked) {
+                args.task = args.taskid
+                activityrecord(args, req, '✔')
+                updatetask.goalorder = 1000 //setting order to 1000 - to bottom of list.
+            }
+            updatetask.complete = args.checked
 
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
-                {$set: {complete: args.checked}}
+                {$set: updatetask}
             )).result.ok === 1
         },
         removeTaskGoal: async(_, args, { req }) => {

@@ -783,8 +783,7 @@ export const resolvers = {
                     rootarea: rootarea,
                     area: area,
                     wheelid: getwheelid(req.session)
-                },
-                { $set: { arealink: null } },
+                }
             )
             return res
         },
@@ -792,16 +791,12 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const AreaLinks = db.collection('arealinks')
-            // args.userid = getwheelid(req.session);
-            // args.serverversion = pjson.version;
-            // args.uiversion = getuiversion(req.session);
             await AreaLinks.insertOne({
                 rootarea: args.rootarea,
                 area: args.area,
                 wheelid: getwheelid(req.session).toString(),
                 created: new Date()
             })
-
             return true
         },
         createArea: async(_, args, { req }) => {

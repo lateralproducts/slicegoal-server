@@ -7,6 +7,7 @@ import DbConnection from './database'
 import { createUserConnection } from './community'
 import { attachSources } from './sources'
 import { newIx } from './interactions'
+import { shareInsightEmail } from './emails'
 
 export const typeDefs = `
 
@@ -674,6 +675,8 @@ export const resolvers = {
                     message: 'Cannot share with yourself - try duplicating'
                 }
             else {
+                //let to = args.targetUser
+                let interactionid = (await newIx(currentUser._id.toString(),targetUser._id.toString(),'share insight email', args.insightid, args.shareNote)).insertedId.toString()
                 return await Insights.findOne({
                     _id: ObjectId(args.insightid)
                 })
@@ -690,8 +693,33 @@ export const resolvers = {
                     .then(result => {
                         Insights.findOne({_id: ObjectId(result.insertedId)})
                         .then(result => { 
-                            //save interaction
-                            newIx(currentUser,targetUser,'shareinsight', result, args.shareNote)
+                            //save interaction to track
+                            try {
+                                
+                                if(targetUser.state === 'verified'){
+                                    // Existing verified user
+                                    shareInsightEmail(
+                                        insight,
+                                        currentUser,
+                                        targetUser,
+                                        args.shareNote,
+                                        `?sharedinsights=active`,
+                                        interactionid
+                                    )
+                                } else {
+                                    // Existing but unverified user
+                                    shareInsightEmail(
+                                        insight,
+                                        currentUser,
+                                        targetUser,
+                                        args.shareNote,
+                                        `?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`,
+                                        interactionid
+                                    )
+                                }
+                            }catch (error) {
+                                console.log("failed to send shared insights email - " + error)
+                            }
                         })
 
                         return {

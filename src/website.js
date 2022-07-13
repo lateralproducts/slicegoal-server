@@ -5,6 +5,7 @@ import {
     emailHabitGuide,
     emailNotifyNewLeadCoaching
 } from './emails'
+import { newIx } from './interactions'
 import { validateemail } from './functions';
 
 export const typeDefs = `   
@@ -53,17 +54,22 @@ export const resolvers = {
     }
 }
 
-function offeraction(args) {
-    switch(args.offer){
-        case '5stephabitguide':
-            emailHabitGuide(args.name, args.email)
-            return
-        case 'freeintrosession':
-            //emailFreeIntroSession(args.name, args.email)
-            emailNotifyNewLeadCoaching(args.name, args.email)   
-            return   
-        default:
-            throw new Error('Sorry, we can\'t find that offer.')
+async function offeraction(args) {
+    try {
+        switch(args.offer){
+            case '5stephabitguide':
+                let interactionid = (await newIx('cavestep - funnel - habits', args.email, 'lead magnet email', 'habit guide', '')).insertedId.toString()
+                emailHabitGuide(args.name, args.email, interactionid)
+                return
+            case 'freeintrosession':
+                //emailFreeIntroSession(args.name, args.email)
+                emailNotifyNewLeadCoaching(args.name, args.email)   
+                return   
+            default:
+                throw new Error('Sorry, we can\'t find that offer.')
+        }
+    } catch (error){
+        console.log(error)
     }
 }
 
@@ -84,7 +90,7 @@ export async function sessiontrack(
         session: req.session.id
     })
     //currently query string coming through as different fields on website and app.
-    const query = args.search ? args.search : args.url
+    const query = args.search ? args.search : args.url ? args.url.replace(/\?/g, '') : ''
     let update = { lastrequest: new Date() }
     if (args.email)
         update.email = req.session.user ? req.session.user.email : args.email
@@ -132,8 +138,8 @@ export async function sessiontrack(
         newsession.landed = new Date()
         newsession.lastrequest = new Date()
         if (query) {
-            newsession.campaignquery = query
-            newsession.campaign = querytojson(query) 
+            newsession.query = query
+            newsession.querydata = querytojson(query) 
         }
         
         // utm parameters use lowercase and separated by - ie. utm_campaign=habits-promotion_version-2
@@ -175,6 +181,7 @@ export function querytojson(search) {
         const json = JSON.parse(
             '{"' +
                 decodeURI(search)
+                    .replace(/^\?/g, '') //replace first character
                     .replace(/\n/g, '')
                     .replace(/"/g, '\\"')
                     .replace(/&/g, '","')

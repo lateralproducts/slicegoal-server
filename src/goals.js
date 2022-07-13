@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb'
 import { getprofileid, getwheelid } from './users'
 import { getuiversion } from '../util/index'
 import DbConnection from './database'
+import { date2str } from './functions';
 let pjson = require('../package.json')
 
 export const typeDefs = `
@@ -481,46 +482,40 @@ export const resolvers = {
             args.snoozedate.setHours(0, 0, 0, 0)
             await Goals.update(
                 { _id: ObjectId(args.goalid) },
-                {
-                    $set: {
-                        snooze: args.snoozedate
-                    }
-                }
+                { $set: { snooze: args.snoozedate }}
             )
             await GoalTags.updateMany(
                 { goalid: args.goalid, profileid: args.profileid },
-                {
-                    $set: {
-                        snooze: args.snoozedate
-                    }
-                }
+                { $set: { snooze: args.snoozedate }}
             )
+            var pomo = new Object()
+            pomo.goal = args.goalid
+            activityrecord(pomo, req, 'Goal snoozed to ' + date2str(args.snoozedate,'MM-dd-yyyy'))
             return true
         },
         savePomodoro: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const Pomodoros = db.collection('pomodoros')
-            args.userid = getprofileid(req.session)
-            args.serverversion = pjson.version
-            args.uiversion = getuiversion(req.session)
-            args.date = new Date(args.datetime)
-            //need to check the goal and overwrite the links.
-            const Goals = db.collection('goals')
-            const Goal = await Goals.findOne({
-                _id: ObjectId(args.goal)
-            })
-            if (Goal.links) args.links = Goal.links
-            else
-                Goals.updateOne(
-                    { _id: ObjectId(args.goal) },
-                    { $set: { links: args.links } },
-                )
-            //overwrite links if they are defined on the goal.
-            await Pomodoros.insertOne(args)
+            activityrecord(args, req)
             return true
         }
     }
+}
+
+export async function activityrecord(args, req, note) {
+    const db = await DbConnection.Get()
+
+    const Tasks = db.collection('tasks')
+    const Task = await Tasks.findOne({ _id: ObjectId(args.task)})
+    if (Task) args.goal = Task.goal
+    if (note) args.notes = (Task ? Task.title + " " : "") + note
+
+    const Pomodoros = db.collection('pomodoros')
+    args.userid = getprofileid(req.session)
+    args.serverversion = pjson.version
+    args.uiversion = getuiversion(req.session)
+    if(args.datetime) args.date = new Date(args.datetime)
+    else args.date = new Date()
+    await Pomodoros.insertOne(args)
 }
 
 async function creategoal(newgoal, req) {
@@ -531,6 +526,9 @@ async function creategoal(newgoal, req) {
     const Tasks = db.collection('tasks')
     try {
         Goals.insertOne(newgoal).then(result => {
+            var pomo = new Object()
+            pomo.goal = result.insertedId.toString()
+            activityrecord(pomo, req, 'Goal created.')
             if (newgoal.tasks){
                 newgoal.tasks.map(async task => {   
                     var newtask = new Object()

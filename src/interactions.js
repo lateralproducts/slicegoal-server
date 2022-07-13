@@ -1,10 +1,5 @@
 import DbConnection from './database'
-import { shareInsightEmail } from './emails'
 import { ObjectId } from 'mongodb'
-import { getprofileid, getuserid, getwheelid } from './users'
-
-const PATH_URL = `${process.env.PATH_URL}`
-const APP_PATH_URL = `${PATH_URL}/app`
 
 export const typeDefs = `
   extend type Query {
@@ -37,46 +32,22 @@ export const schema = `
     }
 `
 
-export async function newIx(from, to, type, insight, sharenote){
-    const db = await DbConnection.Get()
-    const Interactions = db.collection('interactions')
-    let ix = new Object()
-    ix.to = to._id.toString() //userid
-    ix.from = from._id.toString() //userid
-    ix.type = type //eg. shareinsight
-    ix.data = insight
-    ix.triggered = new Date()
-    ix.status = 'pending'
-    ix.history = [{
-        time: new Date(),
-        action: 'triggered',
-        channel: 'app'}]
-    const interactionid = (await Interactions.insertOne(ix)).insertedId.toString()
-
+export async function newIx(from, to, type, content, message){
     try {
-        if(to.state === 'verified'){
-            // Existing verified user
-            shareInsightEmail(
-                insight,
-                from,
-                to,
-                sharenote,
-                `${APP_PATH_URL}?sharedinsights=active`,
-                interactionid
-            )
-        } else {
-            // Existing but unverified user
-            shareInsightEmail(
-                insight,
-                from,
-                to,
-                sharenote,
-                `${APP_PATH_URL}?page=verify&user=${to._id}&code=${to.code}&sharedinsights=active`,
-                interactionid
-            )
-        }
-    }catch (error) {
-        console.log("failed to send shared insights email - " + error)
+        const db = await DbConnection.Get()
+        const Interactions = db.collection('interactions')
+        let ix = new Object()
+        ix.to = to //userid
+        ix.from = from //userid
+        ix.type = type //eg. shareinsight
+        ix.content = content
+        ix.message = message
+        ix.triggered = new Date()
+        ix.status = 'pending'
+        ix.history = [{time: new Date(), action: 'triggered', channel: 'app'}]
+        return await Interactions.insertOne(ix)
+    } catch (error) {
+        console.log(error)
     }
 }
 
