@@ -10,6 +10,7 @@ export const typeDefs = `
     extend type Query {
         goals(area: String, search: String, date: String): [Goal]
         goalstolink: [Goal]
+        linkedgoals(goal: String): [Goal]
         goalTags(area: String, goal: String): [GoalTag]
         readPomoData(area: String): PomodoroData
         readGoalPomoData(goal: String): PomodoroData
@@ -26,6 +27,8 @@ export const typeDefs = `
         savePomodoro(notes: String, goal: String, datetime: String, minutes: Int): Boolean!
         checkKey(goalId: String!, index: Int, check: Boolean): Boolean
         removeKey(goalid: String!, index: Int): Boolean
+        createGoalLink(rootgoal: String, goal: String): Boolean
+        deleteGoalLink(rootgoal: String, goal: String): Area
     }
     
     extend type Mutation {
@@ -48,6 +51,7 @@ export const schema = `
         time: PomodoroData
         links: [Area]
         tasks: [Task]
+        goals: [Goal]
     }
 
     input KeyIn {
@@ -123,6 +127,26 @@ export const resolvers = {
             query.complete = { $eq: null }
 
             return await Goals.find(query).sort({ datecreated: -1 }).toArray()
+        },
+        linkedgoals: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const GoalLinks = db.collection('goallinks')
+            const Goals = db.collection('goals')
+
+            let query = new Object()
+            query.profileid = getprofileid(req.session)
+            query.rootgoal = args.goal
+
+            var goallinks = await GoalLinks.distinct('goal', query)
+
+            return await Goals.find({
+                _id: {
+                    $in: goallinks.map(function(id) {
+                        return ObjectId(id)
+                    })
+                }
+            }).toArray()
         },
         goalTags: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -285,7 +309,25 @@ export const resolvers = {
                     },
                 )
             })
-        }
+        },
+        goals: async(parent, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Goals = db.collection('goals')
+            const Goallinks = db.collection('goallinks')
+            const query = {
+                rootarea: parent._id.toString(),
+                wheelid: parent.wheelid
+            }
+            const goallinks = await Goallinks.distinct('area', query)
+
+            return await Goals.find({
+                _id: {
+                    $in: goallinks.map(function(id) {
+                        return ObjectId(id)
+                    })
+                }
+            }).toArray()
+        },
     },
     GoalTag: {
         area: async({ areaid }) => {
@@ -497,7 +539,37 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             activityrecord(args, req)
             return true
-        }
+        },
+        createGoalLink: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const GoalLinks = db.collection('goallinks')
+
+            if(args.rootgoal !== args.goal){
+                GoalLinks.insertOne({
+                    rootgoal: args.rootgoal,
+                    goal: args.goal,
+                    profileid: getprofileid(req.session),
+                    created: new Date()
+                })
+                return true
+            }else{
+                throw new Error('Can\'t link the same goal')
+            }
+        },
+        deleteGoalLink: async(_, { rootgoal, goal }, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const GoalLinks = db.collection('goallinks')
+            const res = await GoalLinks.deleteMany(
+                {
+                    rootgoal: rootgoal,
+                    goal: goal,
+                    profileid: getprofileid(req.session)
+                }
+            )
+            return res
+        },
     }
 }
 
