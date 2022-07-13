@@ -8,7 +8,7 @@ let pjson = require('../package.json')
 
 export const typeDefs = `
     extend type Query {
-        goals(area: String, search: String, date: String): [Goal]
+        goals(area: String, search: String, date: String, goal: String): [Goal]
         goalstolink: [Goal]
         linkedgoals(goal: String): [Goal]
         goalTags(area: String, goal: String): [GoalTag]
@@ -52,6 +52,8 @@ export const schema = `
         links: [Area]
         tasks: [Task]
         goals: [Goal]
+        goalslinked: Boolean
+        linkreferenced: Boolean
     }
 
     input KeyIn {
@@ -99,11 +101,15 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
+            const GoalLinks = db.collection('goallinks')
 
+            let order = new Object()
+            order = { orderrank: 1 }
             let query = new Object()
+            query.profileid = getprofileid(req.session) //show goals from profileid.
+            query.complete = { $eq: null } //only show goals that aren't complete.
+
             if(args.area) query.area = args.area
-            query.profileid = getprofileid(req.session)
-            query.complete = { $eq: null }
 
             if (args.search || args.date) { //this is the search query on a goal.
                 query.profileid = getprofileid(req.session)
@@ -115,9 +121,17 @@ export const resolvers = {
                         { date: { $lte: new Date(args.date) } }
                     ]
             } else query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }] //if not a search query, only show unsnoozed goals.
-            return await Goals.find(query).sort({ orderrank: 1 }).toArray()
+            
+            if(args.goal) {
+                var linklist = await GoalLinks.find({profileid: getprofileid(req.session), rootgoal: args.goal}).toArray() //sort({sort: 1})
+                query._id = {$in: linklist.map(function(link) {return ObjectId(link.goal)})}
+                //need to eventually fix the sort on linked goals. Think this will task a refactor to figure out the way to do it.
+            }
+
+            return await Goals.find(query).sort(order).toArray()
         },
         goalstolink: async(_, args, { req }) => {
+            //used for giving list of goals that can be selected. ie. to link to a task.
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
@@ -129,6 +143,7 @@ export const resolvers = {
             return await Goals.find(query).sort({ datecreated: -1 }).toArray()
         },
         linkedgoals: async(_, args, { req }) => {
+            //show linked sub goals on a goal.
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
@@ -315,8 +330,8 @@ export const resolvers = {
             const Goals = db.collection('goals')
             const Goallinks = db.collection('goallinks')
             const query = {
-                rootarea: parent._id.toString(),
-                wheelid: parent.wheelid
+                rootgoal: parent._id.toString(),
+                profileid: parent.profileid
             }
             const goallinks = await Goallinks.distinct('area', query)
 
@@ -327,6 +342,30 @@ export const resolvers = {
                     })
                 }
             }).toArray()
+        },
+        goalslinked: async(parent, __, { req }) => {
+            //return whether this goal links other goals.
+            const db = await DbConnection.Get()
+            const Goallinks = db.collection('goallinks')
+            const query = {
+                rootgoal: parent._id.toString(),
+                profileid: parent.profileid
+            }
+            const goallinks = await Goallinks.findOne(query)
+            if (goallinks) return true
+            else return false
+        },
+        linkreferenced: async(parent, __, { req }) => {
+            //return whether other goals are linking this one.
+            const db = await DbConnection.Get()
+            const Goallinks = db.collection('goallinks')
+            const query = {
+                goal: parent._id.toString(),
+                profileid: parent.profileid
+            }
+            const goallinks = await Goallinks.findOne(query)
+            if (goallinks) return true
+            else return false
         },
     },
     GoalTag: {
