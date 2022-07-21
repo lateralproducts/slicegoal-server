@@ -388,11 +388,9 @@ export const resolvers = {
             args.uiversion = getuiversion(req.session)
             args.date = args.datetime ? new Date(args.datetime) : null
             args.datecreated = new Date()
-            creategoal(args, req)
-            return {
-                _id: 1,
-                message: 'new goal created'
-            }
+            return creategoal(args, req).then(goalid => {
+                return {_id: goalid, goal: args.goal}
+            })
         },
         checkKey: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -524,9 +522,13 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const GoalTags = db.collection('goaltags')
             const Goals = db.collection('goals')
+            const GoalLinks = db.collection('goallinks')
             await GoalTags.deleteMany({ goalid: goalid, profileid: getprofileid(req.session) })
-            await Goals.deleteOne({ _id: ObjectId(goalid), profileid: getprofileid(req.session) })
-            return true
+            await GoalLinks.deleteMany({ $or: [{rootgoal: goalid},{goal: goalid}], profileid: getprofileid(req.session) })
+            Goals.deleteMany({ _id: ObjectId(goalid), profileid: getprofileid(req.session) }).then(result => {
+                if (result.result.n > 0) return true
+                else return false
+            })
         },
         updateGoalListOrder: async(parent, args, { req }) => {
             //update the main goal list order rank. persist in database.
@@ -636,7 +638,7 @@ async function creategoal(newgoal, req) {
     const Areas = db.collection('areas')
     const Tasks = db.collection('tasks')
     try {
-        Goals.insertOne(newgoal).then(result => {
+        return Goals.insertOne(newgoal).then(result => {
             var pomo = new Object()
             pomo.goal = result.insertedId.toString()
             activityrecord(pomo, req, 'Goal created.')
@@ -676,6 +678,7 @@ async function creategoal(newgoal, req) {
                     goaltag.datecreated = new Date()
                     GoalTags.insert(goaltag)
                 })
+            return result.insertedId
         })
     } catch (error) {
         console.log(error)
