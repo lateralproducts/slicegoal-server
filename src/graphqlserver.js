@@ -39,6 +39,7 @@ import { typeDefs as webQueryMutation } from './website'
 import { typeDefs as tagQueryMutation } from './tags'
 import { typeDefs as taskQueryMutation } from './tasks'
 import { typeDefs as sourceMutation } from './sources'
+import { typeDefs as dbUpdateMutation } from '../util/db_updates'
 
 //import resolvers
 import { resolvers as userResolvers } from './users'
@@ -51,6 +52,7 @@ import { resolvers as webResolvers } from './website'
 import { resolvers as tagResolvers } from './tags'
 import { resolvers as taskResolvers } from './tasks'
 import { resolvers as sourceResolvers } from './sources'
+import { resolvers as dbUpdateResolvers } from '../util/db_updates'
 
 //upload()
 import { getfile } from './storage'
@@ -111,7 +113,8 @@ export const graphql = async() => {
                 webQueryMutation,
                 tagQueryMutation,
                 taskQueryMutation,
-                sourceMutation
+                sourceMutation,
+                dbUpdateMutation
             ],
 
             resolvers: merge(
@@ -124,7 +127,8 @@ export const graphql = async() => {
                 webResolvers,
                 tagResolvers,
                 taskResolvers,
-                sourceResolvers
+                sourceResolvers,
+                dbUpdateResolvers
             ),
             context
         })
