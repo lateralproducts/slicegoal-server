@@ -1,6 +1,6 @@
 import DbConnection from './database'
 import { getuserid } from './users'
-import { getuiversion } from '../util/index'
+import { getuiversion } from '../util/functions'
 import { emailFeedback } from './emails'
 let pjson = require('../package.json')
 

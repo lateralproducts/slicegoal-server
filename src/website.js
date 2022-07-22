@@ -6,7 +6,7 @@ import {
     emailNotifyNewLeadCoaching
 } from './emails'
 import { newIx } from './interactions'
-import { validateemail } from './functions';
+import { validateemail } from '../util/functions';
 
 export const typeDefs = `   
     extend type Mutation {

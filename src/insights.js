@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb'
 
 let pjson = require('../package.json')
-import { getuiversion } from '../util/index'
+import { getuiversion } from '../util/functions'
 import { getprofileid, getuserid, getwheelid } from './users'
 import DbConnection from './database'
 import { createUserConnection } from './community'

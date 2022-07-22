@@ -1,9 +1,8 @@
 import { ObjectId } from 'mongodb'
 
 import { getprofileid, getwheelid } from './users'
-import { getuiversion } from '../util/index'
 import DbConnection from './database'
-import { date2str } from './functions';
+import { date2str, getuiversion } from '../util/functions';
 let pjson = require('../package.json')
 
 export const typeDefs = `
