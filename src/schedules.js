@@ -1,7 +1,8 @@
 import { ObjectId } from 'mongodb'
 import DbConnection from './database'
-import { emailGoalNudge, emailRerankNudge } from './emails'
+import { emailGoalNudge, emailRerankNudge, emailFunnel } from './emails'
 import { createreport } from './reporting'
+import { date2str } from '../util/functions'
 
 let schedule = require('node-schedule')
 
@@ -19,10 +20,15 @@ schedule.scheduleJob({ hour: 15, minute: 0 }, function() { //15:00 UTC = 2:00am,
     createreport([`${process.env.NOTIFICATION_EMAIL}`], start, end)
 })
 
-/* schedule.scheduleJob({ hour: 8, minute: 0 }, function() {
+schedule.scheduleJob({ second: 30 }, async function() { //7:30am Sydney/Melbourne time.
     //set to UTC time for server
-    goalnudge('daniel@lateralproducts.com')
-})  */
+    const db = await DbConnection.Get()
+    const LeadFunnel = db.collection('leadfunnel')
+    const today = date2str(new Date(),'MM-dd-yyyy')
+    const funnelemails = await LeadFunnel.findOne({day: today})
+
+    if (funnelemails.emails) funnelemails.emails.map(email => emailFunnel(email.email, email.name, email.funnel, email.step))
+})  
 
 //schedule.scheduleJob({ dayOfWeek: 0, hour: 22, minute: 0 }, function() {
     //nudging once a week

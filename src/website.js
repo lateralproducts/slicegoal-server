@@ -3,15 +3,15 @@ import { getipaddress } from './users'
 
 import {
     emailHabitGuide,
-    emailNotifyNewLeadCoaching
+    emailNotifyNewLeadCoaching,
+    signupEmailFunnel
 } from './emails'
-import { newIx } from './interactions'
 import { validateemail } from '../util/functions';
 
 export const typeDefs = `   
     extend type Mutation {
         trackpage(page: String, search: String, action: String, actioninfo: String, abconfig: String, pagetrack: String, screenwidth: Int, browser: Browser): Boolean
-        sendofferrequest(name: String, email: String!, offer: String!): Boolean
+        sendofferrequest(name: String, email: String, offer: String!): Boolean
     }
 `
 
@@ -58,8 +58,8 @@ async function offeraction(args) {
     try {
         switch(args.offer){
             case '5stephabitguide':
-                let interactionid = (await newIx('cavestep - funnel - habits', args.email, 'lead magnet email', 'habit guide', '')).insertedId.toString()
-                emailHabitGuide(args.name, args.email, interactionid)
+                emailHabitGuide(args.name, args.email)
+                if (args.email === 'daniel@cavestep.com') signupEmailFunnel('habitfunnel', args.name, args.email)
                 return
             case 'freeintrosession':
                 //emailFreeIntroSession(args.name, args.email)

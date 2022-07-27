@@ -69,6 +69,7 @@ export async function updateIx(ixid, status, action, channel){
                     }
                 }
             },
+            {upsert: true} //if the interaction doesn't already exist, create it.
         )
     } catch (error) {
         console.log("error logging ix update - " + error)

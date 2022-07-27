@@ -178,7 +178,7 @@ export const graphql = async() => {
                 const item = req.query
                 if(item.ix) {
                     updateIx(item.ix,'seen','open','email')
-                    console.log('cavestep image accessed - ' + item.ix)
+                    //console.log('cavestep image accessed - ' + item.ix)
                 }
             } else {
                 getfile(filename, res)

@@ -3,6 +3,8 @@ const fs = require('fs')
 const nodemailer = require('nodemailer')
 
 import DbConnection from './database'
+import { newIx } from './interactions'
+import { date2str } from '../util/functions'
 //not 100% sure why it works loading in emails.js for environment variables.
 //environment variables not accessible here when it's loaded in start.js, but loaded here, they're available in start.js.
 //may need to revisit when breaking up into more modules.
@@ -78,9 +80,18 @@ const habitGuide = fs
     .readFileSync(__dirname + '/emailtemplates/habitGuide.html')
     .toString()
 
-    const newSessionLead = fs  
+const newSessionLead = fs  
     .readFileSync(__dirname + '/emailtemplates/newLeadSession.html')
     .toString()
+
+let funnelpackage1 = {emails: [
+    {subject: 'Bad Habits Are Costing You Your Life', template: 'email1', day: 1}, //CTA - Click webpage (or download) about stats on bad habits (and habits?).
+    {subject: 'Your Ideal Future', template: 'email2', day: 2}, //CTA - Take this survey 
+    {subject: '6 Habits That Could Help', template: 'email3', day: 3}, //CTA Download: List of habits that build my day.
+    {subject: 'Hey', template: 'email4', day: 4}, //- Your Biggest Habit - Your Most Valuable Habit - AB test.
+    {subject: 'Habit Builder Booster For A Limited Time', template: 'email5', day: 5} //$50 1 on 1 habit building coaching session - Habit Building Boost - Limited time
+    //-> sign up page. Straight to transaction? AB test.
+]}
 
 async function sendEmail(to, subject, email, attachments) {
     const db = await DbConnection.Get()
@@ -224,11 +235,41 @@ export async function emailNewCoach(coach, queryStringParams) {
     sendEmail(to, subject, email)
 }
 
+export async function signupEmailFunnel(funnelpackage, name, email){
+    //future: map funnelpackage to different funnels.
+    const db = await DbConnection.Get()
+    const LeadFunnel = db.collection('leadfunnel')
+    const today = new Date()
+
+    funnelpackage1.emails.map((funnelemail, count) => {
+        let emaildate = new Date()
+        emaildate.setDate(today.getDate() + funnelemail.day)
+
+        try { //scheduling emails to be sent on days specified.
+            LeadFunnel.update(
+                { day: date2str(emaildate,'MM-dd-yyyy') },
+                {
+                    $push: {emails: {
+                        email: email,
+                        name: name,
+                        funnel: funnelpackage,
+                        day: funnelemail.day,
+                        step: count
+                    }}
+                },
+                {upsert: true}
+            )
+        } catch (error) {
+            console.log("error creating funnel email schedule " + error)
+        }
+    })
+}
+
 export async function emailHabitGuide(
-        name, 
-        toemail,
-        interactionid
+        name,
+        toemail
     ){
+    let interactionid = (await newIx('cavestep - funnel - habits', toemail, 'lead magnet email', 'habit guide', '')).insertedId.toString()
     let to = toemail
     let subject = 'Here\'s your Free Habit Guide'
     let email = Mustache.render(habitGuide, {
@@ -243,6 +284,47 @@ export async function emailHabitGuide(
         content: fs.createReadStream(__dirname + '/files/5StepHabitBuilderGuide.pdf')
     }]
     sendEmail(to, subject, email, attachments)
+}
+
+
+//toemail: 'daniel@cavestep.com', package: 'funnel1', emailstep: 0
+
+export async function emailFunnel(
+        toemail,
+        name,    
+        funnelpackage,
+        emailstep
+    ){
+    //future: map funnelpackage to be able to handle other packages 
+    
+    try{
+        let interactionid = (await newIx(funnelpackage + ' - ' + emailstep, toemail, 'funnel email', funnelpackage1.emails[emailstep].subject, '')).insertedId.toString()
+        let template = funnelpackage1.emails[emailstep].template
+        
+        const emailtemplate = fs
+        .readFileSync(__dirname + '/emailtemplates/' + funnelpackage + '/' + template + '.html')
+        .toString()
+
+        let to = toemail
+        let subject = funnelpackage1.emails[emailstep].subject
+        let email = Mustache.render(emailtemplate, {
+            name: name === '' ? ',' : ' ' + name + ',', //used in template with greeting, ie. "Hi"
+            pathurl: PATH_URL,
+            logopath: LOGO_PATH_URL,
+            email: toemail,
+            interactionid: interactionid
+        })
+
+        let filename = funnelpackage1.emails[emailstep].file
+        let attachments = filename ? [{ //attempt to create attachment only if there is a file.
+            filename: filename,
+            content: fs.createReadStream(__dirname + '/files/' + filename)
+        }] : null 
+        sendEmail(to, subject, email, attachments)
+    } catch (error) {
+        console.log('funnel email failed to send -> ' +  toemail + ' ' + name + ' ' + funnelpackage + ' ' + emailstep)
+        console.log(error)
+    }
 }
 
 export async function emailNotifyNewLeadCoaching(name, toemail) {

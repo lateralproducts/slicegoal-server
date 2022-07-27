@@ -1,5 +1,6 @@
 import DbConnection from '../src/database'
 import { ObjectId } from 'mongodb'
+import { getprofileid } from '../src/users';
 //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
 
 export const typeDefs = `
@@ -10,7 +11,9 @@ export const typeDefs = `
 export const resolvers = {
     Mutation: {
         updateAreaToSource: async(parent, args, { req }) => {
-            //if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) throw new Error('Invalid Session')
+            if (args.profileid !== getprofileid(req.session)) throw new Error('Wrong profile')
+
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const Sources = db.collection('sources')
