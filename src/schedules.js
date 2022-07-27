@@ -20,14 +20,13 @@ schedule.scheduleJob({ hour: 15, minute: 0 }, function() { //15:00 UTC = 2:00am,
     createreport([`${process.env.NOTIFICATION_EMAIL}`], start, end)
 })
 
-schedule.scheduleJob({ second: 30 }, async function() { //7:30am Sydney/Melbourne time.
+schedule.scheduleJob({ hour: 20, minute: 30 }, async function() { //20:30 UTC = 7:30am Sydney/Melbourne time.
     //set to UTC time for server
     const db = await DbConnection.Get()
     const LeadFunnel = db.collection('leadfunnel')
     const today = date2str(new Date(),'MM-dd-yyyy')
     const funnelemails = await LeadFunnel.findOne({day: today})
-
-    if (funnelemails.emails) funnelemails.emails.map(email => emailFunnel(email.email, email.name, email.funnel, email.step))
+    if (funnelemails) funnelemails.emails.map(email => emailFunnel(email.email, email.name, email.funnel, email.step))
 })  
 
 //schedule.scheduleJob({ dayOfWeek: 0, hour: 22, minute: 0 }, function() {
