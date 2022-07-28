@@ -61,6 +61,10 @@ async function offeraction(args) {
                 emailHabitGuide(args.name, args.email)
                 signupEmailFunnel('habitfunnel', args.name, args.email)
                 return
+            case 'habitfunnelsignup':
+                //added in order to manually sign up leads
+                signupEmailFunnel('habitfunnel', args.name, args.email)
+                return
             case 'freeintrosession':
                 //emailFreeIntroSession(args.name, args.email)
                 emailNotifyNewLeadCoaching(args.name, args.email)   
