@@ -25,3 +25,6 @@ export const date2str = (x, y) => {
         return x.getFullYear().toString().slice(-v.length)
     });
 }
+
+export const botips = [/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./]
+export const ignoreips = ['103.204.240.174'] //my ip

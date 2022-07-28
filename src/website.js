@@ -6,7 +6,7 @@ import {
     emailNotifyNewLeadCoaching,
     signupEmailFunnel
 } from './emails'
-import { validateemail } from '../util/functions';
+import { validateemail, botips } from '../util/functions';
 
 export const typeDefs = `   
     extend type Mutation {
@@ -48,6 +48,7 @@ export const resolvers = {
                 offeraction(args)
                 args.date = new Date()
                 await Leads.insertOne(args) //insert request into leads database.
+                sessiontrack(req,args,'offer','signup', 'success')
                 return true //assume everything processed.
             } else throw new Error('That email format doesn\'t look right. Can you check it?')
         }
@@ -103,7 +104,7 @@ export async function sessiontrack(
 
     //check if bot and tag as bot for tracking records.
     const ipaddress = getipaddress(req)
-    const botRegexList = [/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./];
+    const botRegexList = botips;
     const isBot = botRegexList.some(rx => rx.test(ipaddress));
 
     if (Session) {
