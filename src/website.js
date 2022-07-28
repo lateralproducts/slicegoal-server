@@ -59,7 +59,7 @@ async function offeraction(args) {
         switch(args.offer){
             case '5stephabitguide':
                 emailHabitGuide(args.name, args.email)
-                if (args.email === 'daniel@cavestep.com') signupEmailFunnel('habitfunnel', args.name, args.email)
+                signupEmailFunnel('habitfunnel', args.name, args.email)
                 return
             case 'freeintrosession':
                 //emailFreeIntroSession(args.name, args.email)
