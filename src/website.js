@@ -11,7 +11,8 @@ import { validateemail, botips } from '../util/functions';
 export const typeDefs = `   
     extend type Mutation {
         trackpage(page: String, search: String, action: String, actioninfo: String, abconfig: String, pagetrack: String, screenwidth: Int, browser: Browser): Boolean
-        sendofferrequest(name: String, email: String, offer: String!): Boolean
+        sendofferrequest(name: String, email: String, offer: String!): String
+        sendunsubscriberequest(email: String, reason: String): String
     }
 `
 
@@ -45,11 +46,35 @@ export const resolvers = {
             if(validateemail(args.email)){ //check that the email is valid
                 const db = await DbConnection.Get()
                 const Leads = db.collection('leads')
-                offeraction(args)
+                var response = offeraction(args)
                 args.date = new Date()
                 await Leads.insertOne(args) //insert request into leads database.
                 sessiontrack(req,args,'offer','signup', 'success')
-                return true //assume everything processed.
+                return response //assume everything processed.
+            } else throw new Error('That email format doesn\'t look right. Can you check it?')
+        },
+        sendunsubscriberequest: async(_, args, { req }) => {
+            if(validateemail(args.email)){ //check that the email is valid
+                const db = await DbConnection.Get()
+                const Leads = db.collection('leads')
+                const LeadFunnel = db.collection('leadfunnel')
+                await Leads.updateOne(
+                    {email: args.email}, 
+                    {$set:{
+                        subscribed: false,
+                        unsubscribed: new Date()
+                    }}
+                    )
+                await LeadFunnel.updateMany(
+                        {'emails.email': args.email}, 
+                        {
+                            $pull: {
+                                'emails': {email: args.email}
+                            }
+                        }
+                        )
+                sessiontrack(req,args,'unsubscribe','unsubscribe', 'success')
+                return "We've unsubscribed you."
             } else throw new Error('That email format doesn\'t look right. Can you check it?')
         }
     }
@@ -61,15 +86,15 @@ async function offeraction(args) {
             case '5stephabitguide':
                 emailHabitGuide(args.name, args.email)
                 signupEmailFunnel('habitfunnel', args.name, args.email)
-                return
+                return "We've sent you your free habit guide! Nice work."
             case 'habitfunnelsignup':
                 //added in order to manually sign up leads
                 signupEmailFunnel('habitfunnel', args.name, args.email)
-                return
+                return "You've signed up for the free habit pack! Nice work."
             case 'freeintrosession':
                 //emailFreeIntroSession(args.name, args.email)
                 emailNotifyNewLeadCoaching(args.name, args.email)   
-                return   
+                return "Great! We've got your request for your FREE session. We'll be in touch to organise a time with you."
             default:
                 throw new Error('Sorry, we can\'t find that offer.')
         }

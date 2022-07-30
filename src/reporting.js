@@ -18,7 +18,7 @@ export async function createreport(to,fromdate,todate){
         'querydata.utm_campaign': {$exists: false},
         email: null,
         landed: {$gte: fromdate, $lt: todate},
-        landedip:{$nin: filterips}
+        landedip: {$nin: filterips}
     }).toArray()
     stats.push({metric: "website landed", measure: websitelanded.length, notes: websitelanded.map(session => { return session.screenwidth + 'px' })})
 
@@ -28,7 +28,7 @@ export async function createreport(to,fromdate,todate){
         'querydata.utm_campaign': {$exists: true}, //reading the data where a campaign exists.
         email: null,
         landed: {$gte: fromdate, $lt: todate},
-        landedip:{$nin: filterips}
+        landedip: {$nin: filterips}
     }).toArray()
     stats.push({metric: "website landed campaign", measure: campaignlanded.length, notes: campaignlanded.map(session => { return session.screenwidth + 'px' })})
 
@@ -37,7 +37,7 @@ export async function createreport(to,fromdate,todate){
         'pages.2': {$exists: true}, //not bouncing. Opening more than one page. Either campaign attribution or not.
         email: null,
         landed: {$gte: fromdate, $lt: todate},
-        landedip:{$nin: filterips}
+        landedip: {$nin: filterips}
     }).toArray()
     stats.push({metric: "website sessions", measure: websitesessions.length, notes: websitesessions.map(session => { return session.screenwidth + 'px' })})
 
@@ -45,7 +45,7 @@ export async function createreport(to,fromdate,todate){
     const newleads = await Sessions.find({
         'pages.page':'/offer/building-habits/success',
         landed: {$gte: fromdate, $lt: todate},
-        landedip:{$nin: filterips}
+        landedip: {$nin: filterips}
     }).toArray()
     stats.push({metric: "leads", measure: newleads.length, notes: newleads.map(session => { return session.email + ' : ' + session.screenwidth + 'px' })})
 
