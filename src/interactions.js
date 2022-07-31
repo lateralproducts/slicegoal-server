@@ -51,7 +51,7 @@ export async function newIx(from, to, type, content, message){
     }
 }
 
-export async function updateIx(ixid, status, action, channel){
+export async function updateIx(ixid, status, action, channel, ip){
     const db = await DbConnection.Get()
     const Interactions = db.collection('interactions')
     let fields = new Object()
@@ -65,7 +65,8 @@ export async function updateIx(ixid, status, action, channel){
                     history: {
                         time: new Date(),
                         action: action,
-                        channel: channel
+                        channel: channel,
+                        ip: ip
                     }
                 }
             },

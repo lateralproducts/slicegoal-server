@@ -177,7 +177,7 @@ export const graphql = async() => {
                 getfile(filename, res)
                 const item = req.query
                 if(item.ix) {
-                    updateIx(item.ix,'seen','open','email')
+                    updateIx(item.ix,'seen','open','email', getipaddress(req))
                     //console.log('cavestep image accessed - ' + item.ix)
                 }
             } else {
