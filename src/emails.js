@@ -93,7 +93,7 @@ let funnelpackage1 = {emails: [
     //-> sign up page. Straight to transaction? AB test.
 ]}
 
-async function sendEmail(to, subject, email, attachments) {
+async function sendEmail(to, subject, email, attachments, retryid) {
     const db = await DbConnection.Get()
     const Emails = db.collection('emails')
     let mailOptions = {
@@ -101,7 +101,8 @@ async function sendEmail(to, subject, email, attachments) {
         to: to,
         subject: subject,
         html: email,
-        attachments: attachments
+        attachments: attachments,
+        retry: retryid
     }
     let response = await new Promise(function(resolve) {
         transporter.sendMail(mailOptions, function(error, info) {
@@ -118,6 +119,16 @@ async function sendEmail(to, subject, email, attachments) {
     })
     Emails.insertOne(response)
     return response
+}
+
+export async function reSendEmail() {
+    const db = await DbConnection.Get()
+    const Emails = db.collection('emails')
+    var emails = await Emails.find({response:{$exists: false}}).toArray()
+    emails.map(email => {
+        sendEmail(email.to, email.subject, email.html, email.attachments, email._id)
+        Emails.update({_id: email._id}, {$set: {response: 'retried'}})
+    })
 }
 
 export async function emailGoalNudge(user, links, goals) {

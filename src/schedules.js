@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb'
 import DbConnection from './database'
-import { emailGoalNudge, emailRerankNudge, emailFunnel } from './emails'
+import { emailGoalNudge, emailRerankNudge, emailFunnel, reSendEmail } from './emails'
 import { createreport } from './reporting'
 import { date2str } from '../util/functions'
 
@@ -11,22 +11,24 @@ schedule.scheduleJob({ hour: 15, minute: 0 }, function() { //15:00 UTC = 2:00am,
     var start = new Date()
     var end = today
     end.setDate(today.getDate() + 1)
-    //set to midnight
-    start.setHours(0,0,0,0)
-    end.setHours(0,0,0,0)
+    start.setHours(0,0,0,0) //set to midnight
+    end.setHours(0,0,0,0) //set to midnight
     //set to Australian boundaries
     start.setHours(start.getHours() - 11) //-11 is Australian time in UTC
     end.setHours(end.getHours() - 11) //-11 is Australian time in UTC
     createreport([`${process.env.NOTIFICATION_EMAIL}`], start, end)
 })
 
-schedule.scheduleJob({ hour: 20, minute: 30 }, async function() { //20:30 UTC = 7:30am Sydney/Melbourne time.
-    //set to UTC time for server
+schedule.scheduleJob({ hour: 20, minute: 30 }, async function() { //20:30 UTC = 7:30am Sydney/Melbourne time. //set to UTC time for server
     const db = await DbConnection.Get()
     const LeadFunnel = db.collection('leadfunnel')
     const today = date2str(new Date(),'MM-dd-yyyy')
     const funnelemails = await LeadFunnel.findOne({day: today})
     if (funnelemails) funnelemails.emails.map(email => emailFunnel(email.email, email.name, email.funnel, email.step))
+})  
+
+schedule.scheduleJob({ minute: 10 }, async function() { //Every hour at 10 mins past, check unsent emails.
+    reSendEmail()
 })  
 
 //schedule.scheduleJob({ dayOfWeek: 0, hour: 22, minute: 0 }, function() {

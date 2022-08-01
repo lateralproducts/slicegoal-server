@@ -16,7 +16,6 @@ export async function createreport(to,fromdate,todate){
     const websitelanded = await Sessions.find({
         'pages.1': {$exists: true}, //making sure we're only counting when someone has landed and also exists, as we get another action.
         'querydata.utm_campaign': {$exists: false},
-        email: null,
         landed: {$gte: fromdate, $lt: todate},
         landedip: {$nin: filterips}
     }).toArray()
@@ -26,7 +25,6 @@ export async function createreport(to,fromdate,todate){
     const campaignlanded = await Sessions.find({
         'pages.1': {$exists: true}, 
         'querydata.utm_campaign': {$exists: true}, //reading the data where a campaign exists.
-        email: null,
         landed: {$gte: fromdate, $lt: todate},
         landedip: {$nin: filterips}
     }).toArray()
@@ -35,7 +33,6 @@ export async function createreport(to,fromdate,todate){
     //Website Sessions (without Sessions) -  Sessions without Email
     const websitesessions = await Sessions.find({
         'pages.2': {$exists: true}, //not bouncing. Opening more than one page. Either campaign attribution or not.
-        email: null,
         landed: {$gte: fromdate, $lt: todate},
         landedip: {$nin: filterips}
     }).toArray()
