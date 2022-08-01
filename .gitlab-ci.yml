@@ -23,6 +23,7 @@ deploy:
         - echo "new version placed on server and started"
     only:
         - master
-    when: manual
+    #when: manual
+    ## manually deploy ^^
     tags:
         - production
