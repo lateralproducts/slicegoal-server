@@ -226,15 +226,17 @@ export async function sessiontrack(
 
 export function querytojson(search) {
     try {
+        const convert = search //format the string for a json object.
+        .replace(/\n/g, '')
+        .replace(/"/g, '\\"')
+        .replace(/&/g, '","')
+        .replace(/=/g, '":"')
+
+
         const json = JSON.parse(
             '{"' +
-                decodeURI(search)
-                    //.replace(/^\?/g, '') //replace first character //this does NOT work in production.
-                    .replace(/\n/g, '')
-                    .replace(/"/g, '\\"')
-                    .replace(/&/g, '","')
-                    .replace(/=/g, '":"') +
-                '"}',
+                decodeURI(convert) //.replace(/^\?/g, '') //replace first character //this does NOT work in production.
+            + '"}',
         )
         return json
     } catch (error) {
