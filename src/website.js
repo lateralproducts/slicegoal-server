@@ -62,6 +62,7 @@ export const resolvers = {
                     {email: args.email}, 
                     {$set:{
                         subscribed: false,
+                        reason: args.reason,
                         unsubscribed: new Date()
                     }}
                     )
