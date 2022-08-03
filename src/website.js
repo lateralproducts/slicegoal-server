@@ -7,12 +7,14 @@ import {
     signupEmailFunnel
 } from './emails'
 import { validateemail, botips } from '../util/functions';
+import { createreport } from './reporting';
 
 export const typeDefs = `   
     extend type Mutation {
         trackpage(page: String, search: String, action: String, actioninfo: String, abconfig: String, pagetrack: String, screenwidth: Int, browser: Browser): Boolean
         sendofferrequest(name: String, email: String, offer: String!): String
         sendunsubscriberequest(email: String, reason: String): String
+        senddailyreport: Boolean
     }
 `
 
@@ -52,6 +54,21 @@ export const resolvers = {
                 sessiontrack(req,args,'offer','signup', 'success')
                 return response //assume everything processed.
             } else throw new Error('That email format doesn\'t look right. Can you check it?')
+        },
+        senddailyreport: async(_, args, { req }) => {
+            var today = new Date()
+            var start = new Date()
+            var end = today
+            end.setDate(today.getDate() + 1)
+            start.setHours(0,0,0,0) //set to midnight
+            end.setHours(0,0,0,0) //set to midnight
+            //set to Australian boundaries
+            start.setHours(start.getHours() - 11) //-11 is Australian time in UTC
+            end.setHours(end.getHours() - 11) //-11 is Australian time in UTC
+
+            console.log(start)
+            console.log(end)
+            createreport([`${process.env.NOTIFICATION_EMAIL}`], start, end)
         },
         sendunsubscriberequest: async(_, args, { req }) => {
             if(validateemail(args.email)){ //check that the email is valid
