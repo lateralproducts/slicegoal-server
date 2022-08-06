@@ -225,14 +225,20 @@ export async function sessiontrack(
 }
 
 export function querytojson(search) {
+    console.log(search)
+    var convert
     try {
-        const convert = search //format the string for a json object.
+        convert = search.toString() //format the string for a json object.
         .replace(/\n/g, '')
         .replace(/"/g, '\\"')
         .replace(/&/g, '","')
         .replace(/=/g, '":"')
+    } catch (error) {
+        console.log('replace function error')
+        return error
+    }
 
-
+    try {
         const json = JSON.parse(
             '{"' +
                 decodeURI(convert) //.replace(/^\?/g, '') //replace first character //this does NOT work in production.
@@ -240,6 +246,7 @@ export function querytojson(search) {
         )
         return json
     } catch (error) {
+        console.log('decodeURI function error')
         return error
     }
 }
