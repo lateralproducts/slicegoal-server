@@ -147,8 +147,14 @@ export async function sessiontrack(
 
     //check if bot and tag as bot for tracking records.
     const ipaddress = getipaddress(req)
-    const botRegexList = botips;
-    const isBot = botRegexList.some(rx => rx.test(ipaddress));
+    var isBot = false
+    try {
+        isBot = botips.some(rx => rx.test(ipaddress));
+    } catch (error) {
+        console.log(ipaddress)
+        console.log(botips)
+        console.log(error)
+    }
 
     if (Session) {
         const pageentry = new Object()
@@ -229,7 +235,7 @@ export function querytojson(search) {
     var convert
     try {
         convert = search.toString() //format the string for a json object.
-        .replace(/\n/g, '')
+        .replace(/\n/g, '') //.replace(/^\?/g, '')
         .replace(/"/g, '\\"')
         .replace(/&/g, '","')
         .replace(/=/g, '":"')
@@ -241,7 +247,7 @@ export function querytojson(search) {
     try {
         const json = JSON.parse(
             '{"' +
-                decodeURI(convert) //.replace(/^\?/g, '') //replace first character //this does NOT work in production.
+                decodeURI(convert) 
             + '"}',
         )
         return json
