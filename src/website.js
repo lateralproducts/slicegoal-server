@@ -235,7 +235,8 @@ export function querytojson(search) {
     var convert
     try {
         convert = search.toString() //format the string for a json object.
-        .replace(/\n/g, '') //.replace(/^\?/g, '')
+        .replace(/^\?/g, '')
+        .replace(/\n/g, '')
         .replace(/"/g, '\\"')
         .replace(/&/g, '","')
         .replace(/=/g, '":"')
