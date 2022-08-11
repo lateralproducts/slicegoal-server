@@ -12,6 +12,7 @@ import { sessiontrack } from './website'
 
 let pjson = require('../package.json')
 import DbConnection from './database'
+import { getoffers } from './payments';
 
 //import { verifier } from "google-id-token-verifier";
 const { OAuth2Client } = require('google-auth-library')
@@ -62,6 +63,7 @@ export const schema = `
     state: String
     offeractive: String
     hideupgrade: Boolean
+    upgradeprompt: SharedWheel
   }
 
   type createClientResponse {
@@ -129,13 +131,17 @@ export const resolvers = {
             else {
                 const db = await DbConnection.Get()
                 const Views = db.collection('views')
+                const Users = db.collection('users')
+                const user = await Users.findOne({_id: ObjectId(req.session.user._id)})
                 let query = new Object()
                 query.user = getuserid(req.session)
-                return await Views.find(query)
-                    .sort({ defaultview: 1 })
-                    .limit(1)
-                    .toArray()
+                if(user.activeofferid !== 2) query.type = 'owner' //block shared views if not upgraded.
+                return await Views.findOne(query) //could improve to find 'default' once ready to do that.
+                
             }
+        },
+        upgradeprompt: async(parent, __, { req }) => {
+            return await getoffers(req.session.user._id)
         }
     },
     Mutation: {
@@ -719,14 +725,11 @@ async function login(user, args, req) {
         req.session.user = user
 
         let view
-        if(args.setView) {
-            view = await Views.findOne({
-                _id: ObjectId(args.setView)
-            })
-        } else 
-            view = await Views.findOne({
-                user: user._id.toString()
-        })
+        let query = new Object()
+        query.user = getuserid(req.session)
+        if(args.setView) query._id = ObjectId(args.setView)
+        if(user.activeofferid !== 2) query.type = 'owner'
+        view = await Views.findOne(query)
 
         if (view) {
             req.session.view = view
@@ -783,7 +786,8 @@ async function createNewViewProfile(args, userid, req) {
         name: req.session.view.name,
         type: 'shared',
         created: new Date(),
-        email: args.email.toLowerCase()
+        email: args.email.toLowerCase(),
+        sharedby: req.session.user._id
     }
     const view = await Views.insertOne(newview)
     const profiles = await Profiles.find({

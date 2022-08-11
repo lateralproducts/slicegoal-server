@@ -11,7 +11,7 @@ var ewayclient = rapid.createClient(apiKey, password, rapidEndpoint)
 
 export const typeDefs = `
     extend type Query {
-        transactionStatus(accessCode: String!): String
+        transactionStatus(accessCode: String!): PlanChange
         lastNameRecorded: Boolean
         offers: Offers
     }
@@ -19,6 +19,7 @@ export const typeDefs = `
     extend type Mutation {
         getAccessCode(offerid: Int): PaymentFormFields
         addLastNameToUser(lastname: String!): Boolean
+        changePlan(planid: Int): PlanChange
     }
 
     type PaymentFormFields {
@@ -31,9 +32,15 @@ export const typeDefs = `
 `
 
 export const schema = `
+    type PlanChange {
+        message: String
+        offeractive: String
+        hideupgrade: Boolean
+    }
     type Offers {
         activeid: Int
         highlightid: Int
+        upgradeprompt: SharedWheel
         offers: [Offer]
     }
     type Offer {
@@ -46,6 +53,14 @@ export const schema = `
     type Price {
         amount: Int
         period: String
+    }
+    type Prompts {
+        upgradeprompts: [SharedWheel]
+    }
+    type SharedWheel {
+        user: String
+        wheel: String
+        offer: String
     }
 `
 
@@ -86,13 +101,14 @@ const offers = [
     {
         offerid: 1,
         offer: 'Productivity Pack',
+        disabled: true,
         inclusions: [
             'Memory tools',
             'Pomodoros',
             'Data Insights for Productivity',
             '20,000 insights',
             '1000 sources',
-            'everything in Free Plan'
+            'Everything in Free Plan'
         ],
         price: {
             amount: 15, //15 dollars
@@ -104,11 +120,12 @@ const offers = [
         offerid: 2,
         offer: 'Coaching Enabled',
         inclusions: [
-            'Enable coaching functions',
-            'Get coaching direction and support',
+            'Track progress as a team',
+            'Share insights and sources',
             'Access to expert templates',
-            'Everything in Productivity Pack',
-            'Everything in Free Plan'
+            'See shared coaching wheels',
+            'Get coaching direction and support',
+            'All features from Productivity Pack'
         ],
         price: {
             amount: 30, //30 dollars
@@ -212,7 +229,7 @@ export const resolvers = {
                     let response = await ewayclient.queryTransaction(accessCode)
                     const txnresponse = response.attributes.Transactions[0]
                     if (txnresponse == null) {
-                        return reject(new Error('Transaction not found'))
+                        return {message: reject(new Error('Transaction not found'))}
                     }
 
                     // Update/Record transaction details
@@ -232,9 +249,9 @@ export const resolvers = {
                     //const TokenCustomerID = transaction.TokenCustomerID
 
                     if (txnresponse.ResponseCode) {
-                        return resolve(txnresponse) //This will give messages for success and common errors
+                        return {message: resolve(txnresponse)} //This will give messages for success and common errors
                     } else if (response.Errors) {
-                        return reject('An error has occurred') //could interpret the errors? -
+                        return {message: reject('An error has occurred')} //could interpret the errors? -
                     }
                 })()
             }).then(
@@ -255,10 +272,10 @@ export const resolvers = {
                     }
 
                     let message = responseMessage(txnresponse.ResponseCode)
-                    return message
+                    return {message: message, offeractive: transaction.offer.offer, hideupgrade: true}
                 },
                 error => {
-                    return error
+                    return {message: error}
                 },
             )
         },
@@ -268,13 +285,28 @@ export const resolvers = {
             return true
         },
         offers: async(_, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            const user = await Users.findOne({_id: ObjectId(getuserid(req.session))}) //don't use session user instance, as that doesn't work.
             var returnoffers = new Object()
-            if(req.session.user.activeofferid) returnoffers.activeid = req.session.user.activeofferid
-            returnoffers.highlightid = (req.session.user.activeofferid === 1 ? 2 : 1)
+            const activeofferid = user.activeofferid ? user.activeofferid : 0 //0 is free offer ID.
+            returnoffers.activeid = activeofferid 
+            returnoffers.highlightid = 2 //(activeofferid === 1 ? 2 : 1)
             returnoffers.offers = offers.filter(offer => {
-                return offer.disabled != true
+                return (offer.disabled !== true && offer.offerid !== activeofferid) //don't return the active offer. Only return the offer changes available.
+                //will need to think about how offers are returned based on the active offer. Ie. free plan is a downgrade if a paid option is active.
             })
             return returnoffers
+        }
+    },
+    PlanChange: {
+
+    },
+    Offers: {
+        //Could fix upgradeprompt to actually be an 'upgrade prompt' flas and message, and separate the list of shared wheels.
+        //Currently just sending a single shared wheel.
+        upgradeprompt: async(_, __, { req }) => {
+            return await getoffers(req.session.user._id)
         }
     },
     Mutation: {
@@ -363,7 +395,19 @@ export const resolvers = {
                 },
             )
         }, */
-
+        changePlan: async(_, { planid }, { req }) => {
+            const user_id = getuserid(req.session)
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            Users.updateOne(
+                { _id: ObjectId(user_id) },
+                { $set: { 
+                    hideupgrade: planid === 0 ? false : true, // Show the upgrade button on profile again.
+                    activeofferid: planid, //update the active offerid
+                    offeractive: offers[planid].offer, //attach the active offer
+                }})
+            return { message: 'Plan changed successfully.', offeractive: offers[planid].offer, hideupgrade: planid === 0 ? false : true }
+        },
         addLastNameToUser: async(_, { lastname }, { req }) => {
             const user_id = getuserid(req.session)
             const db = await DbConnection.Get()
@@ -377,6 +421,27 @@ export const resolvers = {
     }
 }
 
+export async function getoffers(userid){
+    const useridst = userid.toString()
+    const db = await DbConnection.Get()
+    const Users = db.collection('users')
+    const user = await Users.findOne({_id: ObjectId(useridst)})
+    if(user.activeofferid !== 2){ //to return the information for the upgrade prompt.
+        const Views = db.collection('views')
+        const Wheels = db.collection('wheels')
+        const sharedview = await Views.findOne({user: useridst.toString(), type: 'shared' })
+        if (sharedview){
+            const shareuser = await Users.findOne({_id: ObjectId(sharedview.sharedby)})
+            const sharedwheel = await Wheels.findOne({_id: ObjectId(sharedview.wheel)})
+            var upgradeprompt = new Object()
+            upgradeprompt.user = shareuser ? shareuser.firstname : "Someone"
+            upgradeprompt.wheel = sharedwheel.name
+            upgradeprompt.offer = offers[2].offer //forcing to focus on upgrading to offer 2, "Coaching Enabled".
+            return upgradeprompt //could make this multiple in the future.
+        }
+    }
+    return null
+}
 function responseMessage(responseCode) {
     let result = {
         '00': 'Payment made successfully.', //success

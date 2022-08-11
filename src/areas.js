@@ -110,6 +110,7 @@ export const schema = `
         user: ViewUser
         name: String
         email: String
+        promptupgrade: Boolean
     }
 
     type ViewUser {
@@ -159,12 +160,18 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Views = db.collection('views')
+            const Users = db.collection('users')
+            const user = await Users.findOne({_id: ObjectId(getuserid(req.session))}) //don't use session user instance, as that doesn't work.
             let query = new Object()
             query.user = getuserid(req.session)
             if (args.type === 'notcurrent')
                 query.wheel = { $ne: getwheelid(req.session) }
             if (args.type === 'default') query.default = true //defaultview //if asking for default profile only return the default.
-            return await Views.find(query).toArray()
+            var views = await Views.find(query).toArray()
+            return views.map(view => {
+                if(view.type === 'shared' && user.activeofferid !== 2) view.promptupgrade = true
+                return view
+            })
         },
         wheel: async(_, { wheelid }) => {
             //This is a **publicly** accessible call, used on the website. Don't need to login to retrieve.
@@ -577,26 +584,34 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Views = db.collection('views')
+            const Users = db.collection('users')
             const Profiles = db.collection('profiles')
 
+            const user = await Users.findOne({_id: ObjectId(req.session.user._id)})
+
             //set wheel, view, and profile to the context.
-            const view = await Views.findOne({
-                _id: ObjectId(viewid),
-                user: getuserid(req.session) //check that this user own's the view. If not, return error.
-            })
             let query = new Object()
-            query.wheel = view.wheel
-            if (view.type === 'shared')
-                query.$or = [{ user: getuserid(req.session) }, { type: 'shared' }] //access allowed to all profiles for coach.
+            query._id = ObjectId(viewid)
+            query.user = getuserid(req.session)
+            const view = await Views.findOne(query)
+            if(view.type === "shared" && user.activeofferid !== 2){
+                //block access if not upgraded.
+                throw new Error('Plan needs to be upgraded to access wheel.')
+            }else{
+                let query = new Object()
+                query.wheel = view.wheel
+                if (view.type === 'shared')
+                    query.$or = [{ user: getuserid(req.session) }, { type: 'shared' }] //access allowed to all profiles for coach.
 
-            const profile = await Profiles.findOne(query)
+                const profile = await Profiles.findOne(query)
 
-            if (!profile) throw new Error('View Profile combination not found')
+                if (!profile) throw new Error('View Profile combination not found')
 
-            req.session.view = view
-            req.session.profile = profile
+                req.session.view = view
+                req.session.profile = profile
 
-            return view //need to return the view, area.
+                return view //need to return the view, area.
+            }
         },
         deleteView: async(_, { viewid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
