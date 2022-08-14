@@ -89,7 +89,7 @@ let funnelpackage1 = {emails: [
     {subject: 'Your Ideal Future', template: 'email2', day: 2}, //CTA - Take this survey 
     {subject: '6 Habits That Could Help', template: 'email3', day: 3}, //CTA Download: List of habits that build my day.
     {subject: 'Hey', template: 'email4', day: 4}, //- Your Biggest Habit - Your Most Valuable Habit - AB test.
-    {subject: 'Habit Builder Booster For A Limited Time', template: 'email5', day: 5} //$50 1 on 1 habit building coaching session - Habit Building Boost - Limited time
+    {subject: 'Habit Booster For A Limited Time', template: 'email5', day: 5} //$50 1 on 1 habit building coaching session - Habit Building Boost - Limited time
     //-> sign up page. Straight to transaction? AB test.
 ]}
 
