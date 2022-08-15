@@ -122,7 +122,7 @@ export const resolvers = {
             } else query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }] //if not a search query, only show unsnoozed goals.
             
             if(args.goal) {
-                var linklist = await GoalLinks.find({profileid: getprofileid(req.session), rootgoal: args.goal}).toArray() //sort({sort: 1})
+                var linklist = await GoalLinks.find({profileid: getprofileid(req.session), rootgoal: args.goal}).toArray()
                 query._id = {$in: linklist.map(function(link) {return ObjectId(link.goal)})}
                 //need to eventually fix the sort on linked goals. Think this will task a refactor to figure out the way to do it.
             }
@@ -152,15 +152,8 @@ export const resolvers = {
             query.profileid = getprofileid(req.session)
             query.rootgoal = args.goal
 
-            var goallinks = await GoalLinks.distinct('goal', query)
-
-            return await Goals.find({
-                _id: {
-                    $in: goallinks.map(function(id) {
-                        return ObjectId(id)
-                    })
-                }
-            }).toArray()
+            var linklist = await GoalLinks.find({profileid: getprofileid(req.session), rootgoal: args.goal}).toArray()
+            return await Goals.find({ _id: { $in: linklist.map(function(link) {return ObjectId(link.goal)}) }}).sort({orderrank: 1}).toArray()
         },
         goalTags: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
