@@ -221,6 +221,9 @@ export const resolvers = {
                 args.task = args.taskid
                 activityrecord(args, req, '✔')
                 updatetask.goalorder = 1000 //setting order to 1000 - to bottom of list.
+                //make completed task show on the day schedule.
+                updatetask.schedule = true //listing as scheduled so it appears in the day record.
+                updatetask.starttime = new Date() //making task date today, so that it's recorded against the day.
             }
             updatetask.complete = args.checked
 
