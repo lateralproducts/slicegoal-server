@@ -50,6 +50,7 @@ export const resolvers = {
                 const Leads = db.collection('leads')
                 var response = offeraction(args)
                 args.date = new Date()
+                args.session = req.session.id
                 await Leads.insertOne(args) //insert request into leads database.
                 sessiontrack(req,args,'offer','signup', 'success')
                 return response //assume everything processed.
