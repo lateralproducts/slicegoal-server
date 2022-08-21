@@ -77,12 +77,11 @@ export const resolvers = {
                 if(args.starttime || args.endtime){
                     const starttime = new Date(args.starttime)
                     const endtime = new Date(args.endtime) 
-                    query = { //find tasks scheduled for that day
-                        $and: [
+                    query.$and = [
                             {'starttime': {$gte: starttime}},
                             {'starttime': {$lt: endtime}}
                         ]
-                }}
+                }
                 query.schedule = true //only return 'scheduled' tasks.
                 if(!args.complete) query.$or = [ //only return if complete not equal to true (or doesn't exist)
                     {complete: null},
