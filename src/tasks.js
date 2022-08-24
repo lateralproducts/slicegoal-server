@@ -28,7 +28,9 @@ export const typeDefs = `
         newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, goal: String, complete: Boolean, schedule: Boolean) : String
         editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, complete: Boolean, schedule: Boolean, reschedule: Boolean) : Boolean
         deleteTask(taskid: String!) : Boolean
-        scheduleTask(taskid: String!, schedule: Boolean) : Boolean
+        listTask(taskid: String!) : Boolean
+        unlistTask(taskid: String!) : Boolean
+        scheduleTask(taskid: String!, setdate: String) : Boolean
         checkTask(taskid: String!, checked: Boolean) : Boolean
         removeTaskGoal(taskid: String!): Boolean
         updateDayTaskOrder(tasks: [String]): Boolean
@@ -112,6 +114,7 @@ export const resolvers = {
 
             var task = new Object(args)
             task.starttime = args.starttime ? new Date(args.starttime) : (args.setdate ? new Date(args.setdate) : null)
+            task.created = new Date()
             if (args.endtime) {
                 task.endtime = new Date(args.endtime),
                 task.daytask = false
@@ -165,6 +168,28 @@ export const resolvers = {
 
             return (await Tasks.deleteOne({_id: ObjectId(args.taskid)})).result.ok === 1
         },
+        listTask: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            return (await Tasks.updateOne(
+                {_id: ObjectId(args.taskid)},
+                {$set: {schedule: true}}
+            )).result.ok === 1
+        },
+        unlistTask: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+
+            return (await Tasks.updateOne(
+                {_id: ObjectId(args.taskid)},
+                {
+                    $unset: { starttime: null, schedule: null },
+                    $inc: { rescheduled: 1}
+                }
+            )).result.ok === 1
+        },
         updateDayTaskOrder: async(parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
@@ -205,10 +230,27 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
+            var updates = new Object()
+            
+            if(args.setdate) {
+                updates.$set = {
+                    starttime: args.starttime ? new Date(args.starttime) : new Date(args.setdate),
+                    daytask: true,
+                    schedule: true,
+                    endtime: null
+                }
+            } else {
+                updates.$unset = {
+                    starttime: '',
+                    daytask: false,
+                    schedule: false,
+                    endtime: null
+                }
+            }
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
-                {$set: {schedule: args.schedule}}
-            )).result.ok === 1
+                updates
+            )).result.ok === 1    
         },
         checkTask: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')

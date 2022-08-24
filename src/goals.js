@@ -24,8 +24,6 @@ export const typeDefs = `
         updateGoalOrder(goals: [String]): Boolean
         updateGoalListOrder(goals: [String]): Boolean
         savePomodoro(notes: String, goal: String, datetime: String, minutes: Int): Boolean!
-        checkKey(goalId: String!, index: Int, check: Boolean): Boolean
-        removeKey(goalid: String!, index: Int): Boolean
         createGoalLink(rootgoal: String, goal: String): Boolean
         deleteGoalLink(rootgoal: String, goal: String): Area
     }
@@ -383,44 +381,6 @@ export const resolvers = {
             return creategoal(args, req).then(goalid => {
                 return {_id: goalid, goal: args.goal}
             })
-        },
-        checkKey: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const Goals = db.collection('goals')
-            await Goals.updateOne(
-                {
-                    _id: ObjectId(args.goalId),
-                    profileid: getprofileid(req.session)
-                },
-                {
-                    $set: {
-                        [`keys.${args.index}.checked`]: args.check,
-                        [`keys.${args.index}.date`]: new Date()
-                    }
-                },
-            )
-            return true
-        },
-        removeKey: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const Goals = db.collection('goals')
-            await Goals.updateOne(
-                {
-                    _id: ObjectId(args.goalid),
-                    profileid: getprofileid(req.session)
-                },
-                { $unset: {[`keys.${args.index}`]:1}} //apparently you need to $unset then $pull to completely remove a field from an array.
-            )
-            await Goals.updateOne(
-                {
-                    _id: ObjectId(args.goalid),
-                    profileid: getprofileid(req.session)
-                },
-                { $pull: {keys:null}}
-            )
-            return true
         },
         updateGoalTag: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
