@@ -1,8 +1,8 @@
 import { ObjectId } from 'mongodb'
-
 import { getprofileid, getwheelid } from './users'
 import DbConnection from './database'
-import { date2str, getuiversion } from '../util/functions';
+import { date2str, getuiversion } from '../util/functions'
+import { activityrecord } from './pomodoros'
 let pjson = require('../package.json')
 
 export const typeDefs = `
@@ -11,19 +11,16 @@ export const typeDefs = `
         goalstolink: [Goal]
         linkedgoals(goal: String): [Goal]
         goalTags(area: String, goal: String): [GoalTag]
-        readPomoData(area: String): PomodoroData
-        readGoalPomoData(goal: String): PomodoroData
-        pomodoros(goalId: String): [Pomodoro]
     }
 
     extend type Mutation {
         createGoal(datetime: String, goal: String, notes: String, tasks:[KeyIn], areatags: [AreaTagIn]): Goal
         updateGoal(goalId: String!, goal: String, notes: String, datetime: String, complete: String): Goal
+        finishGoal(goal: String!, notes: String, complete: String): Boolean
         removeGoal(goalid: String!): Boolean
         snoozeGoal(goalid: String!, snooze: String!): Boolean
         updateGoalOrder(goals: [String]): Boolean
         updateGoalListOrder(goals: [String]): Boolean
-        savePomodoro(notes: String, goal: String, datetime: String, minutes: Int): Boolean!
         createGoalLink(rootgoal: String, goal: String): Boolean
         deleteGoalLink(rootgoal: String, goal: String): Area
     }
@@ -70,25 +67,6 @@ export const schema = `
         notes: String
         area: Area
         goal: Goal
-    }
-
-    type Pomodoro {
-        _id: String
-        area: String
-        links: String
-        goal: String
-        notes: String
-        datetime: String
-        minutes: Int
-        date: String
-    }
-
-    type PomodoroData {
-        _id: String
-        count: Int
-        records: Int
-        direct: Int
-        countdirect: Int
     }
 `
 
@@ -169,99 +147,6 @@ export const resolvers = {
                 sort: { orderrank: 1 }
             }).toArray()
             
-        },
-        pomodoros: async(_, { goalId }, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const Pomodoros = db.collection('pomodoros')
-            return await Pomodoros.find(
-                {
-                    goal: goalId,
-                    userid: getprofileid(req.session)
-                },
-                { sort: { date: -1 } },
-            ).toArray()
-        },
-        readPomoData: async(_, { area }, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const Pomodoros = db.collection('pomodoros')
-            return new Promise(function(resolve) {
-                Pomodoros.aggregate(
-                    {
-                        $match: {
-                            $or: [
-                                {
-                                    area: area
-                                },
-                                {
-                                    links: area
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        $group: {
-                            _id: { links: null }, //"$area"
-                            count: { $sum: '$minutes' },
-                            records: { $sum: 1 },
-                            direct: {
-                                $sum: {
-                                    $cond: {
-                                        if: { $eq: ['$area', area] },
-                                        then: 1,
-                                        else: 0
-                                    }
-                                }
-                            },
-                            countdirect: {
-                                $sum: {
-                                    $cond: {
-                                        if: { $eq: ['$area', area] },
-                                        then: '$minutes',
-                                        else: 0
-                                    }
-                                }
-                            }
-                        }
-                    },
-
-                    function(err, data) {
-                        if (err) throw err
-                        resolve(data[0] ? data[0] : 0)
-                    },
-                )
-            })
-        },
-        readGoalPomoData: async(_, { goal }, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const Pomodoros = db.collection('pomodoros')
-            return new Promise(function(resolve) {
-                Pomodoros.aggregate(
-                    {
-                        $match: {
-                            $or: [
-                                {
-                                    goal: goal
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        $group: {
-                            _id: { links: null },
-                            count: { $sum: '$minutes' },
-                            records: { $sum: 1 }
-                        }
-                    },
-
-                    function(err, data) {
-                        if (err) throw err
-                        resolve(data[0] ? data[0] : 0)
-                    },
-                )
-            })
         }
     },
     Goal: {
@@ -440,33 +325,40 @@ export const resolvers = {
             )
             return true
         },
+        finishGoal: async(root, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Goals = db.collection('goals')
+
+            if (args.complete) {
+                activityrecord(args, req, 'marked as complete 🎉')
+                if (args.notes) activityrecord(args, req) //save note as a record.
+                await Goals.updateOne(
+                    { _id: ObjectId(args.goal), profileid: getprofileid(req.session)  },
+                    {
+                        $set: {
+                            complete: args.complete,
+                            lastupdated: args.lastupdated
+                        }
+                    }
+                )
+            }
+            return (true)
+        },
         updateGoal: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
-            const GoalTags = db.collection('goaltags')
             let goalId = args.goalId
             delete args.goalId
             args.date = args.datetime ? new Date(args.datetime) : null
             //args.complete = args.complete ? new Date(args.complete) : null;
             args.lastupdated = new Date()
             let goal = await Goals.findOneAndUpdate(
-                { _id: ObjectId(goalId) },
+                { _id: ObjectId(goalId), profileid: getprofileid(req.session) },
                 { $set: args },
                 { returnOriginal: false },
             )
-            if (args.complete) {
-                await GoalTags.update(
-                    { goalid: goalId },
-                    {
-                        $set: {
-                            complete: args.complete,
-                            lastupdated: args.lastupdated
-                        }
-                    },
-                    { multi: true },
-                )
-            }
             return goal.value
         },
         removeGoal: async(root, { goalid }, { req }) => {
@@ -528,11 +420,6 @@ export const resolvers = {
             activityrecord(pomo, req, 'Goal snoozed to ' + date2str(args.snoozedate,'MM-dd-yyyy'))
             return true
         },
-        savePomodoro: async(root, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            activityrecord(args, req)
-            return true
-        },
         createGoalLink: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
@@ -564,23 +451,6 @@ export const resolvers = {
             return res
         },
     }
-}
-
-export async function activityrecord(args, req, note) {
-    const db = await DbConnection.Get()
-
-    const Tasks = db.collection('tasks')
-    const Task = await Tasks.findOne({ _id: ObjectId(args.task)})
-    if (Task) args.goal = Task.goal
-    if (note) args.notes = (Task ? Task.title + " " : "") + note
-
-    const Pomodoros = db.collection('pomodoros')
-    args.userid = getprofileid(req.session)
-    args.serverversion = pjson.version
-    args.uiversion = getuiversion(req.session)
-    if(args.datetime) args.date = new Date(args.datetime)
-    else args.date = new Date()
-    await Pomodoros.insertOne(args)
 }
 
 async function creategoal(newgoal, req) {

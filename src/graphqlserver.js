@@ -27,6 +27,7 @@ import { schema as taskSchema } from './tasks'
 import { schema as sourceSchema } from './sources'
 import { schema as paymentSchema } from './payments'
 import { schema as websiteSchema } from './website'
+import { schema as pomodoroSchema } from './pomodoros'
 
 //import queries and mutations
 import { typeDefs as userQueryMutation } from './users'
@@ -39,6 +40,7 @@ import { typeDefs as webQueryMutation } from './website'
 import { typeDefs as tagQueryMutation } from './tags'
 import { typeDefs as taskQueryMutation } from './tasks'
 import { typeDefs as sourceMutation } from './sources'
+import { typeDefs as pomodoroMutation } from './pomodoros'
 import { typeDefs as dbUpdateMutation } from '../util/db_updates'
 
 //import resolvers
@@ -52,6 +54,7 @@ import { resolvers as webResolvers } from './website'
 import { resolvers as tagResolvers } from './tags'
 import { resolvers as taskResolvers } from './tasks'
 import { resolvers as sourceResolvers } from './sources'
+import { resolvers as pomodoroResolvers } from './pomodoros'
 import { resolvers as dbUpdateResolvers } from '../util/db_updates'
 
 //upload()
@@ -104,6 +107,7 @@ export const graphql = async() => {
                 sourceSchema,
                 paymentSchema,
                 websiteSchema,
+                pomodoroSchema,
                 paymentQueryMutation,
                 userQueryMutation,
                 insightQueryMutation,
@@ -114,7 +118,9 @@ export const graphql = async() => {
                 tagQueryMutation,
                 taskQueryMutation,
                 sourceMutation,
+                pomodoroMutation,
                 dbUpdateMutation
+                
             ],
 
             resolvers: merge(
@@ -128,6 +134,7 @@ export const graphql = async() => {
                 tagResolvers,
                 taskResolvers,
                 sourceResolvers,
+                pomodoroResolvers,
                 dbUpdateResolvers
             ),
             context

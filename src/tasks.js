@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb'
 
 import DbConnection from './database'
 import { getprofileid } from './users'
-import { activityrecord } from './goals';
+import { activityrecord } from './pomodoros'
 
 export const schema = `
     type Task {
@@ -240,11 +240,8 @@ export const resolvers = {
                     endtime: null
                 }
             } else {
-                updates.$unset = {
-                    starttime: '',
-                    daytask: false,
-                    schedule: false,
-                    endtime: null
+                updates.$unset = { //unsetting, variables don't matter.
+                    starttime: ''
                 }
             }
             return (await Tasks.updateOne(
