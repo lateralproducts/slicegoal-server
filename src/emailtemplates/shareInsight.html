@@ -5,9 +5,12 @@
     <table style="border-collapse: separate; border-spacing: 10px;">
         <tr>
             <td>
-                <div style="display:flex;">
-                    <div style="border: solid 0.2px #ECEDF2; border-radius: 3px; padding: 5px;">
+                <div style="border: solid 0.2px #ECEDF2; border-radius: 3px; padding: 5px;">
+                    <div>
                         {{ insightText }}
+                    </div>
+                    <div style="margin-top: 10px; font-size: 8px; display:flex;">
+                        {{ shareNote }}
                     </div>
                 </div>
             </td>
@@ -16,13 +19,6 @@
             <td class="button">
                 <a class="link" style="font-size:10px; height: 70px; font-weight: 700; border: none; text-decoration: none; color: white; border-radius: 7px; padding: 7px 12px 7px 12px; background-color: #27D0FC;"
                     href="{{ acceptLink }}" class="button">Save Insight</a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <div style="display:flex;">
-                    {{ shareNote }}
-                </div>
             </td>
         </tr>
         <tr style="height:10px">
