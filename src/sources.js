@@ -1,7 +1,10 @@
 import { ObjectId } from 'mongodb'
 
 import DbConnection from './database'
-import { getprofileid } from './users'
+import { getprofileid, getuserid } from './users'
+import { createUserConnection } from './community'
+import { newIx } from './interactions'
+import { shareSourceEmail } from './emails'
 
 export const typeDefs = `
 
@@ -15,6 +18,7 @@ export const typeDefs = `
         createSource(name: String!, url: String, type: String, notes: String): Source
         editSource(sourceid: String!, name: String, url: String, type: String, notes: String) : Boolean
         deleteSource(sourceid: String!): Boolean
+        shareSource(sourceid: String!, targetUser: String!, shareNote: String): ShareResponse
     }
 `
 
@@ -159,6 +163,94 @@ export const resolvers = {
                 .then(() => {
                     return Sources.deleteOne({ _id: ObjectId(sourceid) })
                 })).deleteCount === 1
+        },
+        shareSource: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Sources = db.collection('sources')
+            const Users = db.collection('users')
+
+            const currentUser = await Users.findOne({
+                _id: ObjectId(getuserid(req.session))
+            })
+
+            await createUserConnection( //and creates user targetUser profile if new
+                currentUser, 
+                args.targetUser, 
+                'source share',
+                args.sourceid
+            )
+
+            const targetUser = await Users.findOne({
+                email: args.targetUser
+            })
+
+            if (args.targetUser === currentUser.email)
+                return {
+                    success: false,
+                    message: 'Cannot share with yourself - try duplicating'
+                }
+            else {
+                //let to = args.targetUser
+                let interactionid = (await newIx(currentUser._id.toString(),targetUser._id.toString(),'share source email', args.sourceid, args.shareNote)).insertedId.toString()
+                return await Sources.findOne({
+                    _id: ObjectId(args.sourceid)
+                })
+                .then(source => {
+                    //save shared source to be accessed.
+                    return Sources.insertOne({
+                        sharedfrom: getuserid(req.session),
+                        status: 'newshared',
+                        datetimeshared: new Date(),
+                        email: args.targetUser,
+                        datecreated: source.datecreated,
+                        title: source.title
+                    })
+                    .then(result => {
+                        Sources.findOne({_id: ObjectId(result.insertedId)})
+                        .then(result => { 
+                            //save interaction to track
+                            try {
+                                
+                                if(targetUser.state === 'verified'){
+                                    // Existing verified user
+                                    shareSourceEmail(
+                                        source,
+                                        currentUser,
+                                        targetUser,
+                                        args.shareNote,
+                                        `?sharedsources=active`,
+                                        interactionid
+                                    )
+                                } else {
+                                    // Existing but unverified user
+                                    shareSourceEmail(
+                                        source,
+                                        currentUser,
+                                        targetUser,
+                                        args.shareNote,
+                                        `?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedsources=active`,
+                                        interactionid
+                                    )
+                                }
+                            }catch (error) {
+                                console.log("failed to send shared sources email - " + error)
+                            }
+                        })
+
+                        return {
+                            success: true,
+                            message: 'Source shared'
+                        }
+                    })
+                    .catch(err => {
+                        return {
+                            success: false,
+                            message: err.message
+                        }
+                    })
+                })
+            }
         }
     },
     SourceTag: {

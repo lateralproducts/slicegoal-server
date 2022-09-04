@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <table style="border-collapse: separate; border-spacing: 10px;">
+        <tr>
+            <td>
+                <div style="border: solid 0.2px #ECEDF2; border-radius: 3px; padding: 5px;">
+                    <div style="font-size: 14px;">
+                        {{ sourceText }}
+                    </div>
+                    <div style="font-size: 10px; font-weight: 700;">
+                        {{ sourceType }}
+                    </div>
+                    <div style="font-size: 10px;">
+                        {{ sourceLink }}
+                    </div>
+                </div>
+            </td>
+        </tr>
+        <tr style="height:10px">
+        </tr>
+        <tr>
+            <td>
+                <div style="font-size: 8px; display:flex;">
+                    {{ shareNote }}
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <img width="100" src="{{ logopath }}?ix={{ interactionid }}" />
+        </tr>
+        <tr>
+            <div style="font-size: 10px;">
+                {{ sharerName }} ({{ sharerEmail }}) shared this source with you.
+            </div>
+        </tr>
+    </table>
+</body>
+
+</html>

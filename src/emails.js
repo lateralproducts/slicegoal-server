@@ -56,6 +56,10 @@ const shareInsightTemplate = fs
     .readFileSync(__dirname + '/emailtemplates/shareInsight.html')
     .toString()
 
+const shareSourceTemplate = fs
+    .readFileSync(__dirname + '/emailtemplates/shareSource.html')
+    .toString()
+
 const goalNudge = fs
     .readFileSync(__dirname + '/emailtemplates/goalNudge.html')
     .toString()
@@ -379,9 +383,33 @@ export async function shareInsightEmail(
     interactionid
     ) { 
         const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
-        const subject = `${sharerName.trim()} shared an insight`
+        const subject = `${sharerName.trim()} shared an insight with you`
         const email = Mustache.render(shareInsightTemplate, {
             insightText: insight.answer,
+            sharerName: sharerName,
+            sharerEmail: `${sharer.email}`,
+            logopath: LOGO_PATH_URL,
+            acceptLink: `${APP_PATH_URL}` + acceptLink,
+            shareNote: shareNote,
+            interactionid: interactionid
+        })
+        return await sendEmail(receiver.email, subject, email)
+    }
+
+export async function shareSourceEmail( 
+    source,
+    sharer,
+    receiver,
+    shareNote,
+    acceptLink,
+    interactionid
+    ) { 
+        const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
+        const subject = `${sharerName.trim()} shared a source with you`
+        const email = Mustache.render(shareSourceTemplate, {
+            sourceText: source.name,
+            sourceLink: source.url,
+            sourceType: source.type,
             sharerName: sharerName,
             sharerEmail: `${sharer.email}`,
             logopath: LOGO_PATH_URL,
