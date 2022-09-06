@@ -28,6 +28,7 @@ import { schema as sourceSchema } from './sources'
 import { schema as paymentSchema } from './payments'
 import { schema as websiteSchema } from './website'
 import { schema as pomodoroSchema } from './pomodoros'
+import { schema as recapSchema } from './recaps'
 
 //import queries and mutations
 import { typeDefs as userQueryMutation } from './users'
@@ -42,6 +43,7 @@ import { typeDefs as taskQueryMutation } from './tasks'
 import { typeDefs as sourceMutation } from './sources'
 import { typeDefs as pomodoroMutation } from './pomodoros'
 import { typeDefs as dbUpdateMutation } from '../util/db_updates'
+import { typeDefs as recapMutation } from './recaps'
 
 //import resolvers
 import { resolvers as userResolvers } from './users'
@@ -56,6 +58,7 @@ import { resolvers as taskResolvers } from './tasks'
 import { resolvers as sourceResolvers } from './sources'
 import { resolvers as pomodoroResolvers } from './pomodoros'
 import { resolvers as dbUpdateResolvers } from '../util/db_updates'
+import { resolvers as recapResolvers } from './recaps'
 
 //upload()
 import { getfile } from './storage'
@@ -108,6 +111,7 @@ export const graphql = async() => {
                 paymentSchema,
                 websiteSchema,
                 pomodoroSchema,
+                recapSchema,
                 paymentQueryMutation,
                 userQueryMutation,
                 insightQueryMutation,
@@ -119,8 +123,8 @@ export const graphql = async() => {
                 taskQueryMutation,
                 sourceMutation,
                 pomodoroMutation,
-                dbUpdateMutation
-                
+                dbUpdateMutation,
+                recapMutation
             ],
 
             resolvers: merge(
@@ -135,7 +139,8 @@ export const graphql = async() => {
                 taskResolvers,
                 sourceResolvers,
                 pomodoroResolvers,
-                dbUpdateResolvers
+                dbUpdateResolvers,
+                recapResolvers
             ),
             context
         })
