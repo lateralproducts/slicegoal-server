@@ -624,19 +624,19 @@ export const resolvers = {
                 if (profile.user !== getuserid(req.session)) {
                     throw new Error('Unauthorised Insight Delete')
                 } else {
-                    InsightTags.deleteMany(
+                    await InsightTags.deleteMany(
                         { insightid: insightid },
                         function(err) {
                             if (err) throw err
                         },
                     )
-                    SourceTags.deleteMany(
+                    await SourceTags.deleteMany(
                         { 
                             resourcetype: 'insight',
                             resourceid: insightid
                         }
                     )
-                    Insights.deleteOne(
+                    await Insights.deleteOne(
                         { _id: ObjectId(insightid) },
                         function(err) {
                             if (err) throw err
