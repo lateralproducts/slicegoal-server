@@ -251,24 +251,7 @@ export const resolvers = {
         },
         checkTask: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const Tasks = db.collection('tasks')
-            var updatetask = new Object()
-
-            if(args.checked) {
-                args.task = args.taskid
-                activityrecord(args, req, '✔')
-                updatetask.goalorder = 1000 //setting order to 1000 - to bottom of list.
-                //make completed task show on the day schedule.
-                updatetask.schedule = true //listing as scheduled so it appears in the day record.
-                updatetask.starttime = new Date() //making task date today, so that it's recorded against the day.
-            }
-            updatetask.complete = args.checked
-
-            return (await Tasks.updateOne(
-                {_id: ObjectId(args.taskid)},
-                {$set: updatetask}
-            )).result.ok === 1
+            return checkTask(args, req)
         },
         removeTaskGoal: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -281,4 +264,25 @@ export const resolvers = {
             )).result.ok === 1
         }
     }
+}
+
+export async function checkTask(args, req){
+    const db = await DbConnection.Get()
+    const Tasks = db.collection('tasks')
+    var updatetask = new Object()
+
+    if(args.checked) {
+        args.task = args.taskid
+        activityrecord(args, req, '✔')
+        updatetask.goalorder = 1000 //setting order to 1000 - to bottom of list.
+        //make completed task show on the day schedule.
+        updatetask.schedule = true //listing as scheduled so it appears in the day record.
+        updatetask.starttime = new Date() //making task date today, so that it's recorded against the day.
+    }
+    updatetask.complete = args.checked
+
+    return (await Tasks.updateOne(
+        {_id: ObjectId(args.taskid)},
+        {$set: updatetask}
+    )).result.ok === 1
 }

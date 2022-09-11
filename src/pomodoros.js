@@ -1,7 +1,8 @@
 import { ObjectId } from 'mongodb'
 import { getprofileid } from './users'
 import DbConnection from './database'
-import { getuiversion } from '../util/functions';
+import { getuiversion } from '../util/functions'
+import { checkTask } from './tasks'
 let pjson = require('../package.json')
 
 export const typeDefs = `
@@ -13,7 +14,7 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        savePomodoro(notes: String, goal: String, task: String, datetime: String, minutes: Int): Boolean!
+        savePomodoro(notes: String, goal: String, taskid: String, datetime: String, minutes: Int, checked: Boolean): Boolean!
     }
 `
 
@@ -151,14 +152,14 @@ export const resolvers = {
         task: async(parent) => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            console.log(parent)
             return await Tasks.findOne({_id: ObjectId(parent.task)})
         }
     },
     Mutation: {
         savePomodoro: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
-            activityrecord(args, req)
+            if(args.notes || args.minutes) activityrecord(args, req)
+            if(args.checked && args.taskid) checkTask(args, req) //Only mark as done if a taskid is sent. Not marking Goals as done.
             return true
         }
     },

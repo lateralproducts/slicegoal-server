@@ -66,9 +66,6 @@ export const resolvers = {
             //set to Australian boundaries
             start.setHours(start.getHours() - 11) //-11 is Australian time in UTC
             end.setHours(end.getHours() - 11) //-11 is Australian time in UTC
-
-            console.log(start)
-            console.log(end)
             createreport([`${process.env.NOTIFICATION_EMAIL}`], start, end)
         },
         sendunsubscriberequest: async(_, args, { req }) => {
@@ -232,7 +229,6 @@ export async function sessiontrack(
 }
 
 export function querytojson(search) {
-    console.log(search)
     var convert
     try {
         convert = search.toString() //format the string for a json object.
