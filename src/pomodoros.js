@@ -168,6 +168,8 @@ export const resolvers = {
 
 export async function activityrecord(args, req, note) {
     const db = await DbConnection.Get()
+    
+    if(args.taskid) args.task = args.taskid //this is masking the problem that I don't have a universally defined variable for "taskid"
 
     const Tasks = db.collection('tasks')
     const Task = await Tasks.findOne({ _id: ObjectId(args.task)})
