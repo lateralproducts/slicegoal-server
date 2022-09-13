@@ -22,6 +22,7 @@ export const schema = `
 export const typeDefs = `
     extend type Query {
         tasks(starttime: String, endtime: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String) : [Task]
+        task(taskid: String!) : Task
     }
     
     extend type Mutation {
@@ -30,7 +31,7 @@ export const typeDefs = `
         deleteTask(taskid: String!) : Boolean
         listTask(taskid: String!) : Boolean
         unlistTask(taskid: String!) : Boolean
-        scheduleTask(taskid: String!, setdate: String) : Boolean
+        scheduleTask(taskid: String!, setdate: String, reschedule: Boolean) : Boolean
         checkTask(taskid: String!, checked: Boolean) : Boolean
         removeTaskGoal(taskid: String!): Boolean
         updateDayTaskOrder(tasks: [String]): Boolean
@@ -97,6 +98,18 @@ export const resolvers = {
                 return await Tasks.find(query)
                 .sort(sort).toArray()
             }
+        },
+        task: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+
+            return await Tasks.findOne(
+                {
+                    profile: getprofileid(req.session),
+                    _id: ObjectId(args.taskid)
+                }
+            )
         }
     },
     Task: {
@@ -231,6 +244,10 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             var updates = new Object()
+
+            if (args.reschedule){
+                updates.$inc = { rescheduled: 1}
+            }
             
             if(args.setdate) {
                 updates.$set = {
