@@ -42,7 +42,6 @@ export async function getUploadLinkFromAWS(file){
     try {
         const putcommand = new PutObjectCommand(params) //PUT object link
         const signedUrl = await getSignedUrl(s3Client, putcommand, requestheader)
-        console.log(signedUrl)
         return signedUrl
     } catch (err) {
         console.log("Error creating presigned URL for upload.", err);
