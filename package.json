@@ -1,6 +1,6 @@
 {
     "name": "cavestep-server",
-    "version": "10.4.0",
+    "version": "11.0.0",
     "description": "",
     "main": "dist/index.js",
     "scripts": {
