@@ -22,8 +22,8 @@ export const typeDefs = `
   }
 
   extend type Mutation {
-    createInsight(datetime: String, profileid: String, prompt: String, answer: String, areatags: [AreaTagIn], sources: [SourceTagIn]): Spaced
-    updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, sources: [SourceTagIn]): Spaced 
+    createInsight(datetime: String, profileid: String, prompt: String, file: String, answer: String, areatags: [AreaTagIn], sources: [SourceTagIn]): Spaced
+    updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, file: String, sources: [SourceTagIn]): Spaced 
     createInsightTag(insightid: String!, profileid: String, area: String, areaname: String): Tag
     updateInsightTag(tagid: String!, notes: String): Boolean
     removeInsightTag(tagid: String): Boolean
@@ -46,6 +46,7 @@ export const schema = `
         insighttag: String
         sharedfrom: String
         datetimeshared: String
+        file: String
     }
     type SharedInsightList {
         numberOfInsights: Int
