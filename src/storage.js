@@ -31,9 +31,9 @@ export const linkParams = (file) => {
 };
 
 const requestheader = {
-    expiresIn: 10, //in seconds.
-    mode: 'no-cors', //cors policy set on s3 bucket.
-    origin: `${process.env.PATH_URL}` //www.cavestep.com
+    expiresIn: 60, //in seconds.
+    //mode: 'no-cors', //cors policy set on s3 bucket.
+    //origin: `${process.env.PATH_URL}` //www.cavestep.com
 }
 
 export async function getUploadLinkFromAWS(file){ 
@@ -42,6 +42,7 @@ export async function getUploadLinkFromAWS(file){
     try {
         const putcommand = new PutObjectCommand(params) //PUT object link
         const signedUrl = await getSignedUrl(s3Client, putcommand, requestheader)
+        console.log(signedUrl)
         return signedUrl
     } catch (err) {
         console.log("Error creating presigned URL for upload.", err);
