@@ -10,6 +10,7 @@ export const typeDefs = `
         goals(area: String, search: String, date: String, goal: String): [Goal]
         goalstolink: [Goal]
         linkedgoals(goal: String): [Goal]
+        parentgoals(goal: String, filterid: String): [Goal]
         goalTags(area: String, goal: String): [GoalTag]
     }
 
@@ -126,10 +127,25 @@ export const resolvers = {
 
             let query = new Object()
             query.profileid = getprofileid(req.session)
-            query.rootgoal = args.goal
+            query.rootgoal = args.goal //find all goals that this goal links to.
 
-            var linklist = await GoalLinks.find({profileid: getprofileid(req.session), rootgoal: args.goal}).toArray()
+            var linklist = await GoalLinks.find(query).toArray()
             return await Goals.find({ _id: { $in: linklist.map(function(link) {return ObjectId(link.goal)}) }}).sort({orderrank: 1}).toArray()
+        },
+        parentgoals: async(_, args, { req }) => {
+            //show linked sub goals on a goal.
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const GoalLinks = db.collection('goallinks')
+            const Goals = db.collection('goals')
+
+            let query = new Object()
+            query.profileid = getprofileid(req.session)
+            query.goal = args.goal //find goals that link to this goal.
+            query.rootgoal = {$not: {$eq: args.filterid}}
+
+            var linklist = await GoalLinks.find(query).toArray()
+            return await Goals.find({ _id: { $in: linklist.map(function(link) {return ObjectId(link.rootgoal)}) }}).sort({orderrank: 1}).toArray()
         },
         goalTags: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
