@@ -76,6 +76,7 @@ export const resolvers = {
                 ).sort({rescheduled: -1}).toArray()
             } else { //return list of tasks for the day OR main list.
                 let query = new Object()
+                if(args.list === 'main') query.schedule = true //only return 'scheduled' tasks for main list.
                 query.profile = getprofileid(req.session)
                 if(args.starttime || args.endtime){
                     const starttime = new Date(args.starttime)
@@ -85,7 +86,6 @@ export const resolvers = {
                             {'starttime': {$lt: endtime}}
                         ]
                 }
-                query.schedule = true //only return 'scheduled' tasks.
                 if(!args.complete) query.$or = [ //only return if complete not equal to true (or doesn't exist)
                     {complete: null},
                     {complete: false},
@@ -121,6 +121,7 @@ export const resolvers = {
     },
     Mutation: {
         newTask: async(_, args, { req }) => {
+            //need to move business logic to server.
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
@@ -253,7 +254,6 @@ export const resolvers = {
                 updates.$set = {
                     starttime: args.starttime ? new Date(args.starttime) : new Date(args.setdate),
                     daytask: true,
-                    schedule: true,
                     endtime: null
                 }
             } else {
