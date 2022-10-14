@@ -180,7 +180,7 @@ export const graphql = async() => {
                 }
             }),
         )
-        // Bind GraphQL Yoga to `/graphql` endpoint
+        // Bind GraphQL Yoga to `/server` endpoint
         app.use('/server', graphQLServer)
 
         // start server

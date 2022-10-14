@@ -15,18 +15,25 @@ export const schema = `
         goal: Goal,
         complete: Boolean,
         schedule: Boolean,
-        rescheduled: Int
+        rescheduled: Int,
+        tasks: [SubTask]
+    }
+
+    type SubTask {
+        task: String,
+        complete: Boolean
     }
 `
 
 export const typeDefs = `
     extend type Query {
         tasks(starttime: String, endtime: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String) : [Task]
-        task(taskid: String!) : Task
+        task(taskid: String!): Task
+        taskSearch(search: String!): [Task]
     }
     
     extend type Mutation {
-        newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, goal: String, complete: Boolean, schedule: Boolean) : String
+        newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, goal: String, complete: Boolean, schedule: Boolean) : String        
         editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, complete: Boolean, schedule: Boolean, reschedule: Boolean) : Boolean
         deleteTask(taskid: String!) : Boolean
         listTask(taskid: String!) : Boolean
@@ -37,6 +44,8 @@ export const typeDefs = `
         updateDayTaskOrder(tasks: [String]): Boolean
         updateGoalTaskOrder(tasks: [String]): Boolean
         updateTaskListOrder(tasks: [String]): Boolean
+        newSubTask(taskid: String!, task: String!): Boolean
+        checkSubTask(taskid: String!, task: String!, complete: Boolean!): Boolean
     }
 `
 
@@ -110,6 +119,12 @@ export const resolvers = {
                     _id: ObjectId(args.taskid)
                 }
             )
+        },
+        taskSearch: async(_, {search}, { req }) => {
+            //if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            return await Tasks.find({profile: getprofileid(req.session), title: new RegExp(search, 'i')}).sort({created: -1}).toArray()
         }
     },
     Task: {
@@ -278,6 +293,24 @@ export const resolvers = {
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
                 {$unset: {goal:''}}
+            )).result.ok === 1
+        },
+        newSubTask: async(_, {taskid,task}, {req}) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            return (await Tasks.updateOne(
+                {_id: ObjectId(taskid)},
+                {$push: {tasks: {task: task, complete: false} }}
+            )).result.ok === 1
+        },
+        checkSubTask: async(_, {taskid,task}, {req}) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            return (await Tasks.updateOne(
+                {_id: ObjectId(taskid), 'tasks.task': task},
+                {$set: { 'tasks.$.complete': true}}
             )).result.ok === 1
         }
     }
