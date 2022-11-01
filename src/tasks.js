@@ -29,7 +29,7 @@ export const typeDefs = `
     extend type Query {
         tasks(starttime: String, endtime: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String) : [Task]
         task(taskid: String!): Task
-        taskSearch(search: String!): [Task]
+        searchTasks(search: String!): [Task]
     }
     
     extend type Mutation {
@@ -120,7 +120,7 @@ export const resolvers = {
                 }
             )
         },
-        taskSearch: async(_, {search}, { req }) => {
+        searchTasks: async(_, {search}, { req }) => {
             //if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
