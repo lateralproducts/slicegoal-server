@@ -16,12 +16,7 @@ export const schema = `
         complete: Boolean,
         schedule: Boolean,
         rescheduled: Int,
-        tasks: [SubTask]
-    }
-
-    type SubTask {
-        task: String,
-        complete: Boolean
+        tasks: [Task]
     }
 `
 
@@ -30,6 +25,7 @@ export const typeDefs = `
         tasks(starttime: String, endtime: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String) : [Task]
         task(taskid: String!): Task
         searchTasks(search: String!): [Task]
+        taskInsights(taskid: String!): [Insight]
     }
     
     extend type Mutation {
@@ -45,7 +41,7 @@ export const typeDefs = `
         updateGoalTaskOrder(tasks: [String]): Boolean
         updateTaskListOrder(tasks: [String]): Boolean
         newSubTask(taskid: String!, task: String!): Boolean
-        checkSubTask(taskid: String!, task: String!, complete: Boolean!): Boolean
+        linkInsightToTask(taskid: String!, insightid: String!): Boolean
     }
 `
 
@@ -85,7 +81,11 @@ export const resolvers = {
                 ).sort({rescheduled: -1}).toArray()
             } else { //return list of tasks for the day OR main list.
                 let query = new Object()
-                if(args.list === 'main') query.schedule = true //only return 'scheduled' tasks for main list.
+                if(args.list === 'main') { //only return 'scheduled' tasks for main list.
+                    query.schedule = true 
+                    query.starttime = null
+                }
+                
                 query.profile = getprofileid(req.session)
                 if(args.starttime || args.endtime){
                     const starttime = new Date(args.starttime)
@@ -121,10 +121,25 @@ export const resolvers = {
             )
         },
         searchTasks: async(_, {search}, { req }) => {
-            //if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             return await Tasks.find({profile: getprofileid(req.session), title: new RegExp(search, 'i')}).sort({created: -1}).toArray()
+        },
+        taskInsights: async(_, {taskid}, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            const Insights = db.collection('insights')
+            const task = await Tasks.findOne({profile: getprofileid(req.session), _id: ObjectId(taskid)})
+
+            if (task.insights) 
+                return await Insights.find({
+                    _id: {
+                        $in: task.insights.map(insightid => {return ObjectId(insightid)})
+                    }
+                }).toArray()
+            else return []
         }
     },
     Task: {
@@ -132,29 +147,29 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
             return await Goals.findOne({ _id: ObjectId(goal) })
+        },
+        tasks: async({ tasks }) => {
+                try {
+                    const db = await DbConnection.Get()
+                    const Tasks = db.collection('tasks')
+                    return await Tasks.find({_id: {
+                        $in: tasks.map(function(taskid) {
+                            if(taskid.task) return 
+                            else return ObjectId(taskid)
+                        })
+                    }}).toArray()
+                }
+                 catch (error) {
+                    return []
+                }
         }
     },
     Mutation: {
         newTask: async(_, args, { req }) => {
             //need to move business logic to server.
             if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const Tasks = db.collection('tasks')
-
-            var task = new Object(args)
-            task.starttime = args.starttime ? new Date(args.starttime) : (args.setdate ? new Date(args.setdate) : null)
-            task.created = new Date()
-            if (args.endtime) {
-                task.endtime = new Date(args.endtime),
-                task.daytask = false
-            }
-            else {
-                task.daytask = true
-                task.endtime = null
-            }
-            task.profile = getprofileid(req.session)
-
-            return (await Tasks.insertOne(task)).insertedId.toString()
+            args.profileid = getprofileid(req.session)
+            return await createNewTask(args)
         },
         editTask: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -203,7 +218,10 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
-                {$set: {schedule: true}}
+                {
+                    $set: {schedule: true}, 
+                    $unset: {starttime: null}
+                }
             )).result.ok === 1
         },
         unlistTask: async(_, args, { req }) => {
@@ -214,7 +232,7 @@ export const resolvers = {
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
                 {
-                    $unset: { starttime: null, schedule: null },
+                    $unset: { schedule: null },
                     $inc: { rescheduled: 1}
                 }
             )).result.ok === 1
@@ -261,7 +279,7 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             var updates = new Object()
 
-            if (args.reschedule){
+            if (args.reschedule){ //if date existing, then increment reschedule count.
                 updates.$inc = { rescheduled: 1}
             }
             
@@ -271,6 +289,7 @@ export const resolvers = {
                     daytask: true,
                     endtime: null
                 }
+                updates.$unset = {schedule: null}
             } else {
                 updates.$unset = { //unsetting, variables don't matter.
                     starttime: ''
@@ -298,22 +317,43 @@ export const resolvers = {
         newSubTask: async(_, {taskid,task}, {req}) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
+            const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session)})
             const Tasks = db.collection('tasks')
             return (await Tasks.updateOne(
                 {_id: ObjectId(taskid)},
-                {$push: {tasks: {task: task, complete: false} }}
+                {$push: {tasks: subtaskid }}
             )).result.ok === 1
         },
-        checkSubTask: async(_, {taskid,task}, {req}) => {
+        linkInsightToTask: async(_, {taskid,insightid}, {req}) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             return (await Tasks.updateOne(
-                {_id: ObjectId(taskid), 'tasks.task': task},
-                {$set: { 'tasks.$.complete': true}}
+                {_id: ObjectId(taskid)},
+                {$push: {insights: insightid}}
             )).result.ok === 1
         }
     }
+}
+
+async function createNewTask({title, description, goal, complete, schedule, setdate, starttime, endtime, profileid}) {
+    const db = await DbConnection.Get()
+    const Tasks = db.collection('tasks')
+
+    var task = new Object({title: title, description: description, goal: goal, complete: complete, schedule: schedule})
+    task.starttime = starttime ? new Date(starttime) : (setdate ? new Date(setdate) : null)
+    task.created = new Date()
+    if (endtime) {
+        task.endtime = new Date(endtime),
+        task.daytask = false
+    }
+    else {
+        task.daytask = true
+        task.endtime = null
+    }
+    task.profile = profileid
+
+    return (await Tasks.insertOne(task)).insertedId.toString()
 }
 
 export async function checkTask(args, req){
@@ -322,8 +362,6 @@ export async function checkTask(args, req){
     var updatetask = new Object()
 
     if(args.checked) {
-        args.task = args.taskid
-        activityrecord(args, req, '✔')
         updatetask.goalorder = 1000 //setting order to 1000 - to bottom of list.
         //make completed task show on the day schedule.
         updatetask.schedule = true //listing as scheduled so it appears in the day record.

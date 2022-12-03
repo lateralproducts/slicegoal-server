@@ -14,7 +14,7 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        savePomodoro(notes: String, goal: String, taskid: String, datetime: String, minutes: Int, checked: Boolean): Boolean!
+        savePomodoro(notes: String, taskid: String, datetime: String, minutes: Int, checked: Boolean): Boolean!
     }
 `
 
@@ -29,6 +29,7 @@ export const schema = `
         datetime: String
         minutes: Int
         date: String
+        checked: Boolean
     }
 
     type PomodoroData {
@@ -158,7 +159,7 @@ export const resolvers = {
     Mutation: {
         savePomodoro: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
-            if(args.notes || args.minutes) activityrecord(args, req)
+            activityrecord(args, req)
             if(args.checked && args.taskid) checkTask(args, req) //Only mark as done if a taskid is sent. Not marking Goals as done.
             return true
         }
@@ -166,16 +167,14 @@ export const resolvers = {
     
 }
 
-export async function activityrecord(args, req, note) {
+export async function activityrecord(args, req) {
     const db = await DbConnection.Get()
     
     if(args.taskid) args.task = args.taskid //this is masking the problem that I don't have a universally defined variable for "taskid"
 
     const Tasks = db.collection('tasks')
     const Task = await Tasks.findOne({ _id: ObjectId(args.task)})
-    if (Task) args.goal = Task.goal
-    if (note) args.notes = (Task ? Task.title + " " : "") + note
-
+    if (Task) args.goal = Task.goal //add a goal if attached.
     const Pomodoros = db.collection('pomodoros')
     args.userid = getprofileid(req.session)
     args.serverversion = pjson.version
