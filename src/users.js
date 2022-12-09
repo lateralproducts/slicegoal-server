@@ -63,7 +63,6 @@ export const schema = `
     state: String
     offeractive: String
     hideupgrade: Boolean
-    upgradeprompt: SharedWheel
   }
 
   type createClientResponse {
@@ -139,9 +138,6 @@ export const resolvers = {
                 return await Views.findOne(query) //could improve to find 'default' once ready to do that.
                 
             }
-        },
-        upgradeprompt: async(parent, __, { req }) => {
-            return await getoffers(req.session.user._id)
         }
     },
     Mutation: {

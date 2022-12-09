@@ -36,11 +36,12 @@ export const schema = `
         message: String
         offeractive: String
         hideupgrade: Boolean
+        success: Boolean
     }
     type Offers {
         activeid: Int
         highlightid: Int
-        upgradeprompt: SharedWheel
+        sharedwheels: [View]
         offers: [Offer]
     }
     type Offer {
@@ -54,9 +55,7 @@ export const schema = `
         amount: Int
         period: String
     }
-    type Prompts {
-        upgradeprompts: [SharedWheel]
-    }
+
     type SharedWheel {
         user: String
         wheel: String
@@ -120,11 +119,10 @@ const offers = [
         offerid: 2,
         offer: 'Coaching Enabled',
         inclusions: [
-            'Track progress as a team',
-            'Share insights and sources',
-            'Access to expert templates',
-            'See shared coaching wheels',
-            'Get coaching direction and support',
+            'Share and receive insights',
+            'Share and receive sources',
+            'Access expert templates',
+            'Access shared wheels',
             'All features from Productivity Pack'
         ],
         price: {
@@ -256,8 +254,8 @@ export const resolvers = {
                 })()
             }).then(
                 (txnresponse) => {
-                    if(txnresponse.ResponseCode === '00' || txnresponse.ResponseCode === '08') 
-                    {
+                    let message = responseMessage(txnresponse.ResponseCode)
+                    if(txnresponse.ResponseCode === '00' || txnresponse.ResponseCode === '08') {
                         const user_id = getuserid(req.session)
                         Users.updateOne( //update the user profile with payments and active offer information
                             { _id: ObjectId(user_id) },
@@ -269,13 +267,22 @@ export const resolvers = {
                                 lastpaid: new Date() //update the last paid reference.
                             } },
                         )
-                    }
-
-                    let message = responseMessage(txnresponse.ResponseCode)
-                    return {message: message, offeractive: transaction.offer.offer, hideupgrade: true}
+                        return {
+                            success: true,
+                            message: message
+                        }
+                    } else {
+                        return {
+                            success: false,
+                            message: message
+                        }
+                    }                    
                 },
                 error => {
-                    return {message: error}
+                    return {
+                        result: 'failed',
+                        message: error
+                    }
                 },
             )
         },
@@ -285,28 +292,15 @@ export const resolvers = {
             return true
         },
         offers: async(_, __, { req }) => {
-            const db = await DbConnection.Get()
-            const Users = db.collection('users')
-            const user = await Users.findOne({_id: ObjectId(getuserid(req.session))}) //don't use session user instance, as that doesn't work.
-            var returnoffers = new Object()
-            const activeofferid = user.activeofferid ? user.activeofferid : 0 //0 is free offer ID.
-            returnoffers.activeid = activeofferid 
-            returnoffers.highlightid = 2 //(activeofferid === 1 ? 2 : 1)
-            returnoffers.offers = offers.filter(offer => {
-                return (offer.disabled !== true && offer.offerid !== activeofferid) //don't return the active offer. Only return the offer changes available.
-                //will need to think about how offers are returned based on the active offer. Ie. free plan is a downgrade if a paid option is active.
-            })
-            return returnoffers
+            return await getoffers(req)
         }
     },
     PlanChange: {
 
     },
     Offers: {
-        //Could fix upgradeprompt to actually be an 'upgrade prompt' flas and message, and separate the list of shared wheels.
-        //Currently just sending a single shared wheel.
-        upgradeprompt: async(_, __, { req }) => {
-            return await getoffers(req.session.user._id)
+        sharedwheels: async(_, __, { req }) => {
+            return await getsharedwheels(req.session.user._id)
         }
     },
     Mutation: {
@@ -406,7 +400,7 @@ export const resolvers = {
                     activeofferid: planid, //update the active offerid
                     offeractive: offers[planid].offer, //attach the active offer
                 }})
-            return { message: 'Plan changed successfully.', offeractive: offers[planid].offer, hideupgrade: planid === 0 ? false : true }
+            return { message: 'Plan changed successfully.', offeractive: offers[planid].offer, hideupgrade: planid === 0 ? false : true, success: true }
         },
         addLastNameToUser: async(_, { lastname }, { req }) => {
             const user_id = getuserid(req.session)
@@ -421,26 +415,25 @@ export const resolvers = {
     }
 }
 
-export async function getoffers(userid){
-    const useridst = userid.toString()
+export async function getoffers(req){
     const db = await DbConnection.Get()
     const Users = db.collection('users')
-    const user = await Users.findOne({_id: ObjectId(useridst)})
-    if(user.activeofferid !== 2){ //to return the information for the upgrade prompt.
-        const Views = db.collection('views')
-        const Wheels = db.collection('wheels')
-        const sharedview = await Views.findOne({user: useridst.toString(), type: 'shared' })
-        if (sharedview){
-            const shareuser = await Users.findOne({_id: ObjectId(sharedview.sharedby)})
-            const sharedwheel = await Wheels.findOne({_id: ObjectId(sharedview.wheel)})
-            var upgradeprompt = new Object()
-            upgradeprompt.user = shareuser ? shareuser.firstname : "Someone"
-            upgradeprompt.wheel = sharedwheel.name
-            upgradeprompt.offer = offers[2].offer //forcing to focus on upgrading to offer 2, "Coaching Enabled".
-            return upgradeprompt //could make this multiple in the future.
-        }
-    }
-    return null
+    const user = await Users.findOne({_id: ObjectId(getuserid(req.session))}) //don't use session user instance, as that doesn't work.
+    var returnoffers = new Object()
+    const activeofferid = user.activeofferid ? user.activeofferid : 0 //0 is free offer ID.
+    returnoffers.activeid = activeofferid 
+    returnoffers.highlightid = 2 //(activeofferid === 1 ? 2 : 1)
+    returnoffers.offers = offers.filter(offer => {
+        return (offer.disabled !== true && offer.offerid !== activeofferid) //don't return the active offer. Only return the offer changes available.
+        //will need to think about how offers are returned based on the active offer. Ie. free plan is a downgrade if a paid option is active.
+    })
+    return returnoffers
+}
+
+export async function getsharedwheels(userid){
+    const db = await DbConnection.Get()
+    const Views = db.collection('views')
+    return await Views.find({user: userid.toString(), type: 'shared' }).toArray()
 }
 function responseMessage(responseCode) {
     let result = {

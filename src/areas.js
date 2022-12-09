@@ -111,6 +111,7 @@ export const schema = `
         name: String
         email: String
         promptupgrade: Boolean
+        sharedby: User
     }
 
     type ViewUser {
@@ -373,6 +374,13 @@ export const resolvers = {
             const Users = db.collection('users')
             return await Users.findOne({
                 _id: ObjectId(view.user)
+            })
+        },
+        sharedby: async view => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            return await Users.findOne({
+                _id: ObjectId(view.sharedby)
             })
         }
     },
