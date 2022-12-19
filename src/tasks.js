@@ -185,6 +185,10 @@ export const resolvers = {
                 updates.daytask = true
                 updates.endtime = null
             }
+
+            if (!args.goal && !args.starttime) updates.schedule = true
+            else updates.schedule = false
+
             if(args.setdate || args.starttime) 
                 {updates.starttime = args.starttime ? new Date(args.starttime) : new Date(args.setdate)} 
             /* else 
@@ -336,13 +340,17 @@ export const resolvers = {
     }
 }
 
-async function createNewTask({title, description, goal, complete, schedule, setdate, starttime, endtime, profileid}) {
+async function createNewTask({title, description, goal, complete, setdate, starttime, endtime, profileid}) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
 
-    var task = new Object({title: title, description: description, goal: goal, complete: complete, schedule: schedule})
+    var task = new Object({title: title, description: description, goal: goal, complete: complete })
     task.starttime = starttime ? new Date(starttime) : (setdate ? new Date(setdate) : null)
     task.created = new Date()
+
+    if (!goal && !starttime) task.schedule = true
+    else task.schedule = false
+    
     if (endtime) {
         task.endtime = new Date(endtime),
         task.daytask = false
