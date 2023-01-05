@@ -8,6 +8,7 @@ import { createUserConnection } from './community'
 import { attachSources } from './sources'
 import { newIx } from './interactions'
 import { shareInsightEmail } from './emails'
+import { linkInsightTask } from './tasks'
 
 export const typeDefs = `
 
@@ -22,7 +23,7 @@ export const typeDefs = `
   }
 
   extend type Mutation {
-    createInsight(datetime: String, profileid: String, prompt: String, file: String, answer: String, areatags: [AreaTagIn], sources: [SourceTagIn]): Spaced
+    createInsight(datetime: String, profileid: String, prompt: String, file: String, answer: String, areatags: [AreaTagIn], sources: [SourceTagIn], taskid: String): Spaced
     updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, file: String, sources: [SourceTagIn]): Spaced 
     createInsightTag(insightid: String!, profileid: String, area: String, areaname: String): Tag
     updateInsightTag(tagid: String!, notes: String): Boolean
@@ -607,6 +608,9 @@ export const resolvers = {
                         .then(() => {
                             return insertedId
                         })
+                    }
+                    if (args.taskid) {
+                        linkInsightTask(args.taskid,insertedId)
                     }
                 })
         },

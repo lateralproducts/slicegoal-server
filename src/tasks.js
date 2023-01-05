@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb'
 
 import DbConnection from './database'
 import { getprofileid } from './users'
-import { activityrecord } from './pomodoros'
+//import { activityrecord } from './pomodoros'
 
 export const schema = `
     type Task {
@@ -25,6 +25,7 @@ export const typeDefs = `
         tasks(starttime: String, endtime: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String) : [Task]
         task(taskid: String!): Task
         searchTasks(search: String!): [Task]
+        pastTasks(date: String!): [Task]
         taskInsights(taskid: String!): [Insight]
     }
     
@@ -51,14 +52,19 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
+            let query = new Object()
+
+            if(!args.complete) query.$or = [ //only return if complete not equal to true (or doesn't exist)
+                {complete: null},
+                {complete: false},
+                {complete: {$exists: false}}]
+            else query.complete = true
 
             if (args.goal) { //return list of unscheduled/unfinished tasks
-                return await Tasks.find(
-                    {
-                        profile: getprofileid(req.session),
-                        goal: args.goal,
-                    }
-                ).sort({goalorder: 1}).toArray()
+                query.profile = getprofileid(req.session)
+                query.goal = args.goal
+                query.type = {$ne: 'subtask'}
+                return await Tasks.find(query).sort({goalorder: 1}).toArray()
             }
 
             if (args.scheduled && args.list === 'day') { //return list of unscheduled/unfinished tasks for scheduler
@@ -67,6 +73,7 @@ export const resolvers = {
                     {
                         profile: getprofileid(req.session),
                         schedule: true,
+                        type: {$ne: 'subtask'},
                         $and: [{$or: [
                             {complete: null},
                             {complete: false},
@@ -80,7 +87,7 @@ export const resolvers = {
                     }
                 ).sort({rescheduled: -1}).toArray()
             } else { //return list of tasks for the day OR main list.
-                let query = new Object()
+                
                 if(args.list === 'main') { //only return 'scheduled' tasks for main list.
                     query.schedule = true 
                     query.starttime = null
@@ -95,12 +102,9 @@ export const resolvers = {
                             {'starttime': {$lt: endtime}}
                         ]
                 }
-                if(!args.complete) query.$or = [ //only return if complete not equal to true (or doesn't exist)
-                    {complete: null},
-                    {complete: false},
-                    {complete: {$exists: false}}]
                 let sort = new Object()
                 //sort.complete = 1
+                query.type = {$ne: 'subtask'}
                 if(args.list == 'day') sort.dayorder = 1 
                 else sort.listorder = 1
 
@@ -125,6 +129,20 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             return await Tasks.find({profile: getprofileid(req.session), title: new RegExp(search, 'i')}).sort({created: -1}).toArray()
+        },
+        pastTasks: async(_, {date}, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            const starttime = new Date(date)
+            return await Tasks.find({
+                profile: getprofileid(req.session), 
+                starttime: {$lt: starttime}, 
+                $or: [
+                    {complete: null},
+                    {complete: false},
+                    {complete: {$exists: false}}
+                ]}).sort({starttime: -1}).toArray()
         },
         taskInsights: async(_, {taskid}, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -195,7 +213,7 @@ export const resolvers = {
                 updates.starttime = null */
             if(args.title) updates.title = args.title
             if(args.complete !== null) updates.complete = args.complete
-            if(args.description) updates.description = args.description
+            if(args.description !== null) updates.description = args.description
             if(args.goal) updates.goal = args.goal
 
             var updatetask = new Object()
@@ -321,7 +339,7 @@ export const resolvers = {
         newSubTask: async(_, {taskid,task}, {req}) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session)})
+            const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session), type: 'subtask'})
             const Tasks = db.collection('tasks')
             return (await Tasks.updateOne(
                 {_id: ObjectId(taskid)},
@@ -330,17 +348,21 @@ export const resolvers = {
         },
         linkInsightToTask: async(_, {taskid,insightid}, {req}) => {
             if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const Tasks = db.collection('tasks')
-            return (await Tasks.updateOne(
-                {_id: ObjectId(taskid)},
-                {$push: {insights: insightid}}
-            )).result.ok === 1
+            return await linkInsightTask(taskid, insightid)
         }
     }
 }
 
-async function createNewTask({title, description, goal, complete, setdate, starttime, endtime, profileid}) {
+export async function linkInsightTask(taskid, insightid){
+    const db = await DbConnection.Get()
+    const Tasks = db.collection('tasks')
+    return (await Tasks.updateOne(
+        {_id: ObjectId(taskid)},
+        {$push: {insights: insightid}}
+    )).result.ok === 1
+}
+
+async function createNewTask({title, description, goal, complete, setdate, starttime, endtime, profileid, type}) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
 
@@ -360,6 +382,7 @@ async function createNewTask({title, description, goal, complete, setdate, start
         task.endtime = null
     }
     task.profile = profileid
+    task.type = type
 
     return (await Tasks.insertOne(task)).insertedId.toString()
 }
