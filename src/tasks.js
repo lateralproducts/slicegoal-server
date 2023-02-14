@@ -30,7 +30,7 @@ export const typeDefs = `
     }
     
     extend type Mutation {
-        newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, goal: String, complete: Boolean, schedule: Boolean) : String        
+        newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, insightid: String, goal: String, complete: Boolean, schedule: Boolean) : String        
         editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, complete: Boolean, schedule: Boolean, reschedule: Boolean) : Boolean
         deleteTask(taskid: String!) : Boolean
         listTask(taskid: String!) : Boolean
@@ -187,7 +187,9 @@ export const resolvers = {
             //need to move business logic to server.
             if (!req.session.user) throw new Error('Invalid Session')
             args.profileid = getprofileid(req.session)
-            return await createNewTask(args)
+            const taskid = await createNewTask(args)
+            if (args.insightid) linkInsightTask(taskid, args.insightid)
+            return taskid
         },
         editTask: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
