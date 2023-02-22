@@ -15,8 +15,8 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        createGoal(datetime: String, goal: String, notes: String, tasks:[KeyIn], areatags: [AreaTagIn]): Goal
-        updateGoal(goalId: String!, goal: String, notes: String, datetime: String, complete: String): Goal
+        createGoal(datetime: String, goal: String, notes: String, tasks:[KeyIn], areatags: [AreaTagIn], description: String): Goal
+        updateGoal(goalId: String!, goal: String, notes: String, datetime: String, complete: String, description: String): Goal
         finishGoal(goal: String!, notes: String, complete: String): Boolean
         removeGoal(goalid: String!): Boolean
         snoozeGoal(goalid: String!, snooze: String!): Boolean
@@ -37,7 +37,7 @@ export const schema = `
     type Goal {
         _id: String
         goal: String
-        notes: String
+        description: String
         area: String
         datetime: String
         complete: String
