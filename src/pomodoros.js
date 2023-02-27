@@ -58,10 +58,17 @@ export const resolvers = {
         taskpomodoros: async(_, { taskId }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+
+            const task = await Tasks.findOne({_id: ObjectId(taskId)})
+
+            let search = task.tasks
+            search.push(taskId) //add original task.
+
             const Pomodoros = db.collection('pomodoros')
             return await Pomodoros.find(
                 {
-                    task: taskId,
+                    task: { $in: search },
                     userid: getprofileid(req.session)
                 },
                 { sort: { date: -1 } },
