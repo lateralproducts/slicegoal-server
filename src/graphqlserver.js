@@ -34,6 +34,7 @@ import { schema as websiteSchema } from './website'
 import { schema as pomodoroSchema } from './pomodoros'
 import { schema as recapSchema } from './recaps'
 import { schema as fileserverSchema } from './fileserver'
+import { schema as chatSchema } from './chat'
 
 //import queries and mutations
 import { typeDefs as userQueryMutation } from './users'
@@ -50,6 +51,7 @@ import { typeDefs as pomodoroQueryMutation } from './pomodoros'
 import { typeDefs as dbUpdateQueryMutation } from '../util/db_updates'
 import { typeDefs as recapQueryMutation } from './recaps'
 import { typeDefs as fileserverQueryMutation } from './fileserver'
+import { typeDefs as chatQueryMutation } from './chat'
 
 //import resolvers
 import { resolvers as userResolvers } from './users'
@@ -66,6 +68,7 @@ import { resolvers as pomodoroResolvers } from './pomodoros'
 import { resolvers as dbUpdateResolvers } from '../util/db_updates'
 import { resolvers as recapResolvers } from './recaps'
 import { resolvers as fileserverResolvers } from './fileserver'
+import { resolvers as chatResolvers } from './chat'
 
 //upload()
 import { getfile } from './storage'
@@ -99,6 +102,7 @@ const graphQLServer = createServer({
             pomodoroSchema,
             recapSchema,
             fileserverSchema,
+            chatSchema,
             paymentQueryMutation,
             userQueryMutation,
             insightQueryMutation,
@@ -112,7 +116,8 @@ const graphQLServer = createServer({
             pomodoroQueryMutation,
             dbUpdateQueryMutation,
             recapQueryMutation,
-            fileserverQueryMutation
+            fileserverQueryMutation,
+            chatQueryMutation
             //could combine the Schema and QueryMutation defs.
         ],
         resolvers: merge(
@@ -129,7 +134,8 @@ const graphQLServer = createServer({
             pomodoroResolvers,
             dbUpdateResolvers,
             recapResolvers,
-            fileserverResolvers
+            fileserverResolvers,
+            chatResolvers
         )
     },
     context
