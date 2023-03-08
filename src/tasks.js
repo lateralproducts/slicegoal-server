@@ -217,8 +217,6 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             args.profileid = getprofileid(req.session)
             const taskid = await createNewTask(args)
-            console.log("task created: " + args.title)
-            console.log("create id: " + taskid)
             if (args.insightid) linkInsightTask(taskid, args.insightid)
             return taskid
         },
@@ -404,14 +402,9 @@ async function deleteSubTasks(taskid, req){
         _id: ObjectId(taskid)
     })
     if (task && task.tasks) await task.tasks.map(task => {
-        console.log('delete map: ' + task)
         return deleteSubTasks(task, req)
     })
 
-    console.log('taskid: ' + taskid)
-    if (task) {
-    console.log('delete - ' + task.title)
-    console.log('delete - ' + task.tasks)}
     return (await Tasks.deleteOne({_id: ObjectId(taskid)})).result.ok === 1
 }
 
