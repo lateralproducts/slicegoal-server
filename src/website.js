@@ -4,7 +4,8 @@ import { getipaddress } from './users'
 import {
     emailHabitGuide,
     emailNotifyNewLeadCoaching,
-    signupEmailFunnel
+    signupEmailFunnel,
+    emailLateralProducts
 } from './emails'
 import { validateemail, botips } from '../util/functions';
 import { createreport } from './reporting';
@@ -15,6 +16,7 @@ export const typeDefs = `
         sendofferrequest(name: String, email: String, offer: String!): String
         sendunsubscriberequest(email: String, reason: String): String
         senddailyreport: Boolean
+        sendlateralproductsemail(name:String, email: String, interest: String, message: String): Boolean
     }
 `
 
@@ -67,6 +69,23 @@ export const resolvers = {
             start.setHours(start.getHours() - 11) //-11 is Australian time in UTC
             end.setHours(end.getHours() - 11) //-11 is Australian time in UTC
             createreport([`${process.env.NOTIFICATION_EMAIL}`], start, end)
+        },
+        sendlateralproductsemail: async(_, args, { req }) => {
+            const db = await DbConnection.Get()
+            const LateralProducts = db.collection('lateralproducts')
+            args.date = new Date()
+            await LateralProducts.insertOne(args)
+
+            if(validateemail(args.email)){ //check that the email is valid
+                //send the person a cc.
+                emailLateralProducts(args)
+            } else {
+                throw new Error('That email format doesn\'t look right. Can you check it?')
+            }
+            //save request in DB
+            //send email to daniel@lateralproducts.com
+            //cc the sender for their records, and so I can reply to it.
+            return true
         },
         sendunsubscriberequest: async(_, args, { req }) => {
             if(validateemail(args.email)){ //check that the email is valid

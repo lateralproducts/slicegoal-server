@@ -44,6 +44,10 @@ const rerank = fs
     .readFileSync(__dirname + '/emailtemplates/rerank.html')
     .toString()
 
+const lateralproducts = fs
+    .readFileSync(__dirname + '/emailtemplates/lateralproducts.html')
+    .toString()
+
 const feedbackTemplate = fs
     .readFileSync(__dirname + '/emailtemplates/feedback.html')
     .toString()
@@ -236,6 +240,19 @@ export async function emailRerankNudge(user) {
     })
 
     return await sendEmail(to, subject, email)
+}
+
+export async function emailLateralProducts({name, email, interest, message}) {
+    let to = `${process.env.NOTIFICATION_EMAIL}` //send to lateral products.
+    let subject = name + " - website message"
+    let lpemail = Mustache.render(lateralproducts, {
+        name: name,
+        email: email,
+        interest: interest,
+        message: message
+    })
+
+    return await sendEmail(to, subject, lpemail)
 }
 
 export async function emailNewCoach(coach, queryStringParams) {

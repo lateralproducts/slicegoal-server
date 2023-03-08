@@ -11,6 +11,7 @@ export const typeDefs = `
         readGoalPomoData(goal: String): PomodoroData
         goalpomodoros(goalId: String): [Pomodoro]
         taskpomodoros(taskId: String): [Pomodoro]
+        daypomodoros(date: String): [Pomodoro]
     }
 
     extend type Mutation {
@@ -50,7 +51,7 @@ export const resolvers = {
             return await Pomodoros.find(
                 {
                     goal: goalId,
-                    userid: getprofileid(req.session)
+                    userid: getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
                 },
                 { sort: { date: -1 } },
             ).toArray()
@@ -65,14 +66,33 @@ export const resolvers = {
             let search = task.tasks
             search.push(taskId) //add original task.
 
-            const Pomodoros = db.collection('pomodoros')
+            const Pomodoros = db.collection('pomodoros') 
             return await Pomodoros.find(
                 {
                     task: { $in: search },
-                    userid: getprofileid(req.session)
+                    userid: getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
                 },
                 { sort: { date: -1 } },
             ).toArray()
+        },
+        daypomodoros: async(_, {date}, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Pomodoros = db.collection('pomodoros')
+
+            let query = new Object()
+            query.userid = getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
+
+            var start = new Date(date)
+            var end = new Date(date)
+            end.setDate(start.getDate() + 1)
+
+            query.$and = [
+                    {'date': {$gte: start}},
+                    {'date': {$lt: end}}
+                ]
+
+            return await Pomodoros.find(query).sort({date: -1}).toArray()
         },
         readPomoData: async(_, { area }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')

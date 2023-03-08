@@ -20,20 +20,23 @@ export const schema = `
         _id: String
         profileid: String
         taskid: String
-        created: String
+        started: String
         messages: [Message]
     }
     type Message {
         _id: String
         message: String
         type: String
-        sent: String
+        datetime: String
+        userid: String
     }
 `
 
 export const typeDefs = `
     extend type Query {
         chatprompts: [Prompt]
+        getchats(taskid: String!): [Chat]
+        getchat(chatid: String!): Chat
     }
 
     extend type Mutation {
@@ -50,6 +53,23 @@ export const resolvers = {
             const Prompts = db.collection('chatprompts')
             const prompts = await Prompts.find({message: {$exists: true}})
             return prompts.toArray()
+        },
+        getchats: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const profileid = getprofileid(req.session)
+            const db = await DbConnection.Get()
+            const Chats = db.collection('chats')
+            const chats = await Chats.find({taskid: args.taskid, profileid: profileid})
+            return chats.toArray()
+        },
+        getchat: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const profileid = getprofileid(req.session)
+            const db = await DbConnection.Get()
+            const Chats = db.collection('chats')
+            const chat = await Chats.findOne({_id: ObjectId(args.chatid), profileid: profileid})
+            chat.userid = getuserid(req.session)
+            return chat
         }
     },
     Mutation: {
@@ -85,6 +105,7 @@ export const resolvers = {
                 { 
                     $push: {
                         messages: {
+                            context: args.contextid,
                             message: args.ratemessage,
                             rating: args.rating,
                             datetime: new Date(),
@@ -99,27 +120,44 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const ChatContext = db.collection('chatcontext')
+            const Prompts = db.collection('chatprompts')
             const Response = db.collection('chatresponses')
             const Chats = db.collection('chats')
             const context = await ChatContext.findOne({promptid: args.promptid})
-            let response = await Response.findOne({_id: ObjectId(context.responseid)})
+            
+            let response
+            if (context) response = await Response.findOne({_id: ObjectId(context.responseid)})
 
             const profileid = getprofileid(req.session)
             const userid = getuserid(req.session)
+
+            let messages 
+            messages = [{promptid: args.promptid, message: args.message, userid: userid, datetime: new Date()}]
+            if (response) messages.push({responseid: response._id, contextid: context._id, message: response.message, datetime: new Date()})
 
             const newchat = await Chats.insertOne(
                 { 
                     profileid: profileid,
                     taskid: args.taskid,
                     started: new Date(),
-                    messages: [
-                        {promptid: args.promptid, message: args.message, userid: userid, datetime: new Date()},
-                        {responsid: response._id, message: response.message, datetime: new Date()}
-                    ]
+                    messages: messages
                 },
             )
-            response.context = context
-            response.chatid = newchat.insertedId.toString()
+
+            Prompts.updateOne(
+                { _id: ObjectId(args.promptid) },
+                { $inc: { selected: 1 } }
+            )
+
+            if (context) Response.updateOne(
+                {_id: ObjectId(context.responseid)}, 
+                { $inc: { used: 1 } }
+            )
+
+            if (response) {
+                response.context = context
+                response.chatid = newchat.insertedId.toString()
+            }
             return response
         }
     }

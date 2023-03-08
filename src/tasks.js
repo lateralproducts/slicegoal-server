@@ -14,9 +14,11 @@ export const schema = `
         description: String
         goal: Goal,
         complete: Boolean,
+        completed: String,
         schedule: Boolean,
         rescheduled: Int,
         tasks: [Task]
+        parenttask: Task
     }
 `
 
@@ -54,11 +56,36 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             let query = new Object()
 
-            if(!args.complete) query.$or = [ //only return if complete not equal to true (or doesn't exist)
-                {complete: null},
-                {complete: false},
-                {complete: {$exists: false}}]
-            else query.complete = true
+            const starttime = new Date(args.starttime)
+            const endtime = new Date(args.endtime) 
+
+            if(!args.complete) {
+                query.$or = [ //only return if complete not equal to true (or doesn't exist)
+                    {complete: null},
+                    {complete: false},
+                    {complete: {$exists: false}},
+                ]
+                if(args.starttime || args.endtime){
+                    query.$and = [
+                            {'starttime': {$gte: starttime}},
+                            {'starttime': {$lt: endtime}}
+                        ]
+                }
+            }
+            else {
+                query.complete = true
+                if (!args.goal) query.$or = [ //only check day if day query, not goal.
+                    {$and: [
+                        {'completed': {$gte: starttime}},
+                        {'completed': {$lt: endtime}}
+                    ]},
+                    {$and: [ //if no completed date, use the start time. Phase this out.
+                        {'completed': {$exists: false}},
+                        {'starttime': {$gte: starttime}},
+                        {'starttime': {$lt: endtime}}
+                    ]}
+                ]
+            }
 
             if (args.goal) { //return list of unscheduled/unfinished tasks
                 query.profile = getprofileid(req.session)
@@ -94,19 +121,15 @@ export const resolvers = {
                 }
                 
                 query.profile = getprofileid(req.session)
-                if(args.starttime || args.endtime){
-                    const starttime = new Date(args.starttime)
-                    const endtime = new Date(args.endtime) 
-                    query.$and = [
-                            {'starttime': {$gte: starttime}},
-                            {'starttime': {$lt: endtime}}
-                        ]
-                }
+                
                 let sort = new Object()
                 //sort.complete = 1
                 query.type = {$ne: 'subtask'}
-                if(args.list == 'day') sort.dayorder = 1 
-                else sort.listorder = 1
+                if (args.complete) sort.completed = -1
+                else {
+                    if(args.list == 'day') sort.dayorder = 1 
+                    else sort.listorder = 1
+                }
 
                 return await Tasks.find(query)
                 .sort(sort).toArray()
@@ -180,6 +203,12 @@ export const resolvers = {
                  catch (error) {
                     return []
                 }
+        },
+        parenttask: async(parent, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            const parenttask = await Tasks.findOne({tasks: parent._id.toString()})
+            return parenttask //return a single parent task for now.
         }
     },
     Mutation: {
@@ -188,6 +217,8 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             args.profileid = getprofileid(req.session)
             const taskid = await createNewTask(args)
+            console.log("task created: " + args.title)
+            console.log("create id: " + taskid)
             if (args.insightid) linkInsightTask(taskid, args.insightid)
             return taskid
         },
@@ -233,7 +264,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-
+            await deleteSubTasks(args.taskid, req)
             return (await Tasks.deleteOne({_id: ObjectId(args.taskid)})).result.ok === 1
         },
         listTask: async(_, args, { req }) => {
@@ -342,6 +373,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session), type: 'subtask'})
+            console.log('create subtask:' + subtaskid)
             const Tasks = db.collection('tasks')
             return (await Tasks.updateOne(
                 {_id: ObjectId(taskid)},
@@ -362,6 +394,25 @@ export async function linkInsightTask(taskid, insightid){
         {_id: ObjectId(taskid)},
         {$push: {insights: insightid}}
     )).result.ok === 1
+}
+
+async function deleteSubTasks(taskid, req){
+    const db = await DbConnection.Get()
+    const Tasks = db.collection('tasks')
+    const task = await Tasks.findOne({
+        profile: getprofileid(req.session),
+        _id: ObjectId(taskid)
+    })
+    if (task && task.tasks) await task.tasks.map(task => {
+        console.log('delete map: ' + task)
+        return deleteSubTasks(task, req)
+    })
+
+    console.log('taskid: ' + taskid)
+    if (task) {
+    console.log('delete - ' + task.title)
+    console.log('delete - ' + task.tasks)}
+    return (await Tasks.deleteOne({_id: ObjectId(taskid)})).result.ok === 1
 }
 
 async function createNewTask({title, description, goal, complete, setdate, starttime, endtime, profileid, type}) {
@@ -395,10 +446,8 @@ export async function checkTask(args, req){
     var updatetask = new Object()
 
     if(args.checked) {
-        updatetask.goalorder = 1000 //setting order to 1000 - to bottom of list.
-        //make completed task show on the day schedule.
         updatetask.schedule = true //listing as scheduled so it appears in the day record.
-        updatetask.starttime = new Date() //making task date today, so that it's recorded against the day.
+        updatetask.completed = new Date()
     }
     updatetask.complete = args.checked
 
