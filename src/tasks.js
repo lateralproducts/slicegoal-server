@@ -273,7 +273,7 @@ export const resolvers = {
             }
 
             //would be better to check links before deleting and inserting. Separate into function.
-            TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: args.taskid})
+            await TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: args.taskid})
             if (args.parenttask) TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: args.parenttask, subtask: args.taskid, created: new Date()})
 
             return (await Tasks.updateOne(
@@ -283,10 +283,7 @@ export const resolvers = {
         },
         deleteTask: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const Tasks = db.collection('tasks')
-            await deleteSubTasks(args.taskid, req)
-            return (await Tasks.deleteOne({_id: ObjectId(args.taskid)})).result.ok === 1
+            return await deleteTask(args.taskid, req)
         },
         listTask: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -443,17 +440,21 @@ export async function linkInsightTask(taskid, insightid){
     )).result.ok === 1
 }
 
-async function deleteSubTasks(taskid, req){
+async function deleteTask(taskid, req){
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
-    const task = await Tasks.findOne({
+    const TaskLinks = db.collection('tasklinks')
+    const tasklinks = await TaskLinks.find({parenttask: taskid}).toArray()
+    if (tasklinks.length > 0) await tasklinks.map(link => {
+        return deleteTask(link.subtask, req) //delete all subtasks.
+    })
+    await TaskLinks.deleteMany({
         profile: getprofileid(req.session),
-        _id: ObjectId(taskid)
-    })
-    if (task && task.tasks) await task.tasks.map(task => {
-        return deleteSubTasks(task, req)
-    })
-
+        $or: [
+            {parenttask: taskid},
+            {subtask: taskid}
+        ]
+    }) //delete all links.
     return (await Tasks.deleteOne({_id: ObjectId(taskid)})).result.ok === 1
 }
 

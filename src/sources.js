@@ -12,6 +12,7 @@ export const typeDefs = `
         sources: [Source]
         insightSources(insightid: String!): [SourceTag]
         sourceInsights(sourceid: String!): SourceInsightList
+        searchSources(search: String!): [Source]
     }
 
     extend type Mutation {
@@ -71,6 +72,22 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             return await Sources.find({profileid: getprofileid(req.session)}).sort({accessedit: -1}).toArray()
+        },
+        searchSources: async function(_, args, { req }) {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Sources = db.collection('sources')
+
+
+            let query = {
+                $or: [
+                    { name: new RegExp(args.search, 'i') },
+                    { notes: new RegExp(args.search, 'i') }
+                ],
+                profileid: getprofileid(req.session)
+            }
+
+            return await Sources.find(query).sort({accessedit: -1}).toArray()
         },
         // all sources on an insight
         insightSources: async function(_, { insightid }, { req }) {
