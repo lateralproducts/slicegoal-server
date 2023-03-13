@@ -32,8 +32,8 @@ export const typeDefs = `
     }
     
     extend type Mutation {
-        newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, insightid: String, goal: String, complete: Boolean, schedule: Boolean) : String        
-        editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, complete: Boolean, schedule: Boolean, reschedule: Boolean) : Boolean
+        newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean) : String        
+        editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean) : Boolean
         deleteTask(taskid: String!) : Boolean
         listTask(taskid: String!) : Boolean
         unlistTask(taskid: String!) : Boolean
@@ -44,6 +44,9 @@ export const typeDefs = `
         updateGoalTaskOrder(tasks: [String]): Boolean
         updateTaskListOrder(tasks: [String]): Boolean
         newSubTask(taskid: String!, task: String!): Boolean
+        addTaskLink(parenttaskid: String!, subtaskid: String!): Boolean
+        removeTaskLink(parenttaskid: String!, subtaskid: String!): Boolean
+        removeTaskParentLinks(subtaskid: String!): Boolean
         linkInsightToTask(taskid: String!, insightid: String!): Boolean
     }
 `
@@ -189,14 +192,17 @@ export const resolvers = {
             const Goals = db.collection('goals')
             return await Goals.findOne({ _id: ObjectId(goal) })
         },
-        tasks: async({ tasks }) => {
+        tasks: async(parent, __, { req }) => {
                 try {
                     const db = await DbConnection.Get()
                     const Tasks = db.collection('tasks')
+                    const TaskLinks = db.collection('tasklinks')
+                    
+                    const tasklist = await TaskLinks.find({parenttask: parent._id.toString()}).toArray()
+                    
                     return await Tasks.find({_id: {
-                        $in: tasks.map(function(taskid) {
-                            if(taskid.task) return 
-                            else return ObjectId(taskid)
+                        $in: tasklist.map(function(link) {
+                            return ObjectId(link.subtask)
                         })
                     }}).toArray()
                 }
@@ -207,16 +213,28 @@ export const resolvers = {
         parenttask: async(parent, __, { req }) => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            const parenttask = await Tasks.findOne({tasks: parent._id.toString()})
-            return parenttask //return a single parent task for now.
+            const TaskLinks = db.collection('tasklinks')
+            
+            //return a single parent task for now.
+            const tasklink = await TaskLinks.findOne({subtask: parent._id.toString()})
+            if (tasklink){
+                const parenttask = await Tasks.findOne({_id: ObjectId(tasklink.parenttask)})
+                return parenttask
+            } else return null
         }
     },
     Mutation: {
         newTask: async(_, args, { req }) => {
             //need to move business logic to server.
             if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const TaskLinks = db.collection('tasklinks')
+
             args.profileid = getprofileid(req.session)
             const taskid = await createNewTask(args)
+            if (args.parenttask) {
+                TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: args.parenttask, subtask: taskid, created: new Date()})
+            }
             if (args.insightid) linkInsightTask(taskid, args.insightid)
             return taskid
         },
@@ -224,6 +242,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
+            const TaskLinks = db.collection('tasklinks')
 
             var updates = new Object()
             if (args.endtime) {
@@ -252,6 +271,10 @@ export const resolvers = {
             if (args.reschedule){
                 updatetask.$inc = { rescheduled: 1}
             }
+
+            //would be better to check links before deleting and inserting. Separate into function.
+            TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: args.taskid})
+            if (args.parenttask) TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: args.parenttask, subtask: args.taskid, created: new Date()})
 
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
@@ -355,7 +378,9 @@ export const resolvers = {
         },
         checkTask: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
-            return checkTask(args, req)
+            const response = await checkTask(args, req)
+            if (response === 0) throw new Error('Not all subtasks are marked as completed.')
+            else return response
         },
         removeTaskGoal: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -371,12 +396,36 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session), type: 'subtask'})
-            console.log('create subtask:' + subtaskid)
-            const Tasks = db.collection('tasks')
-            return (await Tasks.updateOne(
-                {_id: ObjectId(taskid)},
-                {$push: {tasks: subtaskid }}
-            )).result.ok === 1
+            const TaskLinks = db.collection('tasklinks')
+            
+            if(taskid !== subtaskid){
+                return (await TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: taskid, subtask: subtaskid, created: new Date()})).result.ok === 1
+            }else{
+                throw new Error('Can\'t link task to the same task')
+            }
+        },
+        addTaskLink: async(_, {parenttaskid,subtaskid}, {req}) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const TaskLinks = db.collection('tasklinks')
+
+            if(parenttaskid !== subtaskid){ //new linking.
+                return (await TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid, created: new Date()})).result.ok === 1
+            }else{
+                throw new Error('Can\'t link task to the same task')
+            }
+        },
+        removeTaskLink: async(_, {parenttaskid,subtaskid}, {req}) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const TaskLinks = db.collection('tasklinks')
+            return (await TaskLinks.deleteMany({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid})).result.ok === 1
+        },
+        removeTaskParentLinks: async(_, {subtaskid}, {req}) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const TaskLinks = db.collection('tasklinks')
+            return (await TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: subtaskid})).result.ok === 1
         },
         linkInsightToTask: async(_, {taskid,insightid}, {req}) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -436,9 +485,22 @@ async function createNewTask({title, description, goal, complete, setdate, start
 export async function checkTask(args, req){
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
-    var updatetask = new Object()
+    const TaskLinks = db.collection('tasklinks')
 
+    var updatetask = new Object()
     if(args.checked) {
+        //check all subtasks to see if they're complete
+        const tasklist = await TaskLinks.find({parenttask: args.taskid}).toArray()           
+        if (tasklist.length > 0){
+            const subtasks = await Tasks.find({_id: {
+                $in: tasklist.map(function(link) {
+                    return ObjectId(link.subtask)
+                })
+            }}).toArray()
+            const incomplete = subtasks.filter(task => task.complete !== true)
+            if (incomplete.length > 0) return 0 //don't update task to complete.
+        }
+
         updatetask.schedule = true //listing as scheduled so it appears in the day record.
         updatetask.completed = new Date()
     }

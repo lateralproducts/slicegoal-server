@@ -79,11 +79,13 @@ export const resolvers = {
             const ChatContext = db.collection('chatcontext')
             const Chats = db.collection('chats')
             const context = await ChatContext.findOne({_id: ObjectId(args.contextid)})
-            let oldrating = 0
+            
             let newrating = 0
-            if (context.match) oldrating = context.match 
-            if (args.rating) newrating = (args.rating + (oldrating * context.count))/(context.count + 1) //average of all ratings + this rating.
-
+            if (context.match !== null) {
+                const oldrating = context.match 
+                newrating = (args.rating + (oldrating * context.count))/(context.count + 1) //average of all ratings + this rating.
+            } else {newrating = args.rating}
+            
             ChatContext.updateOne(
                 { _id: ObjectId(args.contextid) },
                 { 

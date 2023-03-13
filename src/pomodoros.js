@@ -59,17 +59,15 @@ export const resolvers = {
         taskpomodoros: async(_, { taskId }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
-            const Tasks = db.collection('tasks')
+            const TaskLinks = db.collection('tasklinks')
 
-            const task = await Tasks.findOne({_id: ObjectId(taskId)})
-
-            let search = task.tasks
-            search.push(taskId) //add original task.
+            let taskids = await TaskLinks.find({parenttask: taskId}).toArray()
+            taskids.push(taskId) //add parent taskid.
 
             const Pomodoros = db.collection('pomodoros') 
             return await Pomodoros.find(
                 {
-                    task: { $in: search },
+                    task: { $in: taskids },
                     userid: getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
                 },
                 { sort: { date: -1 } },
@@ -186,8 +184,12 @@ export const resolvers = {
     Mutation: {
         savePomodoro: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
+            if(args.checked && args.taskid){ //Only mark as done if a taskid is sent. Not marking Goals as done.
+                const checkresult = await checkTask(args, req)
+                console.log(checkresult)
+                if (checkresult === 0) throw new Error('Not all sub tasks marked as complete.') 
+            }
             activityrecord(args, req)
-            if(args.checked && args.taskid) checkTask(args, req) //Only mark as done if a taskid is sent. Not marking Goals as done.
             return true
         }
     },

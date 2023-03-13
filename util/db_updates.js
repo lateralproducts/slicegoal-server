@@ -1,16 +1,40 @@
 import DbConnection from '../src/database'
-import { ObjectId } from 'mongodb'
-import { getprofileid } from '../src/users';
+//import { ObjectId } from 'mongodb'
+//import { getprofileid } from '../src/users';
 //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
 
 export const typeDefs = `
     extend type Mutation {
-        updateAreaToSource(areaid: String, resource: String, profileid: String): Boolean
+        updateTaskLinks: Boolean
     }`
 
 export const resolvers = {
     Mutation: {
-        updateAreaToSource: async(parent, args, { req }) => {
+        //updateAreaToSource(areaid: String, resource: String, profileid: String): Boolean
+        updateTaskLinks: async(parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            const TaskLinks = db.collection('tasklinks')
+
+            const taskwithlinks = await Tasks.find({'tasks': {$exists: true}}).toArray();
+                taskwithlinks.map(task => {
+                    task.tasks.map(subtask => {
+                        let newtasklink = {
+                            profileid: task.profile,
+                            parenttask: task._id.toString(),
+                            subtask: subtask,
+                            created: new Date()
+                        }
+                        TaskLinks.insertOne(newtasklink)}
+                    )
+                    Tasks.updateOne(
+                        { _id: task._id },
+                        { $unset: { tasks: []} },
+                    )
+                })
+            return true
+        }
+        /* updateAreaToSource: async(parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             if (args.profileid !== getprofileid(req.session)) throw new Error('Wrong profile')
 
@@ -56,7 +80,7 @@ export const resolvers = {
             await Areas.deleteOne({_id: ObjectId(args.areaid)})
             
             return true
-        }
+        } */
     }
 }
 
