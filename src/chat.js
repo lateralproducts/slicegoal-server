@@ -22,6 +22,7 @@ export const schema = `
         taskid: String
         started: String
         messages: [Message]
+        userid: String
     }
     type Message {
         _id: String
@@ -29,6 +30,9 @@ export const schema = `
         type: String
         datetime: String
         userid: String
+        contextid: String
+        rating: Float
+        original: String
     }
 `
 
@@ -41,7 +45,8 @@ export const typeDefs = `
 
     extend type Mutation {
         createTaskChat(taskid: String!, promptid: String, message: String): Response
-        sendContextRating(contextid: String!, chatid: String, rating: Int, ratemessage: String): Boolean
+        sendChatMessage(chatid: String!, message: String!): Boolean
+        sendRating(contextid: String, chatid: String!, rating: Int!, ratemessage: String, original: String): Boolean
     }
 `
 
@@ -73,20 +78,22 @@ export const resolvers = {
         }
     },
     Mutation: {
-        sendContextRating: async(root, args, { req }) => {
+        sendRating: async(root, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const ChatContext = db.collection('chatcontext')
             const Chats = db.collection('chats')
-            const context = await ChatContext.findOne({_id: ObjectId(args.contextid)})
             
-            let newrating = 0
-            if (context.match !== null) {
-                const oldrating = context.match 
-                newrating = (args.rating + (oldrating * context.count))/(context.count + 1) //average of all ratings + this rating.
-            } else {newrating = args.rating}
+            if (args.contextid) { //rate context if there is a context.
+                const context = await ChatContext.findOne({_id: ObjectId(args.contextid)})
             
-            ChatContext.updateOne(
+                let newrating = 0
+                if (context.match !== null) {
+                    const oldrating = context.match 
+                    newrating = (args.rating + (oldrating * context.count))/(context.count + 1) //average of all ratings + this rating.
+                } else {newrating = args.rating}
+
+                ChatContext.updateOne(
                 { _id: ObjectId(args.contextid) },
                 { 
                     $set: { match: newrating},
@@ -96,22 +103,45 @@ export const resolvers = {
                             rating: args.rating,
                             time: new Date(),
                             chatid: args.chatid,
+                            original: args.original
                         }
                     },
                     $inc: { count: 1 }
                 }
-            )
+            )}
 
             Chats.updateOne(
                 { _id: ObjectId(args.chatid) },
                 { 
                     $push: {
                         messages: {
-                            context: args.contextid,
+                            contextid: args.contextid,
                             message: args.ratemessage,
                             rating: args.rating,
                             datetime: new Date(),
-                            type: 'rating'
+                            type: 'rating',
+                            userid: getuserid(req.session),
+                            original: args.original
+                        }
+                    }
+                }
+            )
+            return true
+        },
+        sendChatMessage: async(root, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Chats = db.collection('chats')
+            
+            if (args.message)
+            Chats.updateOne(
+                { _id: ObjectId(args.chatid) },
+                { 
+                    $push: {
+                        messages: {
+                            message: args.message,
+                            datetime: new Date(),
+                            userid: getuserid(req.session)
                         }
                     }
                 }
@@ -135,7 +165,7 @@ export const resolvers = {
 
             let messages 
             messages = [{promptid: args.promptid, message: args.message, userid: userid, datetime: new Date()}]
-            if (response) messages.push({responseid: response._id, contextid: context._id, message: response.message, datetime: new Date()})
+            if (response) messages.push({responseid: response._id.toString(), contextid: context._id.toString(), message: response.message, datetime: new Date()})
 
             const newchat = await Chats.insertOne(
                 { 
