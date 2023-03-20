@@ -121,13 +121,12 @@ export const resolvers = {
                 if(args.list === 'main') { //only return 'scheduled' tasks for main list.
                     query.schedule = true 
                     query.starttime = null
+                    query.type = {$ne: 'subtask'}
                 }
                 
                 query.profile = getprofileid(req.session)
                 
                 let sort = new Object()
-                //sort.complete = 1
-                query.type = {$ne: 'subtask'}
                 if (args.complete) sort.completed = -1
                 else {
                     if(args.list == 'day') sort.dayorder = 1 
