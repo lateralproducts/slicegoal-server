@@ -7,6 +7,7 @@ let pjson = require('../package.json')
 
 export const typeDefs = `
     extend type Query {
+        goal(goalid: String!): Goal
         goals(area: String, search: String, date: String, goal: String): [Goal]
         goalstolink: [Goal]
         linkedgoals(goal: String): [Goal]
@@ -73,6 +74,13 @@ export const schema = `
 
 export const resolvers = {
     Query: {
+        goal: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Goals = db.collection('goals')
+
+            return await Goals.findOne({profileid: getprofileid(req.session), _id: ObjectId(args.goalid)})
+        },
         goals: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
