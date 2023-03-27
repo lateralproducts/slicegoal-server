@@ -244,7 +244,7 @@ export async function emailRerankNudge(user) {
 
 export async function emailLateralProducts({name, email, interest, message}) {
     let to = `${process.env.NOTIFICATION_EMAIL}` //send to lateral products.
-    let subject = name + " - website message"
+    let subject = "New Lateral Products Website Message"
     let lpemail = Mustache.render(lateralproducts, {
         name: name,
         email: email,
