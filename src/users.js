@@ -560,9 +560,6 @@ export const resolvers = {
                     idToken: args.token,
                     audience: googleclientId,
                 });
-
-                console.log(ticket)
-
                 if (ticket.payload) {
                     const payload = ticket.payload
                     args.email = payload.email

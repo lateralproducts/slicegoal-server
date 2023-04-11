@@ -263,7 +263,8 @@ export const resolvers = {
             if(args.title) updates.title = args.title
             if(args.complete !== null) updates.complete = args.complete
             if(args.description !== null) updates.description = args.description
-            if(args.goal) updates.goal = args.goal
+            if(args.goal) {updates.goal = args.goal}
+            else {updates.goal = null}
 
             var updatetask = new Object()
             updatetask.$set = updates
