@@ -125,6 +125,7 @@ export const schema = `
         profile: String
         startarea: Area
         profiles: [Profile]
+        unseen: Boolean
     }
 
     type Profile {
@@ -337,6 +338,18 @@ export const resolvers = {
             let query = new Object()
             query._id = ObjectId(parent.startarea)
             return await Areas.findOne(query)
+        },
+        unseen: async(parent, __, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Chats = db.collection('chats')
+
+            const wheelid = parent.view.wheel
+            const userid = getuserid(req.session)
+
+            const chat = await Chats.findOne({wheelid: wheelid, unseen: userid})
+            if (chat) {return true} //check if user has seen this chat.
+            else return false
         }
     },
     Profile: {

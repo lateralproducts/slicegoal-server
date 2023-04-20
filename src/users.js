@@ -69,6 +69,11 @@ export const schema = `
     success: Boolean
     message: String
   }
+
+  type ChatUser {
+    _id: String
+    name: String
+  }
 `
 
 export const resolvers = {

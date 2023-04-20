@@ -68,6 +68,10 @@ const goalNudge = fs
     .readFileSync(__dirname + '/emailtemplates/goalNudge.html')
     .toString()
 
+const messageNudge = fs
+    .readFileSync(__dirname + '/emailtemplates/messageNudge.html')
+    .toString()
+
 const dailyStats = fs
     .readFileSync(__dirname + '/emailtemplates/dailystats.html')
     .toString()
@@ -147,6 +151,17 @@ export async function emailGoalNudge(user, links, goals) {
         pathurl: APP_PATH_URL,
         logopath: LOGO_PATH_URL,
         user: user
+    })
+    sendEmail(to, subject, email)
+}
+
+export async function emailMessageNudge(user) {
+    let to = user.email
+    let subject = 'Unread Coaching Messages'
+    const email = Mustache.render(messageNudge, {
+        user: user,
+        pathurl: APP_PATH_URL,
+        logopath: LOGO_PATH_URL
     })
     sendEmail(to, subject, email)
 }

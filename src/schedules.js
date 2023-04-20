@@ -1,8 +1,9 @@
 import { ObjectId } from 'mongodb'
 import DbConnection from './database'
-import { emailGoalNudge, emailRerankNudge, emailFunnel, reSendEmail } from './emails'
+import { emailGoalNudge, emailRerankNudge, emailFunnel, reSendEmail, emailMessageNudge } from './emails'
 import { createreport } from './reporting'
 import { date2str } from '../util/functions'
+import { getunreadmessageusers } from './chat'
 
 let schedule = require('node-schedule')
 
@@ -36,6 +37,13 @@ schedule.scheduleJob({ minute: 10 }, async function() { //Every hour at 10 mins 
     //set to UTC time for server 22 UTC = 8am Melbourne Time. dayOfWeek: 0, hour: 22, minute: 0 is 8am Monday in Melbourne
     //ranknudge(); //holding off sending these messages again for a little bit.
 //})
+
+schedule.scheduleJob({ hour: 8, minute: 23 }, async function() {
+    //sending notice of unread messages via email. Only send once? Or keep sending? Could be annoying.
+    //set to UTC time for server 22 UTC = 8am Melbourne Time. dayOfWeek: 0, hour: 22, minute: 0 is 8am Monday in Melbourne
+    const users = await getunreadmessageusers()
+    users.map(user => emailMessageNudge(user))
+})
 
 async function goalnudge(email) {
     const db = await DbConnection.Get()
