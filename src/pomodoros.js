@@ -186,7 +186,6 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             if(args.checked && args.taskid){ //Only mark as done if a taskid is sent. Not marking Goals as done.
                 const checkresult = await checkTask(args, req)
-                console.log(checkresult)
                 if (checkresult === 0) throw new Error('Not all sub tasks marked as complete.') 
             }
             activityrecord(args, req)

@@ -93,7 +93,6 @@ export const resolvers = {
             if (args.goal) { //return list of unscheduled/unfinished tasks
                 query.profile = getprofileid(req.session)
                 query.goal = args.goal
-                query.type = {$ne: 'subtask'}
                 return await Tasks.find(query).sort({goalorder: 1}).toArray()
             }
 
