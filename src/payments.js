@@ -179,7 +179,7 @@ const campaigns = [
     { 
         promo: '30% Off For Life - Limited',
         promoid: 1,
-        message: 'To celebrate the launch of Cavestep, we\'re offering a limited time offer. If you sign up now, you\'ll get 30% off for life.',
+        message: 'To celebrate the launch of SliceGoal, we\'re offering a limited time offer. If you sign up now, you\'ll get 30% off for life.',
         discount: {
             type: 'percentage',
             amount: 0.3,
@@ -194,7 +194,7 @@ const campaigns = [
     { 
         promo: '30% Off For First 2 Months',
         promoid: 1,
-        message: 'To celebrate the launch of Cavestep, we\'re offering a limited time offer. If you sign up now, you\'ll get 30% off for life.',
+        message: 'To celebrate the launch of SliceGoal, we\'re offering a limited time offer. If you sign up now, you\'ll get 30% off for life.',
         discount: {
             type: 'percentage',
             amount: 0.3,

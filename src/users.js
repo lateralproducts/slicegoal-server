@@ -233,7 +233,7 @@ export const resolvers = {
                         }
                     } else {
 
-                        //Completely new Cavestep user
+                        //Completely new SliceGoal user
                         args.state = 'new'
                         args.code = bcrypt.hashSync('verifythisyo', 7)
                         args.created = new Date()
@@ -456,7 +456,7 @@ export const resolvers = {
                     'failed, profile already exist and is verifed',
                 )
                 throw new Error(
-                    'If you already have a Cavestep profile with this email you can log in.',
+                    'If you already have a SliceGoal profile with this email you can log in.',
                 )
             }
             

@@ -1,10 +1,8 @@
-# Welcome to the Cavestep Server
+# Welcome to the SliceGoal Server
 
-Cavestep is a tracker for habits, goals, and insights.
+SliceGoal is a tracker for goals, insights, and coaching.
 Designed to support optimal outcomes for users.
 Helping people focus on the right things at the right time for the best results.
-
-The Cavestep Server works with the Cavestep App.
 
 For Local Development
 

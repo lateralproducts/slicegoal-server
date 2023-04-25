@@ -33,7 +33,7 @@ export const linkParams = (file) => {
 const requestheader = {
     expiresIn: 60, //in seconds.
     //mode: 'no-cors', //cors policy set on s3 bucket.
-    //origin: `${process.env.PATH_URL}` //www.cavestep.com
+    //origin: `${process.env.PATH_URL}` //www.slicegoal.com
 }
 
 export async function getUploadLinkFromAWS(file){ 
@@ -71,7 +71,7 @@ export async function getfile(file,res){
         if (err) {
             return res.send({ 'error': err }) //could send local error image
         }
-        if (file === 'cavesteplong.png') {
+        if (file === 'cavesteplong.png' || file === 'slicegoallong.png') {
             //to make sure email clients don't cache files for tracking pixel. Review when making full blown file server.
             res.writeHead(200, 
             {'Content-Type': 'image/png',

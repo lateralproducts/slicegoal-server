@@ -13,11 +13,11 @@ const auth = {
     user: `${process.env.EMAILCLIENT_USR}`,
     pass: `${process.env.EMAILCLIENT_PWD}`
 }
-const sender = 'Cavestep<' + auth.user + '>'
+const sender = 'SliceGoal<' + auth.user + '>'
 
 const PATH_URL = `${process.env.PATH_URL}`
 const APP_PATH_URL = `${PATH_URL}/app`
-const LOGO_PATH_URL = `${PATH_URL}/files/cavesteplong.png`
+const LOGO_PATH_URL = `${PATH_URL}/files/slicegoallong.png`
 
 const transporter = `${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test' ? 
 nodemailer.createTransport({ //test and development email client
@@ -145,7 +145,7 @@ export async function reSendEmail() {
 
 export async function emailGoalNudge(user, links, goals) {
     let to = user.email
-    let subject = 'Your Cavestep Goals'
+    let subject = 'Your SliceGoal Goals'
     const email = Mustache.render(goalNudge, {
         goals: goals,
         pathurl: APP_PATH_URL,
@@ -186,7 +186,7 @@ export async function emailNewClient(
 ) {
     let to = client.email
     let name = `${coach.firstname} ${coach.lastname || ''}`
-    let subject = name ? (`${name.trim()}` + ' invited you to Cavestep') : 'You’ve been invited to Cavestep' //to Cavestep🦶
+    let subject = name ? (`${name.trim()}` + ' invited you to SliceGoal') : 'You’ve been invited to SliceGoal' //to SliceGoal🦶
     let email = Mustache.render(inviteToCoachingWheel , {
         name: client.firstname ? client.firstname : '',
         client: client,
@@ -194,14 +194,14 @@ export async function emailNewClient(
         view: newView ? '&view=' + newView : '',
         page: page,
         intro: coach.firstname
-            ? coach.firstname + ' has invited you to a Cavestep coaching wheel.'
-            : 'You\'ve been invited to a Cavestep coaching wheel.',  // to Cavestep🦶
+            ? coach.firstname + ' has invited you to a SliceGoal coaching wheel.'
+            : 'You\'ve been invited to a SliceGoal coaching wheel.',  // to SliceGoal🦶
         pathurl: APP_PATH_URL
     })
 
     sendEmail(to, subject, email)
     to = `${process.env.NOTIFICATION_EMAIL}`
-    subject = 'New User!' //to Cavestep🦶
+    subject = 'New User!' //to SliceGoal🦶
     email = Mustache.render(adminEmailNewUser, {
         clientname: client.firstname + client.lastname,
         clientemail: client.email,
@@ -219,7 +219,7 @@ export async function emailNewClient(
 
 export async function emailNewPersonal(personal, queryStringParams) {
     let to = personal.email
-    let subject = "Looks like you've signed up for Cavestep"
+    let subject = "Looks like you've signed up for SliceGoal"
     let email = Mustache.render(newpersonal, {
         pathurl: APP_PATH_URL,
         personalid: personal._id,
@@ -272,7 +272,7 @@ export async function emailLateralProducts({name, email, interest, message}) {
 
 export async function emailNewCoach(coach, queryStringParams) {
     let to = coach.email
-    let subject = 'You’ve signed up to Cavestep'
+    let subject = 'You’ve signed up to SliceGoal'
     let email = Mustache.render(newCoach, {
         pathurl: APP_PATH_URL,
         coach: coach,
@@ -316,7 +316,7 @@ export async function emailHabitGuide(
         name,
         toemail
     ){
-    let interactionid = (await newIx('cavestep - funnel - habits', toemail, 'lead magnet email', 'habit guide', '')).insertedId.toString()
+    let interactionid = (await newIx('slicegoal - funnel - habits', toemail, 'lead magnet email', 'habit guide', '')).insertedId.toString()
     let to = toemail
     let subject = 'Here\'s your Free Habit Guide'
     let email = Mustache.render(habitGuide, {
@@ -334,7 +334,7 @@ export async function emailHabitGuide(
 }
 
 
-//toemail: 'daniel@cavestep.com', package: 'funnel1', emailstep: 0
+//toemail: 'daniel@slicegoal.com', package: 'funnel1', emailstep: 0
 
 export async function emailFunnel(
         toemail,
@@ -399,7 +399,7 @@ export async function emailFeedback(user, feedback, datetime) {
 
 export async function newUserNotificationEmail(user) {
     let to = `${process.env.NOTIFICATION_EMAIL}`
-    let subject = `New Cavestep User!`
+    let subject = `New SliceGoal User!`
     let email = Mustache.render(newUserTemplate, {
         email: `${user.email}`
     })

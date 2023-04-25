@@ -154,6 +154,7 @@ export const graphql = async() => {
                 credentials: true,
                 preflightContinue: true,
                 origin: [
+                    'https://www.slicegoal.com.au',
                     'https://www.cavestep.com.au',
                     'https://www.lateralproducts.com',
                     'https://localhost:8000',
@@ -197,20 +198,20 @@ export const graphql = async() => {
         // file server
         app.get('/files/*', (req, res, next) => {
             // here you can use your way to get the path dir ..  
-            //const pathDir = path.join(__dirname, "files/cavesteplong.png"); //using local files
+            //const pathDir = path.join(__dirname, "files/slicegoallong.png"); //using local files
             //res.sendFile(pathDir);
             if(req.session.user) console.log(req.session.user.firstname)
             console.log("ip address - " + getipaddress(req))
 
             const filename = path.basename(req.path);
             
-            if (filename === 'cavesteplong.png' || filename === 'pixel.png') {
+            if (filename === 'slicgoallong.png' || filename === 'cavesteplong.png' || filename === 'pixel.png') {
                 //logaccess
                 getfile(filename, res)
                 const item = req.query
                 if(item.ix) {
                     updateIx(item.ix,'seen','open','email', getipaddress(req))
-                    //console.log('cavestep image accessed - ' + item.ix)
+                    //console.log('slicegoal image accessed - ' + item.ix)
                 }
             } else {
                 getfile(filename, res)
