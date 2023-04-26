@@ -38,7 +38,7 @@ schedule.scheduleJob({ minute: 10 }, async function() { //Every hour at 10 mins 
     //ranknudge(); //holding off sending these messages again for a little bit.
 //})
 
-schedule.scheduleJob({ hour: 8, minute: 23 }, async function() {
+schedule.scheduleJob({ hour: 21, minute: 0 }, async function() { //21:00 = 8am Sydney time
     //sending notice of unread messages via email. Only send once? Or keep sending? Could be annoying.
     //set to UTC time for server 22 UTC = 8am Melbourne Time. dayOfWeek: 0, hour: 22, minute: 0 is 8am Monday in Melbourne
     const users = await getunreadmessageusers()
