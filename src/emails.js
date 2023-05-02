@@ -5,6 +5,7 @@ const nodemailer = require('nodemailer')
 import DbConnection from './database'
 import { newIx } from './interactions'
 import { date2str } from '../util/functions'
+import { sendSESEmail } from './awsemail';
 //not 100% sure why it works loading in emails.js for environment variables.
 //environment variables not accessible here when it's loaded in start.js, but loaded here, they're available in start.js.
 //may need to revisit when breaking up into more modules.
@@ -20,15 +21,12 @@ const APP_PATH_URL = `${PATH_URL}/app`
 const LOGO_PATH_URL = `${PATH_URL}/files/slicegoallong.png`
 
 const transporter = `${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test' ? 
-nodemailer.createTransport({ //test and development email client
+nodemailer.createTransport({ //test and development email client: mailhog.
     port: 1025,
     tls: {
         ciphers: 'SSLv3'
     }
-}) : nodemailer.createTransport({ //production email client.
-    service: 'gmail',
-    auth
-})
+}) : null
 
 const Mustache = require('mustache')
 
@@ -116,22 +114,30 @@ async function sendEmail(to, subject, email, attachments, retryid) {
         attachments: attachments,
         retry: retryid
     }
-    let response = await new Promise(function(resolve) {
-        transporter.sendMail(mailOptions, function(error, info) {
-            if (error) {
-                mailOptions.error = error
-                console.log('email error: ' + error)
-            } else {
-                mailOptions.response = info.response
-                console.log('email sent: ' + info.response)
-            }
-            mailOptions.triggered = new Date()
-            resolve(mailOptions)
-        })
+    let response = await new Promise(function(resolve) { //wait for response to email send.
+        if((`${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test')) {
+            //dev and test email send via mailhog.
+            transporter.sendMail(mailOptions, function(error, info) {
+                if (error) {
+                    mailOptions.error = error
+                    console.log('email error: ' + error)
+                } else {
+                    mailOptions.response = info.response
+                    console.log('email sent: ' + info.response)
+                }
+                mailOptions.triggered = new Date()
+                resolve(mailOptions)
+            })}
+        else {
+            //production
+            sendSESEmail(mailOptions, resolve)
+        }
     })
-    Emails.insertOne(response)
+    Emails.insertOne(response) //record DB record of email send response.
     return response
 }
+
+
 
 export async function reSendEmail() {
     const db = await DbConnection.Get()
@@ -157,7 +163,7 @@ export async function emailGoalNudge(user, links, goals) {
 
 export async function emailMessageNudge(user) {
     let to = user.email
-    let subject = 'Unread Coaching Messages'
+    let subject = 'Unread Messages'
     const email = Mustache.render(messageNudge, {
         user: user,
         pathurl: APP_PATH_URL,
