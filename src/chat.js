@@ -93,8 +93,9 @@ export const resolvers = {
             const profileid = getprofileid(req.session)
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
-            const chats = await Chats.find({profileid: profileid}).toArray()
-            //next order by unread, then last message.
+            const chats = await Chats.find({profileid: profileid}).sort({ 'lastmessage.datetime': -1 }).toArray()
+            //const userid = getuserid(req.session)
+            //next order by unread, then last message. 'unseen.' + userid
             return chats
         },
         chatunseen: async(_, args, { req }) => { //check if task chat has been unseen by user.

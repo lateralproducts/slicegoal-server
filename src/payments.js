@@ -119,11 +119,11 @@ const offers = [
         offerid: 2,
         offer: 'Coaching Enabled',
         inclusions: [
+            'Coaching chats',
+            'Access shared wheels',
             'Share and receive insights',
             'Share and receive sources',
-            'Access expert templates',
-            'Access shared wheels',
-            'All features from Productivity Pack'
+            'Access wheel templates'
         ],
         price: {
             amount: 30, //30 dollars
@@ -139,7 +139,6 @@ const offers = [
             'Create custom templates',
             'Multiple wheels for clients',
             'Plus coaching enabled features',
-            'Plus all free tools',
         ],
         price: {
             amount: 30, //30 dollars

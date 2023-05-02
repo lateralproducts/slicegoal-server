@@ -35,15 +35,22 @@ export const typeDefs = `
         newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean) : String        
         editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean) : Boolean
         deleteTask(taskid: String!) : Boolean
+
         listTask(taskid: String!) : Boolean
         unlistTask(taskid: String!) : Boolean
+        
         scheduleTask(taskid: String!, setdate: String, reschedule: Boolean) : Boolean
+        
         checkTask(taskid: String!, checked: Boolean) : Boolean
+        setTaskGoal(taskid: String!, goalid: String!): Boolean
         removeTaskGoal(taskid: String!): Boolean
+        
         updateDayTaskOrder(tasks: [String]): Boolean
         updateGoalTaskOrder(tasks: [String]): Boolean
         updateTaskListOrder(tasks: [String]): Boolean
+        
         newSubTask(taskid: String!, task: String!): Boolean
+
         addTaskLink(parenttaskid: String!, subtaskid: String!): Boolean
         removeTaskLink(parenttaskid: String!, subtaskid: String!): Boolean
         removeTaskParentLinks(subtaskid: String!): Boolean
@@ -386,6 +393,16 @@ export const resolvers = {
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
                 {$unset: {goal:''}}
+            )).result.ok === 1
+        },
+        setTaskGoal: async(_, {taskid,goalid}, {req}) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+
+            return (await Tasks.updateOne(
+                {_id: ObjectId(taskid)},
+                {$set: {goal: goalid}}
             )).result.ok === 1
         },
         newSubTask: async(_, {taskid,task}, {req}) => {

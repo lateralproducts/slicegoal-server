@@ -11,8 +11,7 @@ import { sendSESEmail } from './awsemail';
 //may need to revisit when breaking up into more modules.
 
 const auth = {
-    user: `${process.env.EMAILCLIENT_USR}`,
-    pass: `${process.env.EMAILCLIENT_PWD}`
+    user: `${process.env.EMAILCLIENT_USR}`
 }
 const sender = 'SliceGoal<' + auth.user + '>'
 
