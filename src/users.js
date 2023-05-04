@@ -33,16 +33,19 @@ export const typeDefs = `
   }
 
   extend type Mutation {
-    updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
-    createClient(email: String!, firstname: String, lastname: String): createClientResponse
-    verifyAccount(userid: String, code: String, setView: String, password: String, firstname: String, lastname: String): User
-    resetPassword(email: String): Boolean
-    updatePassword(userid: String, oldpassword: String, newpassword: String): User
+    googleLogin(firstname: String, lastname: String, email: String, token: String, googleid: String, uiversion: String, urlparams: String): User
     login(email: String!, pwd: String!, setView: String, uiversion: String): User
     setSignUpContext(account: String): Boolean
     signup(email: String, firstname: String, uiversion: String, account: String, queryStringParams: String): Boolean!
-    googleLogin(firstname: String, lastname: String, email: String, token: String, googleid: String, uiversion: String, urlparams: String): User
+    verifyAccount(userid: String, code: String, setView: String, password: String, firstname: String, lastname: String): User
     logout: Boolean!
+
+    updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
+    createClient(email: String!, firstname: String, lastname: String): createClientResponse
+    
+    resetPassword(email: String): Boolean
+    setPassword(userid: String, code: String, password: String): User
+    updatePassword(userid: String, oldpassword: String, newpassword: String): User
   }
 
 `
@@ -301,11 +304,47 @@ export const resolvers = {
                         password: bcrypt.hashSync(args.password, 10),
                         firstname: args.firstname,
                         lastname: args.lastname
+                        //keep the code so that someone can't hack it.
                     }
                 },
             )
             user.value.state = 'verified'
             //overriding state to verified as it doesn't update in returned value.
+            sessiontrack(req, args, 'app', 'verify', 'success')
+            return await login(user.value, args, req)
+        },
+
+        setPassword: async(_, args, { req }) => {
+            //This function is publicly accessible
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+
+            let user = await Users.findOne({
+                $and: [{ _id: ObjectId(args.userid) }, { code: args.code }]
+            })
+            if(!user) throw new Error('Reset details not found. Please try and reset your password again.')
+
+            if(user.lastreset){
+                let validdate = new Date() //valid to reset for 24 hours.
+                validdate.setDate(user.lastreset.getDate() + 1)
+                if(validdate < new Date()){
+                    throw new Error("Your password reset link has expired. Please try and reset again.")
+                }
+            }
+
+            checkPasswordFormat(args.password)
+
+            user = await Users.findOneAndUpdate(
+                { _id: ObjectId(args.userid), code: args.code },
+                {
+                    $set: {
+                        password: bcrypt.hashSync(args.password, 10),
+                        incorrecttries: 0
+                        //keep the code so that someone can't hack it.
+                    }
+                },
+            )
+            
             sessiontrack(req, args, 'app', 'verify', 'success')
             return await login(user.value, args, req)
         },
@@ -326,7 +365,21 @@ export const resolvers = {
                     throw new Error('Account has not been verified.')}
 
                 if (await bcrypt.compareSync(args.pwd, user.password)) {
-                    return await login(user, args, req)
+                    if((user.incorrecttries < 6 || user.incorrecttries === undefined) && user.state == 'verified'){
+                        return await login(user, args, req)
+                    } else {
+                        sessiontrack(req, args, 'app', 'login-failed', 'failed - too many incorrect tries or not verified', 'email')
+                        await Users.updateOne(
+                            { _id: ObjectId(user._id) },
+                            {
+                                $set: {
+                                    incorrecttries:
+                                        (user.incorrecttries ? user.incorrecttries : 0) + 1
+                                }
+                            },
+                        )
+                        throw new Error('Login Failed.')
+                    }
                 } else {
                     await Users.updateOne(
                         { _id: ObjectId(user._id) },
@@ -739,62 +792,45 @@ async function login(user, args, req) {
     const Users = db.collection('users')
     const Views = db.collection('views')
     const Profiles = db.collection('profiles')
-    if (
-        (user.incorrecttries < 6 || user.incorrecttries === undefined) &&
-        user.state == 'verified'
-    ) {
-        user.serverversion = pjson.version
-        req.session.user = user
+    
+    user.serverversion = pjson.version
+    req.session.user = user
 
-        let view
+    let view
+    let query = new Object()
+    query.user = getuserid(req.session)
+    if(args.setView) query._id = ObjectId(args.setView)
+    if(user.activeofferid !== 2) query.type = 'owner'
+    view = await Views.findOne(query)
+
+    if (view) {
+        req.session.view = view
         let query = new Object()
-        query.user = getuserid(req.session)
-        if(args.setView) query._id = ObjectId(args.setView)
-        if(user.activeofferid !== 2) query.type = 'owner'
-        view = await Views.findOne(query)
 
-        if (view) {
-            req.session.view = view
-            let query = new Object()
+        //if (view.type !== 'coach') query.user = user._id.toString() //deciding which profile to pull. Needs more thought.
+        
+        query.wheel = view.wheel
+        const profile = await Profiles.findOne(query, {
+            sort: { type: -1 }
+        })
 
-            //if (view.type !== 'coach') query.user = user._id.toString() //deciding which profile to pull. Needs more thought.
-            
-            query.wheel = view.wheel
-            const profile = await Profiles.findOne(query, {
-                sort: { type: -1 }
-            })
-
-            if (profile) req.session.profile = profile
-        }
-        sessiontrack(req, args, 'app', 'login-success', 'success - user profile loaded', 'email')
-
-        //update user profile with last login details.
-        await Users.updateOne( 
-            { _id: ObjectId(user._id) },
-            {
-                $set: {
-                    uiversion: args.uiversion,
-                    lastip: getipaddress(req),
-                    lastlogin: new Date()
-                }
-            },
-        )
-        user.url = req.session.url
-        return user
+        if (profile) req.session.profile = profile
     }
-    sessiontrack(req, args, 'app', 'login-failed', 'failed - too many incorrect tries or not verified', 'email')
+    sessiontrack(req, args, 'app', 'login-success', 'success - user profile loaded', 'email')
 
-    await Users.updateOne(
+    //update user profile with last login details.
+    await Users.updateOne( 
         { _id: ObjectId(user._id) },
         {
             $set: {
-                incorrecttries:
-                    (user.incorrecttries ? user.incorrecttries : 0) + 1
+                uiversion: args.uiversion,
+                lastip: getipaddress(req),
+                lastlogin: new Date()
             }
         },
     )
-
-    throw new Error('Login Failed.')
+    user.url = req.session.url
+    return user
 }
 
 async function createNewViewProfile(args, userid, req) {

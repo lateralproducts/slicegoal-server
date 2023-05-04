@@ -71,8 +71,8 @@ export async function getfile(file,res){
         if (err) {
             return res.send({ 'error': err }) //could send local error image
         }
-        if (file === 'cavesteplong.png' || file === 'slicegoallong.png') {
-            //to make sure email clients don't cache files for tracking pixel. Review when making full blown file server.
+        if (file === 'pixel.png') {
+            //set headers to make sure email clients don't cache files for tracking pixel.
             res.writeHead(200, 
             {'Content-Type': 'image/png',
             'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',

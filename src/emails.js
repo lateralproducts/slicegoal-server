@@ -10,14 +10,12 @@ import { sendSESEmail } from './awsemail';
 //environment variables not accessible here when it's loaded in start.js, but loaded here, they're available in start.js.
 //may need to revisit when breaking up into more modules.
 
-const auth = {
-    user: `${process.env.EMAILCLIENT_USR}`
-}
-const sender = 'SliceGoal<' + auth.user + '>'
+const sender = 'SliceGoal<' + `${process.env.EMAILCLIENT_USR}` + '>'
 
 const PATH_URL = `${process.env.PATH_URL}`
 const APP_PATH_URL = `${PATH_URL}/app`
 const LOGO_PATH_URL = `${PATH_URL}/files/slicegoallong.png`
+const PIXEL_PATH_URL = `${PATH_URL}/files/pixel.png`
 
 const transporter = `${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test' ? 
 nodemailer.createTransport({ //test and development email client: mailhog.
@@ -155,6 +153,7 @@ export async function emailGoalNudge(user, links, goals) {
         goals: goals,
         pathurl: APP_PATH_URL,
         logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL,
         user: user
     })
     sendEmail(to, subject, email)
@@ -166,7 +165,8 @@ export async function emailMessageNudge(user) {
     const email = Mustache.render(messageNudge, {
         user: user,
         pathurl: APP_PATH_URL,
-        logopath: LOGO_PATH_URL
+        logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL
     })
     sendEmail(to, subject, email)
 }
@@ -177,6 +177,7 @@ export async function emailStats(email, stats, title) { //stats an array of metr
     const body = Mustache.render(dailyStats, {
         stats: stats,
         logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL,
         title: title
     })
     sendEmail(to, subject, body)
@@ -196,6 +197,7 @@ export async function emailNewClient(
         name: client.firstname ? client.firstname : '',
         client: client,
         logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL,
         view: newView ? '&view=' + newView : '',
         page: page,
         intro: coach.firstname
@@ -216,6 +218,7 @@ export async function emailNewClient(
         coachemail: coach.email,
         pathurl: APP_PATH_URL,
         logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL,
         viewname: view
     })
         
@@ -230,6 +233,7 @@ export async function emailNewPersonal(personal, queryStringParams) {
         personalid: personal._id,
         personalcode: personal.code,
         logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL,
         queryStringParams: queryStringParams
     })
 
@@ -244,6 +248,7 @@ export async function emailResetPassword(personal, newcode, queryStringParams) {
         personalid: personal._id,
         personalcode: newcode,
         logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL,
         queryStringParams: queryStringParams
     })
 
@@ -256,7 +261,8 @@ export async function emailRerankNudge(user) {
     let email = Mustache.render(rerank, {
         name: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
         pathurl: APP_PATH_URL,  
-        logopath: LOGO_PATH_URL
+        logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL
     })
 
     return await sendEmail(to, subject, email)
@@ -282,7 +288,8 @@ export async function emailNewCoach(coach, queryStringParams) {
         pathurl: APP_PATH_URL,
         coach: coach,
         queryStringParams: '&' + queryStringParams,
-        logopath: LOGO_PATH_URL
+        logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL
     })
     sendEmail(to, subject, email)
 }
@@ -328,6 +335,7 @@ export async function emailHabitGuide(
         name: name === '' ? '!' : ' ' + name + ',',
         pathurl: PATH_URL,
         logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL,
         email: toemail,
         interactionid: interactionid
     })
@@ -363,6 +371,7 @@ export async function emailFunnel(
             name: name === '' ? ',' : ' ' + name + ',', //used in template with greeting, ie. "Hi"
             pathurl: PATH_URL,
             logopath: LOGO_PATH_URL,
+            pixelpath: PIXEL_PATH_URL,
             email: toemail,
             interactionid: interactionid
         })
@@ -385,7 +394,8 @@ export async function emailNotifyNewLeadCoaching(name, toemail) {
     let email = Mustache.render(newSessionLead, {
         name: name === '' ? '!' : ' ' + name + ',',
         email: toemail,
-        logopath: LOGO_PATH_URL
+        logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL
     })
     sendEmail(to, subject, email)
 }
@@ -426,6 +436,7 @@ export async function shareInsightEmail(
             sharerName: sharerName,
             sharerEmail: `${sharer.email}`,
             logopath: LOGO_PATH_URL,
+            pixelpath: PIXEL_PATH_URL,
             acceptLink: `${APP_PATH_URL}` + acceptLink,
             shareNote: shareNote,
             interactionid: interactionid
@@ -450,6 +461,7 @@ export async function shareSourceEmail(
             sharerName: sharerName,
             sharerEmail: `${sharer.email}`,
             logopath: LOGO_PATH_URL,
+            pixelpath: PIXEL_PATH_URL,
             acceptLink: `${APP_PATH_URL}` + acceptLink,
             shareNote: shareNote,
             interactionid: interactionid
