@@ -15,7 +15,7 @@ let DbConnection = () => {
             return db
         } else {
             db = await DbConnect()
-            console.log('connected now for the dbs')
+            console.log('connected to db')
 
             return db
         }

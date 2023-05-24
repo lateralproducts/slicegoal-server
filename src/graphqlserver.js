@@ -28,6 +28,7 @@ import { schema as insightSchema } from './insights'
 import { schema as goalSchema } from './goals'
 import { schema as tagSchema } from './tags'
 import { schema as taskSchema } from './tasks'
+import { schema as templateSchema } from './templates'
 import { schema as sourceSchema } from './sources'
 import { schema as paymentSchema } from './payments'
 import { schema as websiteSchema } from './website'
@@ -45,6 +46,7 @@ import { typeDefs as feedbackQueryMutation } from './feedback'
 import { typeDefs as goalQueryMutation } from './goals'
 import { typeDefs as webQueryMutation } from './website'
 import { typeDefs as tagQueryMutation } from './tags'
+import { typeDefs as templateQueryMutation } from './templates'
 import { typeDefs as taskQueryMutation } from './tasks'
 import { typeDefs as sourceQueryMutation } from './sources'
 import { typeDefs as pomodoroQueryMutation } from './pomodoros'
@@ -63,6 +65,7 @@ import { resolvers as goalResolvers } from './goals'
 import { resolvers as webResolvers } from './website'
 import { resolvers as tagResolvers } from './tags'
 import { resolvers as taskResolvers } from './tasks'
+import { resolvers as templateResolvers } from './templates'
 import { resolvers as sourceResolvers } from './sources'
 import { resolvers as pomodoroResolvers } from './pomodoros'
 import { resolvers as dbUpdateResolvers } from '../util/db_updates'
@@ -96,6 +99,7 @@ const graphQLServer = createServer({
             goalSchema,
             tagSchema,
             taskSchema,
+            templateSchema,
             sourceSchema,
             paymentSchema,
             websiteSchema,
@@ -112,6 +116,7 @@ const graphQLServer = createServer({
             webQueryMutation,
             tagQueryMutation,
             taskQueryMutation,
+            templateQueryMutation,
             sourceQueryMutation,
             pomodoroQueryMutation,
             dbUpdateQueryMutation,
@@ -130,6 +135,7 @@ const graphQLServer = createServer({
             webResolvers,
             tagResolvers,
             taskResolvers,
+            templateResolvers,
             sourceResolvers,
             pomodoroResolvers,
             dbUpdateResolvers,

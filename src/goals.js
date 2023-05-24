@@ -355,8 +355,8 @@ export const resolvers = {
             const Goals = db.collection('goals')
 
             if (args.complete) {
-                activityrecord(args, req, 'marked as complete 🎉')
-                if (args.notes) activityrecord(args, req) //save note as a record.
+                activityrecord({goalid: args.goal, req: req, notes: 'marked as complete 🎉'})
+                if (args.notes) activityrecord({goalid: args.goal, req: req, notes: args.notes, minutes: args.minutes}) //save note as a record.
                 await Goals.updateOne(
                     { _id: ObjectId(args.goal), profileid: getprofileid(req.session)  },
                     {
@@ -441,7 +441,7 @@ export const resolvers = {
             )
             var pomo = new Object()
             pomo.goal = args.goalid
-            activityrecord(pomo, req, 'Goal snoozed to ' + date2str(args.snoozedate,'MM-dd-yyyy'))
+            activityrecord({goalid: args.goal, req: req, notes: 'Goal snoozed to ' + date2str(args.snoozedate,'MM-dd-yyyy')})
             return true
         },
         createGoalLink: async(_, args, { req }) => {
@@ -485,9 +485,8 @@ async function creategoal(newgoal, req) {
     const Tasks = db.collection('tasks')
     try {
         return Goals.insertOne(newgoal).then(result => {
-            var pomo = new Object()
-            pomo.goal = result.insertedId.toString()
-            activityrecord(pomo, req, 'Goal created.')
+            const newgoalid = result.insertedId.toString()
+            activityrecord({goalid: newgoalid, req: req, notes: 'Goal created.'})
             if (newgoal.tasks){
                 newgoal.tasks.map(async task => {   
                     var newtask = new Object()

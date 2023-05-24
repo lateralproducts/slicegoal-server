@@ -5,13 +5,21 @@ import DbConnection from '../src/database'
 
 export const typeDefs = `
     extend type Mutation {
-        updateTaskLinks: Boolean
+        migrateUpdatePomodoroUserIDs: Boolean
     }`
 
 export const resolvers = {
     Mutation: {
+        migrateUpdatePomodoroUserIDs: async(parent, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Pomodoros = db.collection('pomodoros')
+            //const TaskLinks = db.collection('tasklinks')
+
+            Pomodoros.updateMany({}, { $rename: { userid: 'profileid' } })
+            return true
+        }
         //updateAreaToSource(areaid: String, resource: String, profileid: String): Boolean
-        updateTaskLinks: async(parent, args, { req }) => {
+        /* updateTaskLinks: async(parent, args, { req }) => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const TaskLinks = db.collection('tasklinks')
@@ -33,7 +41,7 @@ export const resolvers = {
                     )
                 })
             return true
-        }
+        } */
         /* updateAreaToSource: async(parent, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             if (args.profileid !== getprofileid(req.session)) throw new Error('Wrong profile')

@@ -2,6 +2,8 @@ import { ObjectId } from 'mongodb'
 
 import DbConnection from './database'
 import { getprofileid } from './users'
+import { activityrecord } from './pomodoros';
+import { date2str } from '../util/functions';
 //import { activityrecord } from './pomodoros'
 
 export const schema = `
@@ -126,7 +128,6 @@ export const resolvers = {
                 
                 if(args.list === 'main') { //only return 'scheduled' tasks for main list.
                     query.schedule = true 
-                    query.starttime = null
                     query.type = {$ne: 'subtask'}
                 }
                 
@@ -215,13 +216,14 @@ export const resolvers = {
                     return []
                 }
         },
-        parenttask: async(parent, __, { req }) => {
+        parenttask: async(task, __, { req }) => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const TaskLinks = db.collection('tasklinks')
             
             //return a single parent task for now.
-            const tasklink = await TaskLinks.findOne({subtask: parent._id.toString()})
+            const taskid = task._id.toString()
+            const tasklink = await TaskLinks.findOne({subtask: taskid})
             if (tasklink){
                 const parenttask = await Tasks.findOne({_id: ObjectId(tasklink.parenttask)})
                 return parenttask
@@ -240,6 +242,7 @@ export const resolvers = {
             if (args.parenttask) {
                 TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: args.parenttask, subtask: taskid, created: new Date()})
             }
+            activityrecord({taskid: taskid, notes: 'Task created.', req: req})
             if (args.insightid) linkInsightTask(taskid, args.insightid)
             return taskid
         },
@@ -363,17 +366,24 @@ export const resolvers = {
             }
             
             if(args.setdate) {
+                const date = args.starttime ? new Date(args.starttime) : new Date(args.setdate)
+                activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'MM-dd-yyyy'), req: req})
                 updates.$set = {
-                    starttime: args.starttime ? new Date(args.starttime) : new Date(args.setdate),
+                    starttime: date,
                     daytask: true,
                     endtime: null
                 }
                 updates.$unset = {schedule: null}
             } else {
+                activityrecord({taskid: args.taskid, notes: 'Scheduled date unset.', req: req})
                 updates.$unset = { //unsetting, variables don't matter.
                     starttime: ''
                 }
+                updates.$set = {
+                    schedule: true
+                }
             }
+
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
                 updates
@@ -409,6 +419,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session), type: 'subtask'})
+            activityrecord({taskid: subtaskid, notes: 'Task created.', req: req})
             const TaskLinks = db.collection('tasklinks')
             
             if(taskid !== subtaskid){
@@ -419,14 +430,7 @@ export const resolvers = {
         },
         addTaskLink: async(_, {parenttaskid,subtaskid}, {req}) => {
             if (!req.session.user) throw new Error('Invalid Session')
-            const db = await DbConnection.Get()
-            const TaskLinks = db.collection('tasklinks')
-
-            if(parenttaskid !== subtaskid){ //new linking.
-                return (await TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid, created: new Date()})).result.ok === 1
-            }else{
-                throw new Error('Can\'t link task to the same task')
-            }
+            return await linksubtask({parenttaskid, subtaskid, req})
         },
         removeTaskLink: async(_, {parenttaskid,subtaskid}, {req}) => {
             if (!req.session.user) throw new Error('Invalid Session')
@@ -465,7 +469,7 @@ async function deleteTask(taskid, req){
         return deleteTask(link.subtask, req) //delete all subtasks.
     })
     await TaskLinks.deleteMany({
-        profile: getprofileid(req.session),
+        profileid: getprofileid(req.session),
         $or: [
             {parenttask: taskid},
             {subtask: taskid}
@@ -520,6 +524,9 @@ export async function checkTask(args, req){
 
         updatetask.schedule = true //listing as scheduled so it appears in the day record.
         updatetask.completed = new Date()
+        activityrecord({taskid: args.taskid, notes: 'Marked as done.', req: req})
+    } else {
+        activityrecord({taskid: args.taskid, notes: 'Re-opened.', req: req})
     }
     updatetask.complete = args.checked
 
@@ -527,4 +534,15 @@ export async function checkTask(args, req){
         {_id: ObjectId(args.taskid)},
         {$set: updatetask}
     )).result.ok === 1
+}
+
+export async function linksubtask({parenttaskid, subtaskid, req}){
+    const db = await DbConnection.Get()
+    const TaskLinks = db.collection('tasklinks')
+
+    if(parenttaskid !== subtaskid){ //new linking.
+        return (await TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid, created: new Date()})).result.ok === 1
+    }else{
+        throw new Error('Can\'t link task to the same task')
+    }
 }

@@ -596,7 +596,7 @@ export const resolvers = {
             args.datecreated = new Date(args.datetime)
             args.lastedited = new Date(args.datetime)
 
-            createinsight(args, req)
+            return await createinsight(args, req)
                 .then(insertedId => {
                     if (args.sources) {
                         attachSources(
@@ -606,12 +606,13 @@ export const resolvers = {
                             getprofileid(req.session)
                         )
                         .then(() => {
-                            return insertedId
+                            return {_id: insertedId}
                         })
                     }
                     if (args.taskid) {
                         linkInsightTask(args.taskid,insertedId)
                     }
+                    return {_id: insertedId}
                 })
         },
         removeInsight: async(_, { insightid }, { req }) => {

@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb'
-import { getprofileid } from './users'
+import { getprofileid, getuserid } from './users'
 import DbConnection from './database'
 import { getuiversion } from '../util/functions'
 import { checkTask } from './tasks'
@@ -51,7 +51,7 @@ export const resolvers = {
             return await Pomodoros.find(
                 {
                     goal: goalId,
-                    userid: getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
+                    profileid: getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
                 },
                 { sort: { date: -1 } },
             ).toArray()
@@ -68,7 +68,7 @@ export const resolvers = {
             return await Pomodoros.find(
                 {
                     task: { $in: taskids },
-                    userid: getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
+                    profileid: getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
                 },
                 { sort: { date: -1 } },
             ).toArray()
@@ -79,7 +79,7 @@ export const resolvers = {
             const Pomodoros = db.collection('pomodoros')
 
             let query = new Object()
-            query.userid = getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
+            query.profileid = getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
 
             var start = new Date(date)
             var end = new Date(date)
@@ -188,28 +188,41 @@ export const resolvers = {
                 const checkresult = await checkTask(args, req)
                 if (checkresult === 0) throw new Error('Not all sub tasks marked as complete.') 
             }
-            activityrecord(args, req)
+            activityrecord({goalid: args.goal, taskid: args.taskid, checked: args.checked, minutes: args.minutes, req: req, notes: args.notes})
             return true
         }
     },
     
 }
 
-export async function activityrecord(args, req) {
+export async function activityrecord({templateid, taskid, goalid, notes, checked, minutes, req, datetime}) {
     const db = await DbConnection.Get()
-    
-    if(args.taskid) args.task = args.taskid //this is masking the problem that I don't have a universally defined variable for "taskid"
-
     const Tasks = db.collection('tasks')
-    const Task = await Tasks.findOne({ _id: ObjectId(args.task)})
-    if (Task) args.goal = Task.goal //add a goal if attached.
     const Pomodoros = db.collection('pomodoros')
-    args.userid = getprofileid(req.session)
-    args.serverversion = pjson.version
-    args.uiversion = getuiversion(req.session)
-    if(args.datetime) args.date = new Date(args.datetime)
-    else args.date = new Date()
 
-    if(args._id) delete args._id //deleting _id, because was attempting to insert duplicate IDs.
-    await Pomodoros.insertOne(args)
+    let record = new Object()
+    
+    if(taskid){ 
+        record.task = taskid //this is masking the problem that I don't have a universally defined variable for "taskid"
+        const Task = await Tasks.findOne({ _id: ObjectId(taskid)})
+        if (Task) {
+            record.goal = Task.goal //add a goal if attached.
+            record.templateid = Task.templateid //add a goal if attached.
+        }
+    }
+    if(goalid) record.goal = goalid
+    if(templateid) record.templateid = templateid
+
+    record.userid = getuserid(req.session)
+    record.profileid = getprofileid(req.session)
+    record.serverversion = pjson.version
+    record.uiversion = getuiversion(req.session)
+    record.notes = notes
+    record.checked = checked
+    record.minutes = minutes
+
+    if(datetime) record.date = new Date(datetime)
+    else record.date = new Date()
+
+    await Pomodoros.insertOne(record)
 }
