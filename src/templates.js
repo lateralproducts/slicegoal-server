@@ -157,7 +157,7 @@ export const resolvers = {
             if (args.insightid) linkInsightTemplate(templateid, args.insightid)
             return templateid
         },
-        createTaskFromTemplate: async(_, args, { req }) => {
+        createTaskFromTemplate: async(_, {templateid}, { req }) => {
             //need to move business logic to server.
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
@@ -169,12 +169,12 @@ export const resolvers = {
             template = await Templates.findOne( 
                 {
                     profile: getprofileid(req.session),
-                    _id: ObjectId(args.templateid)
+                    _id: ObjectId(templateid)
                 }
             )
             delete template._id
             template.created = new Date()
-            template.templateid = args.templateid
+            template.templateid = templateid
             template.schedule = true
 
             //create new task from template and get id.
@@ -182,12 +182,12 @@ export const resolvers = {
             activityrecord({taskid: newtaskid, notes: 'Task created.', req: req})
 
             //get all task template links
-            createSubTasksFromTemplate(args.templateid, newtaskid, req)
+            createSubTasksFromTemplate(templateid, newtaskid, req)
             return newtaskid
             //create and link all new sub tasks from templates
             
         },
-        createTemplateFromTask: async(_, args, { req }) => {
+        createTemplateFromTask: async(_, {taskid}, { req }) => {
             //need to move business logic to server.
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
@@ -199,19 +199,19 @@ export const resolvers = {
             task = await Tasks.findOne( 
                 {
                     profile: getprofileid(req.session),
-                    _id: ObjectId(args.taskid)
+                    _id: ObjectId(taskid)
                 }
             )
             delete task._id
             task.created = new Date()
-            task.taskid = args.taskid
+            task.taskid = taskid
 
             //create new task from template and get id.
             const newtemplateid = (await Templates.insertOne(task)).insertedId.toString()
             activityrecord({templateid: newtemplateid, notes: 'Task template created.', req: req})
 
             //get all task template links
-            createSubTasksFromTemplate(args.taskid, newtemplateid, req)
+            createSubTemplatesFromSubTasks(taskid, newtemplateid, req)
             return newtemplateid
             //create and link all new sub tasks from templates
             
@@ -390,44 +390,46 @@ async function createSubTasksFromTemplate(templateid, newtaskid, req) {
     )}
 }
 
-async function createSubTemplatesFromSubTasks(newtemplateid, taskid, req) {
+async function createSubTemplatesFromSubTasks(taskid, newtemplateid, req) {
     const db = await DbConnection.Get()
-    const TemplateLinks = db.collection('templatelinks')
-    const Templates = db.collection('templates')
     const Tasks = db.collection('tasks')
+    const TaskLinks = db.collection('tasklinks')
+    const Templates = db.collection('templates')
 
     //search for links to task template.
-    let links = await TemplateLinks.find({profileid: getprofileid(req.session), parenttemplate: templateid}).toArray()
+    let links = await TaskLinks.find({profileid: getprofileid(req.session), parenttask: taskid}).toArray()
     //get subtask templates.
     if (links.length > 0) {
-    let subtemplates = await Templates.find({
-        profile: getprofileid(req.session), 
-        _id: {
-            $in: links.map(function(link) {
-                return ObjectId(link.subtemplate)
-            })
-        }
-    }).toArray()
+        let subtemplates = await Tasks.find({
+            profile: getprofileid(req.session), 
+            _id: {
+                $in: links.map(function(link) {
+                    return ObjectId(link.subtask)
+                })
+            }
+        }).toArray()
 
-    //create all subtasks.
-    let insertTasks = subtemplates.map(template => {
-        return {
-            title: template.title,
-            profile: template.profile,
-            description: template.description,
-            goal: template.goal,
-            created: new Date(),
-            type: "subtask",
-            insights: template.insights,
-            templateid: template._id.toString() //record template id for future reference.
-        }
-    })
-    let newSubTasks = (await Tasks.insertMany(insertTasks)).insertedIds
-    //link all subtasks to the parent task.
-    newSubTasks.map(subtaskid => {
-        activityrecord({taskid: subtaskid.toString(), notes: 'Task created.', req: req})
-        linksubtemplate({parenttemplateid: newtemplateid, subtaskid: subtaskid.toString(), req: req})}
-    )}
+        //create all subtasks.
+        let insertSubTemplates = subtemplates.map(template => {
+            return {
+                title: template.title,
+                profile: template.profile,
+                description: template.description,
+                goal: template.goal,
+                created: new Date(),
+                type: "subtask",
+                insights: template.insights,
+                templateid: template._id.toString() //record template id for future reference.
+            }
+        })
+        let newSubTemplates = (await Templates.insertMany(insertSubTemplates)).insertedIds
+        
+        //link all subtasks to the parent task.
+        newSubTemplates.map(subtemplateid => {
+            //no activity records or history recorded against templates yet.
+            linksubtemplate({parenttemplateid: newtemplateid, subtemplateid: subtemplateid.toString(), req: req})}
+        )
+    }
 }
 
 async function linksubtemplate({parenttemplateid, subtemplateid, req}){
