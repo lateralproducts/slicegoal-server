@@ -11,7 +11,8 @@ export const typeDefs = `
     extend type Query {
         wheel(wheelid: String):[Wheel]
         wheels(tag: String):[Wheel]
-        views (type: String): [View]
+        allviews (type: String): [View]
+        sharedviews: [View]
         profiles: [Profile]
         area(_id: String!, navdirection: String, readdate: String): Area
         areas (wheelid: String, readdate: String): [Area]
@@ -158,7 +159,7 @@ export const schema = `
 
 export const resolvers = {
     Query: {
-        views: async(_, args, { req }) => {
+        allviews: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Views = db.collection('views')
@@ -169,6 +170,21 @@ export const resolvers = {
             if (args.type === 'notcurrent')
                 query.wheel = { $ne: getwheelid(req.session) }
             if (args.type === 'default') query.default = true //defaultview //if asking for default profile only return the default.
+            var views = await Views.find(query).toArray()
+            return views.map(view => {
+                if(view.type === 'shared' && user.activeofferid !== 2) view.promptupgrade = true
+                return view
+            })
+        },
+        sharedviews: async(_, args, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Views = db.collection('views')
+            const Users = db.collection('users')
+            const user = await Users.findOne({_id: ObjectId(getuserid(req.session))}) //don't use session user instance, as that doesn't work.
+            let query = new Object()
+            query.user = getuserid(req.session)
+            query.type = 'shared' //asking for shared wheels.
             var views = await Views.find(query).toArray()
             return views.map(view => {
                 if(view.type === 'shared' && user.activeofferid !== 2) view.promptupgrade = true
