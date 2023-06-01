@@ -42,63 +42,100 @@ export const schema = `
 
 export const typeDefs = `
     extend type Query {
-        chatprompts: [Prompt]
-        gettaskchat(taskid: String!): Chat
-        chatunseen(taskid: String!): Boolean
+        chatprompts(search: String): [Prompt]
+        promptsuggest(search: String!): [Prompt]
+        getchat(chatid: String): Chat
+        getchatid(taskid: String): String
+        taskchatunseen(taskid: String!): Boolean
         anychatunseen: Boolean
         getchats: [Chat]
     }
 
     extend type Mutation {
-        sendChatPrompt(taskid: String!, promptid: String, message: String): Boolean
-        sendChatMessage(taskid: String!, message: String!): Boolean
-        sendRating(contextid: String, taskid: String!, rating: Int!, ratemessage: String, original: String): Boolean
+        sendChatPrompt(chatid: String, promptid: String, message: String): Boolean
+        sendChatMessage(chatid: String, message: String!): Boolean
+        sendRating(contextid: String, chatid: String!, rating: Int!, ratemessage: String, original: String): Boolean
     }
 `
 
 export const resolvers = {
     Query: {
-        chatprompts: async(_, args, { req }) => {
+        chatprompts: async(_, {search}, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Prompts = db.collection('chatprompts')
-            const prompts = await Prompts.find({message: {$exists: true}})
+            const regex = /\b(\w+)\b$/;
+            const match = search.match(regex)
+            const lastword = match ? match[1] : null;
+            if (lastword && lastword.length > 2){
+                const prompts = await Prompts.find({message: new RegExp('.*' + lastword + '.*')})
+                return prompts.toArray()
+            } else return null
+        },
+        promptsuggest: async(_, {search}, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Prompts = db.collection('chatprompts')
+            const prompts = await Prompts.find({message: new RegExp('.*' + search + '.*')})
             return prompts.toArray()
         },
-        gettaskchat: async(_, args, { req }) => {
+        getchatid: async(_, {taskid}, { req }) => {
+            //get chat id.
             if (!req.session.user) throw new Error('Invalid Session')
             const profileid = getprofileid(req.session)
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
-            const chat = await Chats.findOne({taskid: args.taskid, profileid: profileid})
-            if (chat) {
-                const userid = getuserid(req.session)
-                chat.userid = userid
-                if (chat.unseen)
-                    if(chat.unseen.includes(userid)){ //if not already seen, update seen status.
-                        Chats.updateOne(
-                            {taskid: args.taskid, profileid: profileid},
-                            {$pull: {unseen: userid}}
-                        )
-                    }
 
-                return chat
-            } else {
-                const empty = {userid: getuserid(req.session)}
-                return empty
+            if (taskid){ //if taskid, check existing chat for the taskid.
+                const chat = await Chats.findOne({taskid: taskid, profileid: profileid})
+                if (chat) {
+                    return chat._id.toString()
+                }
             }
+            //if no chatid or taskid, create new chat.
+            const chat = await startChat(
+                getprofileid(req.session), 
+                taskid,
+                getuserid(req.session), 
+                getwheelid(req.session)
+            )
+            console.log('new chat')
+            console.log(chat)
+            return chat._id.toString()
+        },
+        getchat: async(_, {chatid}, { req }) => {
+            //get chat id.
+            if (!req.session.user) throw new Error('Invalid Session')
+            const profileid = getprofileid(req.session)
+            const db = await DbConnection.Get()
+            const Chats = db.collection('chats')
+            if (chatid){ //if chatid, check existing chat for the chatid.
+                const chat = await Chats.findOne({_id: ObjectId(chatid), profileid: profileid})
+                if (chat !== undefined) {
+                    const userid = getuserid(req.session)
+                    chat.userid = userid
+                    if (chat.unseen)
+                        if(chat.unseen.includes(userid)){ //if not already seen, update seen status.
+                            Chats.updateOne(
+                                {_id: ObjectId(chatid), profileid: profileid},
+                                {$pull: {unseen: userid}}
+                            )
+                        }
+                    return chat
+                }
+            } else throw new Error('Chat not found.')
         },
         getchats: async(_, args, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const profileid = getprofileid(req.session)
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
-            const chats = await Chats.find({profileid: profileid}).sort({ 'lastmessage.datetime': -1 }).toArray()
+            const chats = await Chats.find({profileid: profileid, messages: {$exists: true}}).sort({ 'lastmessage.datetime': -1 }).toArray()
             //const userid = getuserid(req.session)
             //next order by unread, then last message. 'unseen.' + userid
             return chats
         },
-        chatunseen: async(_, args, { req }) => { //check if task chat has been unseen by user.
+        taskchatunseen: async(_, args, { req }) => { //check if task chat has been unseen by user.
             if (!req.session.user) throw new Error('Invalid Session')
             const profileid = getprofileid(req.session)
             const db = await DbConnection.Get()
@@ -156,14 +193,14 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const ChatContext = db.collection('chatcontext')
-            const userid = getuserid(req.session)
-            const profileid = getprofileid(req.session)
+            /* const userid = getuserid(req.session)
+            const profileid = getprofileid(req.session) */
             
             if (args.contextid) { //rate context if there is a context.
                 const context = await ChatContext.findOne({_id: ObjectId(args.contextid)})
             
                 let newrating = 0
-                if (context.match !== null) {
+                if (context.match > -1) {
                     const oldrating = context.match 
                     newrating = (args.rating + (oldrating * context.count))/(context.count + 1) //average of all ratings + this rating.
                 } else {newrating = args.rating}
@@ -186,7 +223,7 @@ export const resolvers = {
             )}
 
             //save the rating as a message.
-            const message = {
+            /* const message = {
                 contextid: args.contextid,
                 message: args.ratemessage,
                 rating: args.rating,
@@ -194,8 +231,8 @@ export const resolvers = {
                 type: 'rating',
                 userid: getuserid(req.session),
                 original: args.original
-            }
-            sendTaskChatMessage(profileid, args.taskid, message, userid, getwheelid(req.session))
+            } */
+            //sendTaskChatMessage(profileid, args.chatid, message, userid, getwheelid(req.session))
             return true
         },
         sendChatMessage: async(root, args, { req }) => {
@@ -208,7 +245,7 @@ export const resolvers = {
                     datetime: new Date(),
                     userid: userid
                 }
-                sendTaskChatMessage(profileid, args.taskid, message, userid, getwheelid(req.session))
+                sendTaskChatMessage(profileid, args.chatid, message, userid, getwheelid(req.session))
             }
             return true
         },
@@ -227,20 +264,36 @@ export const resolvers = {
                 { _id: ObjectId(args.promptid) },
                 { $inc: { selected: 1 } }
             )
-            await sendTaskChatMessage(profileid, args.taskid, promptmessage, userid, getwheelid(req.session))
+            //record sent prompt to the chat.
+            await sendTaskChatMessage(profileid, args.chatid, promptmessage, userid, getwheelid(req.session))
 
-            const context = await ChatContext.findOne({promptid: args.promptid})
-            if (context) {
-                let response
-                if (context.responseid) response = await Response.findOne({_id: ObjectId(context.responseid)})
-                if (response) {
-                    Response.updateOne( //update data on response usage.
-                        {_id: ObjectId(context.responseid)}, 
-                        { $inc: { used: 1 } }
+            //find all the responses linked to the prompt.
+            const contexts = await ChatContext.find({promptid: args.promptid}).toArray()
+            if (contexts) {
+                const responses = await Response.find( //find and update multiple responses
+                    {_id: {
+                        $in: contexts.map(function(context) {
+                            return ObjectId(context.responseid)
+                        })}
+                    }
+                ).sort({ match: -1 }).toArray()
+                if (responses) {
+                    //update the increment.
+                    //{ $inc: { used: 1 } } //increment used flag
+
+                    //create messages for the chat.
+                    const responsemessages = responses.map(response => {
+                        return {
+                            responseid: response._id.toString(), 
+                            contextid: contexts.find(context => context.responseid === response._id.toString())._id.toString(), //find the context with the responseid.
+                            message: response.message, 
+                            datetime: new Date()
+                        }
+                    })
+                    responsemessages.map(responsemessage => 
+                        //userid is chatbot.
+                        sendTaskChatMessage(profileid, args.chatid, responsemessage, 'chatbot', getwheelid(req.session))
                     )
-                    let responsemessage
-                    responsemessage = {responseid: response._id.toString(), contextid: context._id.toString(), message: response.message, datetime: new Date()}
-                    sendTaskChatMessage(profileid, args.taskid, responsemessage, 'chatbot', getwheelid(req.session)) //userid is chatbot.
                 }
             }
             return true
@@ -248,31 +301,18 @@ export const resolvers = {
     }
 }
 
-async function sendTaskChatMessage(profileid, taskid, message, userid, wheelid) {
+async function sendTaskChatMessage(profileid, chatid, message, userid, wheelid) {
     const db = await DbConnection.Get()
     const Chats = db.collection('chats')
     const Views = db.collection('views')
-    const chat = await Chats.findOne({ taskid: taskid })
+    const chat = await Chats.findOne({ _id: ObjectId(chatid) })
 
     const wheelviews = await Views.find({wheel: wheelid}).toArray() //subscribe all people with a view to the wheel to chat updates.
     const subscribelist = wheelviews.map(view => view.user).filter(user => user !== userid) //filter out this user's ID.
 
-    if (!chat) {
-        await Chats.insert( //create first record if it doesn't exist.
-            { 
-                wheelid: wheelid,
-                profileid: profileid,
-                taskid: taskid,
-                started: new Date(),
-                lastmessage: message,
-                firstmessage: message,
-                subscribe: subscribelist,
-                unseen: subscribelist,
-                messages: [message]
-            })
-    } else {
+    if (chat) {
         Chats.updateOne(
-            { taskid: taskid, profileid: profileid },
+            { _id: ObjectId(chatid), profileid: profileid },
             {
                 $set: {
                     lastmessage: message,
@@ -282,8 +322,31 @@ async function sendTaskChatMessage(profileid, taskid, message, userid, wheelid) 
                     messages: message
                 }
             }
-        )}
+        )
     }
+}
+
+async function startChat(profileid, taskid, userid, wheelid){
+    const db = await DbConnection.Get()
+    const Chats = db.collection('chats')
+    const Views = db.collection('views')
+    const wheelviews = await Views.find({wheel: wheelid}).toArray() //subscribe all people with a view to the wheel to chat updates.
+    const subscribelist = wheelviews.map(view => view.user).filter(user => user !== userid) 
+    //filter out this user's ID. Only being used for visibility on messages at the moment.
+    //could use it for visibility of chat altogether.
+
+    let chat = new Object({ 
+        wheelid: wheelid,
+        usercreated: userid,
+        profileid: profileid,
+        started: new Date(),
+        subscribe: subscribelist,
+    })
+    if (taskid) chat.taskid = taskid
+    const newchat = (await Chats.insert(chat)).ops[0]
+    console.log(newchat)
+    return newchat
+}
 
 
 export async function getunreadmessageusers() {
