@@ -76,7 +76,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const Prompts = db.collection('chatprompts')
-            const prompts = await Prompts.find({message: new RegExp('.*' + trim(search) + '.*')})
+            const prompts = await Prompts.find({message: new RegExp('.*' + search.trim() + '.*')})
             return prompts.toArray()
         },
         getchatid: async(_, {taskid}, { req }) => {
