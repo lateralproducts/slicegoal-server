@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb'
 import { getprofileid, getuserid } from './users'
 import DbConnection from './database'
 import { getuiversion } from '../util/functions'
-import { checkTask } from './tasks'
+import { checkTask, createRepeatTask } from './tasks'
 let pjson = require('../package.json')
 
 export const typeDefs = `
@@ -15,7 +15,7 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        savePomodoro(notes: String, taskid: String, datetime: String, minutes: Int, checked: Boolean): Boolean!
+        savePomodoro(notes: String, taskid: String, datetime: String, minutes: Int, checked: Boolean, repeat: Boolean): Boolean!
     }
 `
 
@@ -189,6 +189,7 @@ export const resolvers = {
                 if (checkresult === 0) throw new Error('Not all sub tasks marked as complete.') 
             }
             activityrecord({goalid: args.goal, taskid: args.taskid, checked: args.checked, minutes: args.minutes, req: req, notes: args.notes})
+            if (args.repeat) createRepeatTask(args.taskid, req)
             return true
         }
     },

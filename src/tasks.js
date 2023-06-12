@@ -473,6 +473,81 @@ export async function linkSourceTask(taskid, sourceid){
         {$push: {sources: sourceid}}
     )).result.ok === 1
 }
+
+export async function createRepeatTask(taskid, req){
+    //need to move business logic to server.
+    if (!req.session.user) throw new Error('Invalid Session')
+    const db = await DbConnection.Get()
+    const Tasks = db.collection('tasks')
+
+    //get template to copy.
+    let tasktorepeat = new Object()
+    tasktorepeat = await Tasks.findOne( 
+        {
+            profile: getprofileid(req.session),
+            _id: ObjectId(taskid)
+        }
+    )
+    delete tasktorepeat._id
+    tasktorepeat.created = new Date()
+    tasktorepeat.repeattaskid = taskid
+    tasktorepeat.schedule = true
+    delete tasktorepeat.complete
+    delete tasktorepeat.completed
+    delete tasktorepeat.starttime
+    delete tasktorepeat.endtime
+
+    //create new task from template and get id.
+    const newtaskid = (await Tasks.insertOne(tasktorepeat)).insertedId.toString()
+    activityrecord({taskid: newtaskid, notes: 'Task created.', req: req})
+
+    //get all task template links
+    copySubTasksFromTask(taskid, newtaskid, req)
+    return newtaskid
+    //create and link all new sub tasks from templates
+}
+
+async function copySubTasksFromTask(taskid, newtaskid, req) {
+    const db = await DbConnection.Get()
+    const Tasks = db.collection('tasks')
+    const TaskLinks = db.collection('tasklinks')
+
+    //search for links to task template.
+    let links = await TaskLinks.find({profileid: getprofileid(req.session), parenttask: taskid}).toArray()
+    //get subtask templates.
+    if (links.length > 0) {
+        let subtasks = await Tasks.find({
+            profile: getprofileid(req.session), 
+            _id: {
+                $in: links.map(function(link) {
+                    return ObjectId(link.subtask)
+                })
+            }
+        }).toArray()
+
+        //create all subtasks.
+        let insertSubTasks = subtasks.map(task => {
+            return {
+                title: task.title,
+                profile: task.profile,
+                description: task.description,
+                goal: task.goal,
+                created: new Date(),
+                type: "subtask",
+                insights: task.insights,
+                repeattaskid: task._id.toString() //record repeat task id for future reference.
+            }
+        })
+        let newSubTasks = (await Tasks.insertMany(insertSubTasks)).insertedIds
+        
+        //link all subtasks to the parent task.
+        newSubTasks.map(subtaskid => {
+            //no activity records or history recorded against templates yet.
+            linksubtask({parenttaskid: newtaskid, subtaskid: subtaskid.toString(), req: req})}
+        )
+    }
+}
+
 async function deleteTask(taskid, req){
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
