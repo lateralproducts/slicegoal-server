@@ -57,6 +57,7 @@ export const typeDefs = `
         removeTaskLink(parenttaskid: String!, subtaskid: String!): Boolean
         removeTaskParentLinks(subtaskid: String!): Boolean
         linkInsightToTask(taskid: String!, insightid: String!): Boolean
+        linkSourceToTask(taskid: String!, sourceid: String!): Boolean
     }
 `
 
@@ -447,6 +448,10 @@ export const resolvers = {
         linkInsightToTask: async(_, {taskid,insightid}, {req}) => {
             if (!req.session.user) throw new Error('Invalid Session')
             return await linkInsightTask(taskid, insightid)
+        },
+        linkSourceToTask: async(_, {taskid,sourceid}, {req}) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            return await linkSourceTask(taskid, sourceid)
         }
     }
 }
@@ -460,6 +465,14 @@ export async function linkInsightTask(taskid, insightid){
     )).result.ok === 1
 }
 
+export async function linkSourceTask(taskid, sourceid){
+    const db = await DbConnection.Get()
+    const Tasks = db.collection('tasks')
+    return (await Tasks.updateOne(
+        {_id: ObjectId(taskid)},
+        {$push: {sources: sourceid}}
+    )).result.ok === 1
+}
 async function deleteTask(taskid, req){
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')

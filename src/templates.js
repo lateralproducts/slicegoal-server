@@ -42,6 +42,7 @@ export const typeDefs = `
         removeTemplateLink(parenttemplateid: String!, subtemplateid: String!): Boolean
         removeTemplateParentLinks(subtemplateid: String!): Boolean
         linkInsightToTemplate(templateid: String!, insightid: String!): Boolean
+        linkSourceToTemplate(templateid: String!, sourceid: String!): Boolean
 
         createTaskFromTemplate(templateid: String!): String
         createTemplateFromTask(taskid: String!): String
@@ -307,6 +308,10 @@ export const resolvers = {
         linkInsightToTemplate: async(_, {templateid,insightid}, {req}) => {
             if (!req.session.user) throw new Error('Invalid Session')
             return await linkInsightTemplate(templateid, insightid)
+        },
+        linkSourceToTemplate: async(_, {templateid,sourceid}, {req}) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            return await linkSourceTemplate(templateid, sourceid)
         }
     }
 }
@@ -317,6 +322,15 @@ export async function linkInsightTemplate(templateid, insightid){
     return (await Templates.updateOne(
         {_id: ObjectId(templateid)},
         {$push: {insights: insightid}}
+    )).result.ok === 1
+}
+
+export async function linkSourceTemplate(templateid, sourceid){
+    const db = await DbConnection.Get()
+    const Templates = db.collection('templates')
+    return (await Templates.updateOne(
+        {_id: ObjectId(templateid)},
+        {$push: {sources: sourceid}}
     )).result.ok === 1
 }
 

@@ -11,6 +11,8 @@ export const typeDefs = `
     extend type Query {
         sources: [Source]
         insightSources(insightid: String!): [SourceTag]
+        taskSources(taskid: String!): [Source]
+        templateSources(templateid: String!): [Source]
         sourceInsights(sourceid: String!): SourceInsightList
         searchSources(search: String!): [Source]
     }
@@ -101,6 +103,38 @@ export const resolvers = {
                     resourceid: insightid
                 }
             ).toArray()
+        },
+        // all sources on an task
+        taskSources: async(_, {taskid}, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            const Sources = db.collection('sources')
+            const task = await Tasks.findOne({profile: getprofileid(req.session), _id: ObjectId(taskid)})
+
+            if (task.sources) 
+                return await Sources.find({
+                    _id: {
+                        $in: task.sources.map(sourceid => {return ObjectId(sourceid)})
+                    }
+                }).toArray()
+            else return []
+        },
+        // all sources on an template
+        templateSources: async(_, {templateid}, { req }) => {
+            if (!req.session.user) throw new Error('Invalid Session')
+            const db = await DbConnection.Get()
+            const Templates = db.collection('templates')
+            const Sources = db.collection('sources')
+            const template = await Templates.findOne({profile: getprofileid(req.session), _id: ObjectId(templateid)})
+
+            if (template.sources) 
+                return await Sources.find({
+                    _id: {
+                        $in: template.sources.map(sourceid => {return ObjectId(sourceid)})
+                    }
+                }).toArray()
+            else return []
         },
         // all insights associated with given source
         sourceInsights: async function(_, { sourceid }, { req }) {
