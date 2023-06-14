@@ -151,6 +151,7 @@ export const resolvers = {
             const TemplateLinks = db.collection('templatelinks')
 
             args.profileid = getprofileid(req.session)
+            if (args.parenttemplate) args.type = 'subtask'
             const templateid = await createNewTemplate(args)
             if (args.parenttemplate) {
                 TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: args.parenttemplate, subtemplate: templateid, created: new Date()})
@@ -224,6 +225,9 @@ export const resolvers = {
             const TemplateLinks = db.collection('templatelinks')
 
             var updates = new Object()
+            if (args.parenttemplate) updates.type = 'subtask'
+            else updates.type = null
+
             if(args.title) updates.title = args.title
             if(args.description !== null) updates.description = args.description
             if(args.goal) {updates.goal = args.goal}

@@ -239,6 +239,9 @@ export const resolvers = {
             const TaskLinks = db.collection('tasklinks')
 
             args.profileid = getprofileid(req.session)
+            if (args.parenttask) args.type = 'subtask'
+            else args.type = 'task'
+
             const taskid = await createNewTask(args)
             if (args.parenttask) {
                 TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: args.parenttask, subtask: taskid, created: new Date()})
@@ -284,7 +287,12 @@ export const resolvers = {
 
             //would be better to check links before deleting and inserting. Separate into function.
             await TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: args.taskid})
-            if (args.parenttask) TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: args.parenttask, subtask: args.taskid, created: new Date()})
+            if (args.parenttask) {
+                TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: args.parenttask, subtask: args.taskid, created: new Date()})
+                updatetask.type = 'subtask'
+            } else {
+                updatetask.type = 'task' //remove subtask type so task appears again.
+            }
 
             return (await Tasks.updateOne(
                 {_id: ObjectId(args.taskid)},
@@ -496,6 +504,7 @@ export async function createRepeatTask(taskid, req){
     delete tasktorepeat.completed
     delete tasktorepeat.starttime
     delete tasktorepeat.endtime
+    delete tasktorepeat.rescheduled
 
     //create new task from template and get id.
     const newtaskid = (await Tasks.insertOne(tasktorepeat)).insertedId.toString()
