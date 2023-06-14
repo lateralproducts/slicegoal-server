@@ -5,17 +5,17 @@ import DbConnection from '../src/database'
 
 export const typeDefs = `
     extend type Mutation {
-        migrateUpdatePomodoroUserIDs: Boolean
+        migrateUpdateGoalTimesUserIDs: Boolean
     }`
 
 export const resolvers = {
     Mutation: {
-        migrateUpdatePomodoroUserIDs: async(parent, args, { req }) => {
+        migrateUpdateGoalTimesUserIDs: async() => {
             const db = await DbConnection.Get()
-            const Pomodoros = db.collection('pomodoros')
+            const GoalTimes = db.collection('goaltimes')
             //const TaskLinks = db.collection('tasklinks')
 
-            Pomodoros.updateMany({}, { $rename: { userid: 'profileid' } })
+            GoalTimes.updateMany({}, { $rename: { userid: 'profileid' } })
             return true
         }
         //updateAreaToSource(areaid: String, resource: String, profileid: String): Boolean

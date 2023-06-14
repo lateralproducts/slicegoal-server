@@ -476,7 +476,7 @@ export const resolvers = {
                     fib.fib0 = 0
                     fib.fib1 = 1
                     Spaced.update(
-                        { insightid: insightid, userid: getprofileid(req.session) },
+                        { insightid: insightid, profileid: getprofileid(req.session) },
                         {
                             $set: fib
                         },

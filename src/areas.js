@@ -6,6 +6,11 @@ import { getuserid, getprofileid, getwheelid, getname } from './users'
 import { sessiontrack } from './website'
 let pjson = require('../package.json')
 
+/*
+    goaltimes(areaId: String): [GoalTime]
+    lastgoaltime(areaId: String): GoalTime
+*/
+
 export const typeDefs = `
 
     extend type Query {
@@ -19,8 +24,6 @@ export const typeDefs = `
         arealinks(areaid: String): [AreaLink]
         ranktimes(areaId: String): [RankTime]
         lastranktime(areaId: String): RankTime
-        goaltimes(areaId: String): [GoalTime]
-        lastgoaltime(areaId: String): GoalTime
         viewsOnOwnWheel(wheelid: String!): [View]
     }
     
@@ -283,14 +286,14 @@ export const resolvers = {
                 wheelid: getwheelid(req.session)
             }).toArray()
         },
-        goaltimes: async(_, __, { req }) => {
+        /* goaltimes: async(_, __, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
-            return await GoalTimes.find({ userid: getprofileid(req.session) })
+            return await GoalTimes.find({ profileid: getprofileid(req.session) })
                 .sort({ date: -1 })
                 .toArray()
-        },
+        }, */
         lastranktime: async(_, { areaId }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
@@ -301,15 +304,15 @@ export const resolvers = {
                 { sort: { date: -1 } },
             )
         },
-        lastgoaltime: async(_, { areaId }, { req }) => {
+        /* lastgoaltime: async(_, { areaId }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
             return await GoalTimes.findOne(
-                { areaId: areaId, userid: getprofileid(req.session) },
+                { areaId: areaId, profileid: getprofileid(req.session) },
                 { sort: { date: -1 } },
             )
-        },
+        }, */
         viewsOnOwnWheel: async(_, { wheelid }, { req }) => {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
@@ -542,7 +545,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
             const goal = await GoalTimes.findOne(
-                { area: _id.toString(), userid: getprofileid(req.session) },
+                { area: _id.toString(), profileid: getprofileid(req.session) },
                 { sort: { date: -1 } },
             )
             return goal ? goal : null
@@ -557,7 +560,7 @@ export const resolvers = {
                 Pomodoros.aggregate(
                     {
                         $match: {
-                            userid: getprofileid(req.session),
+                            profileid: getprofileid(req.session),
                             date: {
                                 $gte: currentDate
                             },
@@ -933,7 +936,7 @@ export const resolvers = {
             if (!req.session.user) throw new Error('Invalid Session')
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
-            args.userid = getprofileid(req.session)
+            args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
             args.date = new Date(args.datetime)

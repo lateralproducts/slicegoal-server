@@ -206,7 +206,7 @@ export const resolvers = {
                 Pomodoros.aggregate(
                     {
                         $match: {
-                            userid: getprofileid(req.session),
+                            profileid: getprofileid(req.session),
                             goal: _id.toString()
                         }
                     },
