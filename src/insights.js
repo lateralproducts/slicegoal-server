@@ -701,28 +701,22 @@ export const resolvers = {
                         .then(result => { 
                             //save interaction to track
                             try {
-                                
+                                var ctalink;
                                 if(targetUser.state === 'verified'){
                                     // Existing verified user
-                                    shareInsightEmail(
-                                        insight,
-                                        currentUser,
-                                        targetUser,
-                                        args.shareNote,
-                                        `?sharedinsights=active`,
-                                        interactionid
-                                    )
+                                    ctalink = `?sharedinsights=active`
                                 } else {
                                     // Existing but unverified user
-                                    shareInsightEmail(
-                                        insight,
-                                        currentUser,
-                                        targetUser,
-                                        args.shareNote,
-                                        `?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`,
-                                        interactionid
-                                    )
+                                    ctalink = `?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`
                                 }
+                                shareInsightEmail(
+                                    insight,
+                                    currentUser,
+                                    targetUser,
+                                    args.shareNote,
+                                    ctalink,
+                                    interactionid
+                                )
                             }catch (error) {
                                 console.log("failed to send shared insights email - " + error)
                             }

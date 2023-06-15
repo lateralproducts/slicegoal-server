@@ -5,13 +5,20 @@
     <table style="border-collapse: separate; border-spacing: 10px;">
         <tr>
             <td>
-                <div style="border: solid 0.2px #ECEDF2; border-radius: 3px; padding: 5px; white-space: pre-wrap;">
-                    <div>
+                <div style="border: dashed 1px rgb(148, 148, 151); border-radius: 3px; padding: 5px;">
+                    {{#insightPrompt}}
+                    <div style="font-size: 1em; font-style: italic; white-space: pre-line; margin-top: 1em;">
+                        {{ insightPrompt }}
+                    </div>
+                    {{/insightPrompt}}
+                    <div style="font-size: 1em; white-space: pre-line; margin-top: 1em;">
                         {{ insightText }}
                     </div>
-                    <div style="margin-top: 10px; font-size: 8px; display:flex; white-space: pre-wrap;">
-                        {{ shareNote }}
+                    {{#shareNote}}
+                    <div style="margin-top: 10px; font-size: 0.8em; display:flex; white-space: pre-line; margin-top: 1em;">
+                        "{{ shareNote }}"
                     </div>
+                    {{/shareNote}}
                 </div>
             </td>
         </tr>
@@ -24,14 +31,15 @@
         <tr style="height:10px">
         </tr>
         <tr>
-            <img width="100" src="{{ logopath }}?ix={{ interactionid }}" />
-        </tr>
-
-        <tr>
             <div style="font-size:10px">
                 {{ sharerName }} ({{ sharerEmail }}) shared this insight with you.
             </div>
         </tr>
+        <tr>
+            <img width="100" src="{{ logopath }}?ix={{ interactionid }}" />
+        </tr>
+
+        
     </table>
 </body>
 <img src='{{pixelpath}}?ix={{interactionid}}'/>

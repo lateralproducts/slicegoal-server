@@ -426,12 +426,14 @@ export async function shareInsightEmail(
     sharer,
     receiver,
     shareNote,
+    sharePrompt,
     acceptLink,
     interactionid
     ) { 
         const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
         const subject = `${sharerName.trim()} shared an insight with you`
         const email = Mustache.render(shareInsightTemplate, {
+            insightPrompt: insight.prompt,
             insightText: insight.answer,
             sharerName: sharerName,
             sharerEmail: `${sharer.email}`,
