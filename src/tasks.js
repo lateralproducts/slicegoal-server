@@ -279,19 +279,19 @@ export const resolvers = {
             if(args.goal) {updates.goal = args.goal}
             else {updates.goal = null}
 
-            var updatetask = new Object()
-            updatetask.$set = updates
-            if (args.reschedule){
-                updatetask.$inc = { rescheduled: 1}
-            }
-
             //would be better to check links before deleting and inserting. Separate into function.
             await TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: args.taskid})
             if (args.parenttask) {
                 TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: args.parenttask, subtask: args.taskid, created: new Date()})
-                updatetask.type = 'subtask'
+                updates.type = 'subtask'
             } else {
-                updatetask.type = 'task' //remove subtask type so task appears again.
+                updates.type = 'task' //remove subtask type so task appears again.
+            }
+
+            var updatetask = new Object()
+            updatetask.$set = updates
+            if (args.reschedule){
+                updatetask.$inc = { rescheduled: 1}
             }
 
             return (await Tasks.updateOne(
