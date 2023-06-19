@@ -319,6 +319,9 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
+            //don't allow someone to try and reset without a code.
+            if(!args.code) throw new Error('Reset details not found. Please try and reset your password again.')
+
             let user = await Users.findOne({
                 $and: [{ _id: ObjectId(args.userid) }, { code: args.code }]
             })
@@ -328,7 +331,7 @@ export const resolvers = {
                 let validdate = new Date() //valid to reset for 24 hours.
                 validdate.setDate(user.lastreset.getDate() + 1)
                 if(validdate < new Date()){
-                    throw new Error("Your password reset link has expired. Please try and reset again.")
+                    throw new Error('Reset details not found. Please try and reset your password again.')
                 }
             }
 
@@ -340,8 +343,8 @@ export const resolvers = {
                     $set: {
                         password: bcrypt.hashSync(args.password, 10),
                         incorrecttries: 0
-                        //keep the code so that someone can't hack it.
-                    }
+                    },
+                    $unset: { code: ''} //remove the code so that someone can't brute force it.
                 },
             )
             

@@ -426,7 +426,6 @@ export async function shareInsightEmail(
     sharer,
     receiver,
     shareNote,
-    sharePrompt,
     acceptLink,
     interactionid
     ) { 
