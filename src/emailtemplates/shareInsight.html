@@ -4,26 +4,25 @@
 <body>
     <table style="border-collapse: separate; border-spacing: 10px;">
         <tr>
+            <div style="font-size: 0.8em;">{{ sharerName }} ({{ sharerEmail }}) shared this insight with you.</div>
+        </tr>
+        <tr>
+            {{#shareNote}}
+            <div style="margin-top: 10px; font-size: 0.8em; display:flex; white-space: pre-wrap;">"{{ shareNote }}"</div>
+            {{/shareNote}}
+        </tr>
+        <tr>
             <td>
                 <div style="border: dashed 1px rgb(148, 148, 151); border-radius: 3px; padding: 5px;">
                     {{#insightPrompt}}
-                    <div style="font-size: 1em; font-style: italic; white-space: pre-line; margin-top: -1em;">
-                        {{ insightPrompt }}
-                    </div>
+                    <div style="font-size: 1em; font-style: italic; white-space: pre-wrap;">{{ insightPrompt }}</div>
                     {{/insightPrompt}}
-                    <div style="font-size: 1em; white-space: pre-line; margin-top: -1em;">
-                        {{ insightText }}
-                    </div>
-                    {{#shareNote}}
-                    <div style="margin-top: 10px; font-size: 0.8em; display:flex; white-space: pre-line; margin-top: 1em;">
-                        "{{ shareNote }}"
-                    </div>
-                    {{/shareNote}}
+                    <div style="font-size: 1em; white-space: pre-wrap;">{{ insightText }}</div>
                 </div>
             </td>
         </tr>
         <tr>
-            <td class="button">
+            <td class="button" align="center">
                 <a class="link" style="font-size:14px; font-weight: 700; border: none; text-decoration: none; color: #f2f2f2; border-radius: 7px; padding: 9px 14px 9px 14px; background-color: #1e4088;"
                     href="{{ acceptLink }}" class="button">Save Insight</a>
             </td>
@@ -31,17 +30,9 @@
         <tr style="height:10px">
         </tr>
         <tr>
-            <div style="font-size:10px">
-                {{ sharerName }} ({{ sharerEmail }}) shared this insight with you.
-            </div>
-        </tr>
-        <tr>
             <img width="100" src="{{ logopath }}?ix={{ interactionid }}" />
+            <img src='{{pixelpath}}?ix={{interactionid}}'/>
         </tr>
-
-        
     </table>
 </body>
-<img src='{{pixelpath}}?ix={{interactionid}}'/>
-
 </html>
