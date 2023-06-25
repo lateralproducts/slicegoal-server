@@ -56,7 +56,7 @@ export const resolvers = {
                 await Leads.insertOne(args) //insert request into leads database.
                 sessiontrack(req,args,'offer','signup', 'success')
                 return response //assume everything processed.
-            } else throw new Error('That email format doesn\'t look right. Can you check it?')
+            } else return triggererror('That email format doesn\'t look right. Can you check it?')
         },
         senddailyreport: async(_, args, { req }) => {
             var today = new Date()
@@ -80,7 +80,7 @@ export const resolvers = {
                 //send the person a cc.
                 emailLateralProducts(args)
             } else {
-                throw new Error('That email format doesn\'t look right. Can you check it?')
+                return triggererror('That email format doesn\'t look right. Can you check it?')
             }
             //save request in DB
             //send email to daniel@lateralproducts.com
@@ -110,7 +110,7 @@ export const resolvers = {
                         )
                 sessiontrack(req,args,'unsubscribe','unsubscribe', 'success')
                 return "We've unsubscribed you."
-            } else throw new Error('That email format doesn\'t look right. Can you check it?')
+            } else return triggererror('That email format doesn\'t look right. Can you check it?')
         }
     }
 }
@@ -131,7 +131,7 @@ async function offeraction(args) {
                 emailNotifyNewLeadCoaching(args.name, args.email)   
                 return "Great! We've got your request for your FREE session. We'll be in touch to organise a time with you."
             default:
-                throw new Error('Sorry, we can\'t find that offer.')
+                return triggererror('Sorry, we can\'t find that offer.')
         }
     } catch (error){
         console.log(error)

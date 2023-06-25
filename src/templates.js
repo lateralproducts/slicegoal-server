@@ -1,9 +1,10 @@
-import { ObjectId } from 'mongodb'
+import { ObjectId } from 'mongodb' 
+import { triggererror } from './graphqlserver'
 
 import DbConnection from './database'
 import { getprofileid } from './users'
-import { linksubtask } from './tasks';
-import { activityrecord } from './pomodoros';
+import { linksubtask } from './tasks'
+import { activityrecord } from './pomodoros'
 //import { activityrecord } from './pomodoros'
 
 export const schema = `
@@ -52,13 +53,13 @@ export const typeDefs = `
 export const resolvers = {
     Query: {
         templateslist: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('templates')
             return await Tasks.find({profile: getprofileid(req.session), type: {$ne: 'subtask'}}).toArray()
         },
         templates: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const TemplateLinks = db.collection('templatelinks')
             const Templates = db.collection('templates')
@@ -73,7 +74,7 @@ export const resolvers = {
             }).toArray()
         },
         template: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
 
@@ -85,13 +86,13 @@ export const resolvers = {
             )
         },
         searchTemplates: async(_, {search}, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
             return await Templates.find({profile: getprofileid(req.session), title: new RegExp(search, 'i')}).sort({created: -1}).toArray()
         },
         templateInsights: async(_, {templateid}, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
             const Insights = db.collection('insights')
@@ -146,7 +147,7 @@ export const resolvers = {
     Mutation: {
         newTemplate: async(_, args, { req }) => {
             //need to move business logic to server.
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const TemplateLinks = db.collection('templatelinks')
 
@@ -161,7 +162,7 @@ export const resolvers = {
         },
         createTaskFromTemplate: async(_, {templateid}, { req }) => {
             //need to move business logic to server.
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
             const Tasks = db.collection('tasks')
@@ -191,7 +192,7 @@ export const resolvers = {
         },
         createTemplateFromTask: async(_, {taskid}, { req }) => {
             //need to move business logic to server.
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
             const Tasks = db.collection('tasks')
@@ -219,7 +220,7 @@ export const resolvers = {
             
         },
         editTemplate: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
             const TemplateLinks = db.collection('templatelinks')
@@ -246,11 +247,11 @@ export const resolvers = {
             )).result.ok === 1
         },
         deleteTemplate: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             return await deleteTemplate(args.templateid, req)
         },
         updateTemplateListOrder: async(parent, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
             args.templates.map(function(_id, count) {
@@ -262,7 +263,7 @@ export const resolvers = {
             return true
         },
         removeTemplateGoal: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
 
@@ -272,7 +273,7 @@ export const resolvers = {
             )).result.ok === 1
         },
         setTemplateGoal: async(_, {templateid,goalid}, {req}) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
 
@@ -282,7 +283,7 @@ export const resolvers = {
             )).result.ok === 1
         },
         newSubTemplate: async(_, {templateid,template}, {req}) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const subtemplateid = await createNewTemplate({title: template, profileid: getprofileid(req.session), type: 'subtask'})
             const TemplateLinks = db.collection('templatelinks')
@@ -290,31 +291,31 @@ export const resolvers = {
             if(templateid !== subtemplateid){
                 return (await TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: templateid, subtemplate: subtemplateid, created: new Date()})).result.ok === 1
             }else{
-                throw new Error('Can\'t link template to the same template')
+                return triggererror('Can\'t link template to the same template')
             }
         },
         addTemplateLink: async(_, {parenttemplateid,subtemplateid}, {req}) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             
         },
         removeTemplateLink: async(_, {parenttemplateid,subtemplateid}, {req}) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const TemplateLinks = db.collection('templatelinks')
             return (await TemplateLinks.deleteMany({profileid: getprofileid(req.session), parenttemplate: parenttemplateid, subtemplate: subtemplateid})).result.ok === 1
         },
         removeTemplateParentLinks: async(_, {subtemplateid}, {req}) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const TemplateLinks = db.collection('templatelinks')
             return (await TemplateLinks.deleteMany({profileid: getprofileid(req.session), subtemplate: subtemplateid})).result.ok === 1
         },
         linkInsightToTemplate: async(_, {templateid,insightid}, {req}) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             return await linkInsightTemplate(templateid, insightid)
         },
         linkSourceToTemplate: async(_, {templateid,sourceid}, {req}) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             return await linkSourceTemplate(templateid, sourceid)
         }
     }
@@ -457,6 +458,6 @@ async function linksubtemplate({parenttemplateid, subtemplateid, req}){
     if(parenttemplateid !== subtemplateid){ //new linking.
         return (await TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: parenttemplateid, subtemplate: subtemplateid, created: new Date()})).result.ok === 1
     }else{
-        throw new Error('Can\'t link template to the same template')
+        return triggererror('Can\'t link template to the same template')
     }
 }

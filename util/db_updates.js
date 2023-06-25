@@ -1,5 +1,5 @@
 import DbConnection from '../src/database'
-//import { ObjectId } from 'mongodb'
+//import { ObjectId } from 'mongodb' \n import { triggererror } from './graphqlserver';
 //import { getprofileid } from '../src/users';
 //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
 
@@ -43,8 +43,8 @@ export const resolvers = {
             return true
         } */
         /* updateAreaToSource: async(parent, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
-            if (args.profileid !== getprofileid(req.session)) throw new Error('Wrong profile')
+            if (!req.session.user) return triggererror('Invalid Session')
+            if (args.profileid !== getprofileid(req.session)) return triggererror('Wrong profile')
 
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -81,7 +81,7 @@ export const resolvers = {
                 })
             } catch (error) {
                 console.log(error)
-                throw new Error('error updating area to source')
+                return triggererror('error updating area to source')
             }
 
             await InsightTags.deleteMany({area: args.areaid})

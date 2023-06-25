@@ -1,4 +1,5 @@
-import { ObjectId } from 'mongodb'
+import { ObjectId } from 'mongodb' 
+import { triggererror } from './graphqlserver';
 import DbConnection from './database'
 import { emailGoalNudge, emailRerankNudge, emailFunnel, reSendEmail, emailMessageNudge } from './emails'
 import { createreport } from './reporting'
@@ -92,7 +93,6 @@ async function ranknudge() {
             {
                 $match: { lastrank: { $gte: twoweeksago } } //I'm currently also missing all the people who have not updated their ranks.
             },
-
             function(err, userrankss) {
                 if (err) throw err
                 if (userrankss) resolve(userrankss)

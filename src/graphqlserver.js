@@ -10,7 +10,7 @@
 
 import express from 'express'
 import session from 'express-session'
-import { createServer } from '@graphql-yoga/node'
+import { createServer, GraphQLYogaError } from '@graphql-yoga/node'
 
 import ms from 'ms'
 import { Queries } from './schema/queries'
@@ -148,7 +148,6 @@ const graphQLServer = createServer({
 })
 
 
-
 export const graphql = async() => {
     try {
         var path = require('path')
@@ -228,4 +227,9 @@ export const graphql = async() => {
     } catch (e) {
         console.log(e)
     }
+}
+
+export function triggererror(message){
+    //using the GraphQLYogaError to return to client in production.
+    return Promise.reject(new GraphQLYogaError(message))
 }

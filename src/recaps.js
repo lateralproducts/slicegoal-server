@@ -1,4 +1,5 @@
 import { ObjectId } from 'mongodb'
+import { triggererror } from './graphqlserver';
 import { getprofileid } from './users'
 import DbConnection from './database'
 import { getuiversion } from '../util/functions'
@@ -33,7 +34,7 @@ export const schema = `
 export const resolvers = {
     Query: {
         recap: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Recaps = db.collection('recaps')
 
@@ -46,7 +47,7 @@ export const resolvers = {
     },
     Mutation: {
         createRecap: async(root, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Recaps = db.collection('recaps')
 
@@ -59,7 +60,7 @@ export const resolvers = {
             return true
         },
         updateRecap: async(root, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Recaps = db.collection('recaps')
 
@@ -77,7 +78,7 @@ export const resolvers = {
             return true
         },
         deleteRecap: async(root, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Recaps = db.collection('recaps')
 

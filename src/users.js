@@ -1,5 +1,7 @@
-import { ObjectId } from 'mongodb'
+import { ObjectId } from 'mongodb' 
+import { triggererror } from './graphqlserver';
 import bcrypt from 'bcryptjs'
+
 
 import {
     emailNewClient,
@@ -150,7 +152,7 @@ export const resolvers = {
     },
     Mutation: {
         updateProfile: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
@@ -163,14 +165,14 @@ export const resolvers = {
         },
 
         createClient: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
 
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const Views = db.collection('views')
 
             if (req.session.view.type !== 'owner')
-                throw new Error('Not owner of wheel')
+                return triggererror('Not owner of wheel')
             else {
                 const user = await Users.findOne({
                     email: args.email.toLowerCase()
@@ -279,17 +281,17 @@ export const resolvers = {
             let user = await Users.findOne({
                 $and: [{ _id: ObjectId(args.userid) }, { code: args.code }]
             })
-            if(!user) throw new Error('Verify details not found. You can try and reset password again.')
+            if(!user) return triggererror('Verify details not found. You can try and reset password again.')
 
             if(user.lastreset){
                 let validdate = new Date() //valid to reset for 24 hours.
                 validdate.setDate(user.lastreset.getDate() + 1)
                 if(validdate < new Date()){
-                    throw new Error("Your link has expired. Please try and reset again.")
+                    return triggererror("Your link has expired. Please try and reset again.")
                 }
             }else if (user.state !== 'new') {
                 sessiontrack(req, args, 'app', 'verify', 'already registered')
-                throw new Error(
+                return triggererror(
                     "Your account didn't verify. If you've signed up before, try logging in.",
                 )
             }
@@ -320,18 +322,18 @@ export const resolvers = {
             const Users = db.collection('users')
 
             //don't allow someone to try and reset without a code.
-            if(!args.code) throw new Error('Reset details not found. Please try and reset your password again.')
+            if(!args.code) return triggererror('Reset details not found. Please try and reset your password again.')
 
             let user = await Users.findOne({
                 $and: [{ _id: ObjectId(args.userid) }, { code: args.code }]
             })
-            if(!user) throw new Error('Reset details not found. Please try and reset your password again.')
+            if(!user) return triggererror('Reset details not found. Please try and reset your password again.')
 
             if(user.lastreset){
                 let validdate = new Date() //valid to reset for 24 hours.
                 validdate.setDate(user.lastreset.getDate() + 1)
                 if(validdate < new Date()){
-                    throw new Error('Reset details not found. Please try and reset your password again.')
+                    return triggererror('Reset details not found. Please try and reset your password again.')
                 }
             }
 
@@ -365,7 +367,7 @@ export const resolvers = {
             if (user) {
                 if (!user.password){
                     sessiontrack(req, args, 'app', 'emaillogin', 'failed - not verified')
-                    throw new Error('Account has not been verified.')}
+                    return triggererror('Account has not been verified.')}
 
                 if (await bcrypt.compareSync(args.pwd, user.password)) {
                     if((user.incorrecttries < 6 || user.incorrecttries === undefined) && user.state == 'verified'){
@@ -381,7 +383,7 @@ export const resolvers = {
                                 }
                             },
                         )
-                        throw new Error('Login Failed.')
+                        return triggererror('Login Failed.')
                     }
                 } else {
                     await Users.updateOne(
@@ -397,12 +399,13 @@ export const resolvers = {
                     )
 
                     sessiontrack(req, args, 'app', 'emaillogin', 'failed - wrong password')
-                    throw new Error('Incorrect password.')
+                    return triggererror('Incorrect password.')
                 }
             }
 
             sessiontrack(req, args, 'app', 'emaillogin', 'failed - not registered')
-            throw new Error('Email not registered')
+            //return triggererror('Email not registered')
+            return triggererror('Email not registered')
         },
 
         setSignUpContext: async(_, { account }, { req }) => {
@@ -431,7 +434,7 @@ export const resolvers = {
                         'signup',
                         'failed, blocked ip',
                     )
-                    throw new Error(
+                    return triggererror(
                         'An error has occured', //don't be descriptive with error in case malicious
                     )
                 }
@@ -454,7 +457,7 @@ export const resolvers = {
                     block: true,
                     reason: 'attempted to put link in firstname'
                 })
-                throw new Error(
+                return triggererror(
                     'An error occured', //don't be descriptive with error in case malicious
                 )
             }
@@ -492,7 +495,7 @@ export const resolvers = {
                     'signup',
                     'failed, firstname length too long',
                 )
-                throw new Error(
+                return triggererror(
                     'An error occured', //don't be descriptive with error in case malicious
                 )
             }
@@ -511,7 +514,7 @@ export const resolvers = {
                     'signup',
                     'failed, profile already exist and is verifed',
                 )
-                throw new Error(
+                return triggererror(
                     'If you already have a SliceGoal profile with this email you can log in.',
                 )
             }
@@ -563,7 +566,7 @@ export const resolvers = {
                         'signup',
                         'failed, blocked ip',
                     )
-                    throw new Error(
+                    return triggererror(
                         'An error has occured', //don't be descriptive with error in case malicious
                     )
                 }
@@ -630,20 +633,20 @@ export const resolvers = {
                 }
             } catch (message) {
                 sessiontrack(req, args, 'app', 'login-failed', message,'google')
-                throw new Error('Error authenticating with google.')
+                return triggererror('Error authenticating with google.')
             }
 
             if(!args.email) {
                 sessiontrack(req, args, 'app', 'login-failed', 'error: no email','google')
-                throw new Error('Error authenticating with google. Email not found.')
+                return triggererror('Error authenticating with google. Email not found.')
             }
             if(!args.token) {
                 sessiontrack(req, args, 'app', 'login-failed', 'error: no token','google')
-                throw new Error('Error authenticating with google. Token not found.')
+                return triggererror('Error authenticating with google. Token not found.')
             }
             if(!args.googleid) {
                 sessiontrack(req, args, 'app', 'login-failed', 'error: no googleid','google')
-                throw new Error('Error authenticating with google. Googleid not found.')
+                return triggererror('Error authenticating with google. Googleid not found.')
             }
 
             req.session.googleToken = args.token
@@ -697,7 +700,7 @@ export const resolvers = {
                 }
             }
             sessiontrack(req, args, 'app', 'login-failed', 'failed google login','google')
-            throw new Error('Error authenticating with google')
+            return triggererror('Error authenticating with google')
 
             // https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
             // https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%22ya29.GltCByku5ux1wZwDEZziUSrMh_3BVkjqHcpafZF_hC621Z4WivwtzTOysquVDgq73gHoueqReNMgnkoTjUKkdMXbHku_XO1onwyZ_rnGj-yW71foQfBo2NkNlDhx%22
@@ -742,12 +745,12 @@ export const resolvers = {
 
             let user = await Users.findOne({ _id: ObjectId(args.userid) })
             if (user.state !== 'verified')
-                throw new Error(
+                return triggererror(
                     'Password cannot be updated on unverified account',
                 )
 
             const check = bcrypt.compareSync(args.oldpassword, user.password)
-            if (!check) throw new Error('Incorrect current password')
+            if (!check) return triggererror('Incorrect current password')
 
             user = await Users.findOneAndUpdate(
                 { _id: ObjectId(args.userid) },
@@ -884,7 +887,7 @@ async function signup(newuser, __, req) {
         newUserNotificationEmail(newuser)
         return newuser
     } else {
-        throw new Error(
+        return triggererror(
             'Sign up failed for some reason. Sorry. Please try again.',
         )
     }
@@ -917,6 +920,6 @@ function checkPasswordFormat(password) {
     if (!numeric_char.test(password))
         return_message += 'Password must contain at least ' + 'one number'
 
-    if (return_message.length > 0) throw new Error(return_message)
+    if (return_message.length > 0) return triggererror(return_message)
     return return_message
 }

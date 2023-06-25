@@ -45,7 +45,7 @@ export async function getUploadLinkFromAWS(file){
         return signedUrl
     } catch (err) {
         console.log("Error creating presigned URL for upload.", err);
-        throw new Error("Error creating presigned URL for upload.")
+        return triggererror("Error creating presigned URL for upload.")
     }
 }
 
@@ -58,7 +58,7 @@ export async function getReadLinkfromAWS(file){
         return signedGetUrl
     } catch (err) {
         console.log("Error creating presigned URL for read.", err);
-        throw new Error("Error creating presigned URL for read.")
+        return triggererror("Error creating presigned URL for read.")
     }
 }
 

@@ -1,4 +1,5 @@
-import { ObjectId } from 'mongodb'
+import { ObjectId } from 'mongodb' 
+import { triggererror } from './graphqlserver';
 
 import DbConnection from './database'
 import { getprofileid } from './users'

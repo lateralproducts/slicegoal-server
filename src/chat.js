@@ -1,6 +1,7 @@
 import DbConnection from './database'
 import { getprofileid, getuserid, getwheelid } from './users'
-import { ObjectId } from 'mongodb'
+import { ObjectId } from 'mongodb' 
+import { triggererror } from './graphqlserver';
 
 export const schema = `
     type Prompt {
@@ -61,7 +62,7 @@ export const typeDefs = `
 export const resolvers = {
     Query: {
         chatprompts: async(_, {search}, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Prompts = db.collection('chatprompts')
             const regex = /\b(\w+)\b$/;
@@ -73,7 +74,7 @@ export const resolvers = {
             } else return null
         },
         promptsuggest: async(_, {search}, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Prompts = db.collection('chatprompts')
             const prompts = await Prompts.find({message: new RegExp('.*' + search.trim() + '.*')})
@@ -81,7 +82,7 @@ export const resolvers = {
         },
         getchatid: async(_, {taskid}, { req }) => {
             //get chat id.
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const profileid = getprofileid(req.session)
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
@@ -105,7 +106,7 @@ export const resolvers = {
         },
         getchat: async(_, {chatid}, { req }) => {
             //get chat id.
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const profileid = getprofileid(req.session)
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
@@ -123,10 +124,10 @@ export const resolvers = {
                         }
                     return chat
                 }
-            } else throw new Error('Chat not found.')
+            } else return triggererror('Chat not found.')
         },
         getchats: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const profileid = getprofileid(req.session)
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
@@ -136,7 +137,7 @@ export const resolvers = {
             return chats
         },
         taskchatunseen: async(_, args, { req }) => { //check if task chat has been unseen by user.
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const profileid = getprofileid(req.session)
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
@@ -146,7 +147,7 @@ export const resolvers = {
             else return false
         },
         anychatunseen: async(_, args, { req }) => { //check if task chat has been unseen by user.
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
             const profileid = getprofileid(req.session)
@@ -190,7 +191,7 @@ export const resolvers = {
     },
     Mutation: {
         sendRating: async(root, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const ChatContext = db.collection('chatcontext')
             /* const userid = getuserid(req.session)
@@ -236,7 +237,7 @@ export const resolvers = {
             return true
         },
         sendChatMessage: async(root, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             if (args.message){
                 const userid = getuserid(req.session)
                 const profileid = getprofileid(req.session)
@@ -250,7 +251,7 @@ export const resolvers = {
             return true
         },
         sendChatPrompt: async(root, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const ChatContext = db.collection('chatcontext')
             const Prompts = db.collection('chatprompts')

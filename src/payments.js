@@ -1,4 +1,5 @@
-import { ObjectId } from 'mongodb'
+import { ObjectId } from 'mongodb' 
+import { triggererror } from './graphqlserver';
 import { getuserid, getipaddress } from './users'
 import DbConnection from './database'
 import rapid from 'eway-rapid'

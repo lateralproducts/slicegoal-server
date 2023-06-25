@@ -1,8 +1,9 @@
-import { ObjectId } from 'mongodb'
+import { ObjectId } from 'mongodb' 
 import { getprofileid, getuserid } from './users'
 import DbConnection from './database'
 import { getuiversion } from '../util/functions'
 import { checkTask, createRepeatTask } from './tasks'
+import { triggererror } from './graphqlserver';
 let pjson = require('../package.json')
 
 export const typeDefs = `
@@ -45,7 +46,7 @@ export const schema = `
 export const resolvers = {
     Query: {
         goalpomodoros: async(_, { goalId }, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
             return await Pomodoros.find(
@@ -57,7 +58,7 @@ export const resolvers = {
             ).toArray()
         },
         taskpomodoros: async(_, { taskId }, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const TaskLinks = db.collection('tasklinks')
 
@@ -74,7 +75,7 @@ export const resolvers = {
             ).toArray()
         },
         daypomodoros: async(_, {date}, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
 
@@ -93,7 +94,7 @@ export const resolvers = {
             return await Pomodoros.find(query).sort({date: -1}).toArray()
         },
         readPomoData: async(_, { area }, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
             return new Promise(function(resolve) {
@@ -144,7 +145,7 @@ export const resolvers = {
             })
         },
         readGoalPomoData: async(_, { goal }, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
             return new Promise(function(resolve) {
@@ -183,10 +184,10 @@ export const resolvers = {
     },
     Mutation: {
         savePomodoro: async(root, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             if(args.checked && args.taskid){ //Only mark as done if a taskid is sent. Not marking Goals as done.
                 const checkresult = await checkTask(args, req)
-                if (checkresult === 0) throw new Error('Not all sub tasks marked as complete.') 
+                if (checkresult === 0) return triggererror('Not all sub tasks marked as complete.') 
             }
             activityrecord({goalid: args.goal, taskid: args.taskid, checked: args.checked, minutes: args.minutes, req: req, notes: args.notes})
             if (args.repeat) createRepeatTask(args.taskid, req)

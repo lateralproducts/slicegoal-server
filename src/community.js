@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
-import { ObjectId } from 'mongodb'
+import { ObjectId } from 'mongodb' 
+import { triggererror } from './graphqlserver';
 
 import DbConnection from './database'
 const pjson = require('../package.json')

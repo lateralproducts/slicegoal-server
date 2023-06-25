@@ -1,5 +1,6 @@
 import DbConnection from './database'
-import { ObjectId } from 'mongodb'
+import { ObjectId } from 'mongodb' 
+import { triggererror } from './graphqlserver';
 
 export const typeDefs = `
   extend type Query {

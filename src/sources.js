@@ -1,4 +1,5 @@
-import { ObjectId } from 'mongodb'
+import { ObjectId } from 'mongodb' 
+import { triggererror } from './graphqlserver';
 
 import DbConnection from './database'
 import { getprofileid, getuserid } from './users'
@@ -70,13 +71,13 @@ export const resolvers = {
     Query: {
         // all sources on a profile, ordered by last tagged
         sources: async function(_, __, { req }) {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             return await Sources.find({profileid: getprofileid(req.session)}).sort({accessedit: -1}).toArray()
         },
         searchSources: async function(_, args, { req }) {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
 
@@ -93,7 +94,7 @@ export const resolvers = {
         },
         // all sources on an insight
         insightSources: async function(_, { insightid }, { req }) {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const SourceTags = db.collection('sourcetags')
 
@@ -106,7 +107,7 @@ export const resolvers = {
         },
         // all sources on an task
         taskSources: async(_, {taskid}, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const Sources = db.collection('sources')
@@ -122,7 +123,7 @@ export const resolvers = {
         },
         // all sources on an template
         templateSources: async(_, {templateid}, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
             const Sources = db.collection('sources')
@@ -138,7 +139,7 @@ export const resolvers = {
         },
         // all insights associated with given source
         sourceInsights: async function(_, { sourceid }, { req }) {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             const SourceTags = db.collection('sourcetags')
@@ -170,7 +171,7 @@ export const resolvers = {
     },
     Mutation: {
         createSource: async function(_, args, { req }) {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
 
@@ -193,7 +194,7 @@ export const resolvers = {
             })
         },
         editSource: async function(_, args, { req }) {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
 
@@ -204,7 +205,7 @@ export const resolvers = {
 
         },
         deleteSource: async function(_, { sourceid }, { req }) {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             const SourceTags = db.collection('sourcetags')
@@ -216,7 +217,7 @@ export const resolvers = {
                 })).deleteCount === 1
         },
         shareSource: async(_, args, { req }) => {
-            if (!req.session.user) throw new Error('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             const Users = db.collection('users')
