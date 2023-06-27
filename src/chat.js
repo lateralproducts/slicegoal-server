@@ -44,7 +44,6 @@ export const schema = `
 export const typeDefs = `
     extend type Query {
         chatprompts(search: String): [Prompt]
-        promptsuggest(search: String!): [Prompt]
         getchat(chatid: String): Chat
         getchatid(taskid: String): String
         taskchatunseen(taskid: String!): Boolean
@@ -62,24 +61,25 @@ export const typeDefs = `
 export const resolvers = {
     Query: {
         chatprompts: async(_, {search}, { req }) => {
+            //autocomplete for chat coaching.
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Prompts = db.collection('chatprompts')
-            const regex = /\b(\w+)\b$/;
+            const regex = /\b[\S]+\b$/;
             const match = search.trim().match(regex)
-            const lastword = match ? match[1] : null;
+            const lastword = match ? match[0] : null;
             if (lastword && lastword.length > 2){
-                const prompts = await Prompts.find({message: new RegExp('.*' + lastword + '.*')})
+                const prompts = await Prompts.find({message: new RegExp('.*' + lastword + '.*', 'i')})
                 return prompts.toArray()
             } else return null
         },
-        promptsuggest: async(_, {search}, { req }) => {
+        /* promptsuggest: async(_, {search}, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Prompts = db.collection('chatprompts')
             const prompts = await Prompts.find({message: new RegExp('.*' + search.trim() + '.*')})
             return prompts.toArray()
-        },
+        }, */
         getchatid: async(_, {taskid}, { req }) => {
             //get chat id.
             if (!req.session.user) return triggererror('Invalid Session')
