@@ -9,15 +9,19 @@
             </td>
         </tr>
         <tr>
-            <div style="font-size: 0.8em;">{{ sharerName }} ({{ sharerEmail }}) shared this insight with you.</div>
+            <td align="center">
+                <div style="font-size: 0.8em;">{{ sharerName }} ({{ sharerEmail }}) shared this insight with you.</div>
+            </td>
         </tr>
         <tr>
             {{#shareNote}}
-            <div style="margin-top: 10px; font-size: 0.8em; display:flex; white-space: pre-wrap;">"{{ shareNote }}"</div>
+            <td align="center">
+                <div style="margin-top: 10px; font-size: 0.8em; display:flex; white-space: pre-wrap;">"{{ shareNote }}"</div>
+            </td>
             {{/shareNote}}
         </tr>
         <tr>
-            <td>
+            <td> 
                 <div style="border: dashed 1px rgb(148, 148, 151); border-radius: 3px; padding: 5px;">
                     {{#insightPrompt}}
                     <div style="font-size: 1em; font-style: italic; white-space: pre-wrap;">{{ insightPrompt }}</div>
