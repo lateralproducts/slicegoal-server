@@ -259,45 +259,51 @@ export const resolvers = {
             const profileid = getprofileid(req.session)
             const userid = getuserid(req.session)
             
-            const promptmessage = {promptid: args.promptid, message: args.message, userid: userid, datetime: new Date()}
-            
-            Prompts.updateOne( //update data on prompt usage.
-                { _id: ObjectId(args.promptid) },
-                { $inc: { selected: 1 } }
-            )
-            //record sent prompt to the chat.
-            await sendTaskChatMessage(profileid, args.chatid, promptmessage, userid, getwheelid(req.session))
+            try {
 
-            //find all the responses linked to the prompt.
-            const contexts = await ChatContext.find({promptid: args.promptid}).toArray()
-            if (contexts) {
-                const responses = await Response.find( //find and update multiple responses
-                    {_id: {
-                        $in: contexts.map(function(context) {
-                            return ObjectId(context.responseid)
-                        })}
-                    }
-                ).sort({ match: -1 }).toArray()
-                if (responses) {
-                    //update the increment.
-                    //{ $inc: { used: 1 } } //increment used flag
+                const promptmessage = {promptid: args.promptid, message: args.message, userid: userid, datetime: new Date()}
+                
+                Prompts.updateOne( //update data on prompt usage.
+                    { _id: ObjectId(args.promptid) },
+                    { $inc: { selected: 1 } }
+                )
+                //record sent prompt to the chat.
+                await sendTaskChatMessage(profileid, args.chatid, promptmessage, userid, getwheelid(req.session))
+                //find all the responses linked to the prompt.
+                const contexts = await ChatContext.find({promptid: args.promptid}).toArray()
 
-                    //create messages for the chat.
-                    const responsemessages = responses.map(response => {
-                        return {
-                            responseid: response._id.toString(), 
-                            contextid: contexts.find(context => context.responseid === response._id.toString())._id.toString(), //find the context with the responseid.
-                            message: response.message, 
-                            datetime: new Date()
+                if (contexts) {
+                    const responses = await Response.find( //find and update multiple responses
+                        {_id: {
+                            $in: contexts.map(function(context) {
+                                if (context.responseid) return ObjectId(context.responseid)
+                            })}
                         }
-                    })
-                    responsemessages.map(responsemessage => 
-                        //userid is chatbot.
-                        sendTaskChatMessage(profileid, args.chatid, responsemessage, 'chatbot', getwheelid(req.session))
-                    )
+                    ).sort({ match: -1 }).toArray()
+                    if (responses) {
+                        //update the increment.
+                        //{ $inc: { used: 1 } } //increment used flag
+
+                        //create messages for the chat.
+                        const responsemessages = responses.map(response => {
+                            return {
+                                responseid: response._id.toString(), 
+                                contextid: contexts.find(context => context.responseid === response._id.toString())._id.toString(), //find the context with the responseid.
+                                message: response.message, 
+                                datetime: new Date()
+                            }
+                        })
+                        responsemessages.map(responsemessage => 
+                            //userid is chatbot.
+                            sendTaskChatMessage(profileid, args.chatid, responsemessage, 'chatbot', getwheelid(req.session))
+                        )
+                    }
                 }
+                return true
+            } catch(error) {
+                //could log this if necessary.
+                return true //just return true.
             }
-            return true
         }
     }
 }

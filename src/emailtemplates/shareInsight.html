@@ -4,6 +4,11 @@
 <body>
     <table style="border-collapse: separate; border-spacing: 10px;">
         <tr>
+            <td align="center">
+                <img width="100" src="{{ logopath }}?ix={{ interactionid }}" />
+            </td>
+        </tr>
+        <tr>
             <div style="font-size: 0.8em;">{{ sharerName }} ({{ sharerEmail }}) shared this insight with you.</div>
         </tr>
         <tr>
@@ -27,12 +32,7 @@
                     href="{{ acceptLink }}" class="button">Save Insight</a>
             </td>
         </tr>
-        <tr style="height:10px">
-        </tr>
-        <tr>
-            <img width="100" src="{{ logopath }}?ix={{ interactionid }}" />
-            <img src='{{pixelpath}}?ix={{interactionid}}'/>
-        </tr>
+        <img src='{{pixelpath}}?ix={{interactionid}}'/>
     </table>
 </body>
 </html>
