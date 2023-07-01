@@ -16,11 +16,11 @@ import RedisStore from "connect-redis"
 import {createClient} from "redis"
 
 const redis_db = `${process.env.REDIS_DB}`
-
+console.log(redis_db)
 // Initialize client.
 let redisClient = createClient()
 redisClient.connect({
-    url: redis_db
+    url: 'app-session-store-0001-001.app-session-store.rgjl3g.apse2.cache.amazonaws.com:6379' //redis_db
     //not using authentication as AWS manages authentication between devices with VPC.
 }).catch(console.error)
 
