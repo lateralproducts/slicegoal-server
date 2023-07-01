@@ -15,10 +15,12 @@ import { createServer, GraphQLYogaError } from '@graphql-yoga/node'
 import RedisStore from "connect-redis"
 import {createClient} from "redis"
 
+const redis_db = `${process.env.REDIS_DB}`
+
 // Initialize client.
 let redisClient = createClient()
 redisClient.connect({
-    host: `${process.env.REDIS_DB}`
+    host: redis_db
     //not using authentication as AWS manages authentication between devices with VPC.
 }).catch(console.error)
 
