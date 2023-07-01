@@ -20,7 +20,7 @@ const redis_db = `${process.env.REDIS_DB}`
 // Initialize client.
 let redisClient = createClient()
 redisClient.connect({
-    host: redis_db
+    host: 'app-session-store-0001-001.app-session-store.rgjl3g.apse2.cache.amazonaws.com'
     //not using authentication as AWS manages authentication between devices with VPC.
 }).catch(console.error)
 
