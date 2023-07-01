@@ -14,7 +14,6 @@ import { sessiontrack } from './website'
 
 let pjson = require('../package.json')
 import DbConnection from './database'
-import { getoffers } from './payments';
 
 //import { verifier } from "google-id-token-verifier";
 const { OAuth2Client } = require('google-auth-library')
@@ -88,7 +87,9 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
+            req.session.ipaddress = getipaddress(req) //add ip address to session.
             if (!req.session.url) req.session.url = args.url //set the URL string to send back once logged in to load state. rerank. mostly for google auth.
+        
             if (req.session.user) {
                 sessiontrack(req, args, 'app', 'arrived', 'session refresh')
                 const user = await Users.findOne({
@@ -800,7 +801,8 @@ async function login(user, args, req) {
     const Profiles = db.collection('profiles')
     
     user.serverversion = pjson.version
-    req.session.user = user
+    req.session.user = user //add user to the session.
+    req.session.ipaddress = getipaddress(req) //add ip address to session.
 
     let view
     let query = new Object()

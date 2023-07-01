@@ -12,6 +12,22 @@ import express from 'express'
 import session from 'express-session'
 import { createServer, GraphQLYogaError } from '@graphql-yoga/node'
 
+import RedisStore from "connect-redis"
+import {createClient} from "redis"
+
+// Initialize client.
+let redisClient = createClient()
+redisClient.connect({
+    host: `${process.env.REDIS_DB}`
+    //not using authentication as AWS manages authentication between devices with VPC.
+}).catch(console.error)
+
+// Initialize store.
+let redisStore = new RedisStore({
+  client: redisClient,
+  prefix: "appsession:",
+})
+
 import ms from 'ms'
 import { Queries } from './schema/queries'
 import { Mutations } from './schema/mutations'
@@ -182,7 +198,8 @@ export const graphql = async() => {
         app.use(
             session({
                 name: 'qid',
-                secret: 'whale-schradernator', //random secret
+                secret: 'xxtA#5qM&fJ7A@#n', //random secret
+                store: redisStore,
                 resave: false,
                 saveUninitialized: true,
                 rolling: true,
