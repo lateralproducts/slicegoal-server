@@ -18,10 +18,10 @@ import {createClient} from "redis"
 const redis_db = `${process.env.REDIS_DB}`
 console.log(redis_db)
 console.log('app-session-store-0001-001.app-session-store.rgjl3g.apse2.cache.amazonaws.com')
+
 // Initialize client.
 let redisClient = createClient({
-    host: 'app-session-store-0001-001.app-session-store.rgjl3g.apse2.cache.amazonaws.com', //redis_db
-    port: '6379'
+    url: 'redis://app-session-store-0001-001.app-session-store.rgjl3g.apse2.cache.amazonaws.com:6379'
     //not using authentication as AWS manages authentication between devices with VPC.
 })
 redisClient.connect().catch(console.error)
