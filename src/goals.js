@@ -92,7 +92,7 @@ export const resolvers = {
             order = { orderrank: 1 }
             let query = new Object()
             query.profileid = getprofileid(req.session) //show goals from profileid.
-            query.complete = { $eq: null } //only show goals that aren't complete.
+            query.complete = { $ne: true } //only show goals that aren't complete.
 
             if(args.area) query.area = args.area
 
@@ -112,6 +112,8 @@ export const resolvers = {
                 query._id = {$in: linklist.map(function(link) {return ObjectId(link.goal)})}
                 //need to eventually fix the sort on linked goals. Think this will task a refactor to figure out the way to do it.
             }
+
+            if(!args.goal && !args.search && !args.area) query.linkreferenced = { $ne: true }
 
             return await Goals.find(query).sort(order).toArray()
         },
@@ -449,6 +451,7 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
+            const Goals = db.collection('goals')
 
             if(args.rootgoal !== args.goal){
                 GoalLinks.insertOne({
@@ -457,6 +460,10 @@ export const resolvers = {
                     profileid: getprofileid(req.session),
                     created: new Date()
                 })
+                Goals.update(
+                    { _id: ObjectId(args.goal) },
+                    { $set: { linkreferenced: true }}
+                )
                 return true
             }else{
                 return triggererror('Can\'t link the same goal')
@@ -466,12 +473,18 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
+            const Goals = db.collection('goals')
+            
             const res = await GoalLinks.deleteMany(
                 {
                     rootgoal: rootgoal,
                     goal: goal,
                     profileid: getprofileid(req.session)
                 }
+            )
+            Goals.update(
+                { _id: ObjectId(goal) },
+                { $unset: { linkreferenced: '' }}
             )
             return res
         },

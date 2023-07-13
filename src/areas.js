@@ -25,7 +25,7 @@ export const typeDefs = `
         arealinks(areaid: String): [AreaLink]
         ranktimes(areaId: String): [RankTime]
         lastranktime(areaId: String): RankTime
-        viewsOnOwnWheel(wheelid: String!): [View]
+        viewsOnWheel(wheelid: String!): [View]
     }
     
     extend type Mutation {
@@ -314,7 +314,7 @@ export const resolvers = {
                 { sort: { date: -1 } },
             )
         }, */
-        viewsOnOwnWheel: async(_, { wheelid }, { req }) => {
+        viewsOnWheel: async(_, { wheelid }, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Views = db.collection('views')
