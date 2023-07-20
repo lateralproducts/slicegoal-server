@@ -9,6 +9,7 @@ import {
 } from './emails'
 import { validateemail, botips } from '../util/functions';
 import { createreport } from './reporting';
+import { triggererror } from './graphqlserver';
 
 export const typeDefs = `   
     extend type Mutation {
@@ -16,7 +17,7 @@ export const typeDefs = `
         sendofferrequest(name: String, email: String, offer: String!): String
         sendunsubscriberequest(email: String, reason: String): String
         senddailyreport: Boolean
-        sendlateralproductsemail(name:String, email: String, interest: String, message: String): Boolean
+        sendlateralproductsemail(name:String, email: String, phone: String, interest: String, message: String): Boolean
     }
 `
 
@@ -71,20 +72,26 @@ export const resolvers = {
             createreport([`${process.env.NOTIFICATION_EMAIL}`], start, end)
         },
         sendlateralproductsemail: async(_, args, { req }) => {
-            const db = await DbConnection.Get()
-            const LateralProducts = db.collection('lateralproducts')
-            args.date = new Date()
-            await LateralProducts.insertOne(args)
 
-            if(validateemail(args.email)){ //check that the email is valid
-                //send the person a cc.
-                emailLateralProducts(args)
+            if(args.email){
+                if (validateemail(args.email)){ //check that the email is valid
+                    emailLateralProducts(args)
+                } else return triggererror('That email format doesn\'t look right. Can you check it?')
             } else {
-                return triggererror('That email format doesn\'t look right. Can you check it?')
+                if(args.phone) emailLateralProducts(args)
+                else return triggererror('Please add an email or phone number.')
             }
-            //save request in DB
-            //send email to daniel@lateralproducts.com
-            //cc the sender for their records, and so I can reply to it.
+
+            try {
+                const db = await DbConnection.Get()
+                const LateralProducts = db.collection('lateralproducts')
+                args.date = new Date()
+                await LateralProducts.insertOne(args)
+                //save request in DB
+            } catch (error) {
+                console.log(error)
+            }
+
             return true
         },
         sendunsubscriberequest: async(_, args, { req }) => {

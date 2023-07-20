@@ -130,7 +130,12 @@ async function sendEmail(to, subject, email, attachments, retryid) {
             sendSESEmail(mailOptions, resolve)
         }
     })
-    Emails.insertOne(response) //record DB record of email send response.
+    try {
+        Emails.insertOne(response)
+    } catch (error) { 
+        console.log('alert: email DB save not working.')
+        console.log(error)
+    } //record DB record of email send response.
     return response
 }
 
@@ -268,12 +273,13 @@ export async function emailRerankNudge(user) {
     return await sendEmail(to, subject, email)
 }
 
-export async function emailLateralProducts({name, email, interest, message}) {
+export async function emailLateralProducts({name, email, phone, interest, message}) {
     let to = `${process.env.NOTIFICATION_EMAIL}` //send to lateral products.
     let subject = "New Lateral Products Website Message"
     let lpemail = Mustache.render(lateralproducts, {
         name: name,
         email: email,
+        phone: phone,
         interest: interest,
         message: message
     })
