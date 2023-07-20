@@ -9,7 +9,7 @@
         "developtest": "NODE_ENV=test nodemon --inspect --exec babel-node src/index.js",
         "start": "NODE_ENV=development nodemon --inspect --exec babel-node src/index.js",
         "build": "babel -d dist/ src/ .env.* && cp -R src/emailtemplates dist/",
-        "test": "NODE_ENV=test npx babel-node src/index.js",
+        "test": "NODE_ENV=test jest --detectOpenHandles",
         "release-patch": "yarn version --patch --message",
         "release-minor": "yarn version --minor --message",
         "release-major": "yarn version --major --message",
@@ -29,9 +29,12 @@
     "dependencies": {
         "@aws-sdk/client-s3": "^3.171.0",
         "@aws-sdk/s3-request-presigner": "^3.173.0",
+        "@babel/preset-env": "^7.22.9",
         "aws-sdk": "^2.1023.0",
+        "babel-jest": "^29.6.1",
         "bcryptjs": "^2.4.3",
         "body-parser": "^1.15.2",
+        "chai": "^4.3.7",
         "connect-redis": "^7.1.0",
         "cors": "^2.8.1",
         "dotenv-flow": "^3.2.0",
@@ -45,7 +48,9 @@
         "graphql-server-express": "^0.4.3",
         "graphql-tools": "^0.8.3",
         "graphql-yoga": "^2.13.13",
+        "jest": "^29.6.1",
         "lodash": "^4.17.21",
+        "mocha": "^10.2.0",
         "mongodb": "^2.2.15",
         "mustache": "^4.2.0",
         "node-fetch": "^2.6.1",
@@ -53,6 +58,7 @@
         "nodemailer": "^6.7.7",
         "nodemon": "^1.18.3",
         "number-is-nan": "^3.0.0",
-        "redis": "^4.6.7"
+        "redis": "^4.6.7",
+        "sinon": "^15.2.0"
     }
 }

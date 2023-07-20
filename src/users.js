@@ -841,7 +841,7 @@ async function login(user, args, req) {
     return user
 }
 
-async function createNewViewProfile(args, userid, req) {
+export async function createNewViewProfile(args, userid, req) {
     const db = await DbConnection.Get()
     const Views = db.collection('views')
     const Profiles = db.collection('profiles')

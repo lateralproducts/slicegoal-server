@@ -70,7 +70,7 @@ import { typeDefs as templateQueryMutation } from './templates'
 import { typeDefs as taskQueryMutation } from './tasks'
 import { typeDefs as sourceQueryMutation } from './sources'
 import { typeDefs as pomodoroQueryMutation } from './pomodoros'
-import { typeDefs as dbUpdateQueryMutation } from '../util/db_updates'
+import { typeDefs as dbUpdateQueryMutation } from '../util/db_migrate'
 import { typeDefs as recapQueryMutation } from './recaps'
 import { typeDefs as fileserverQueryMutation } from './fileserver'
 import { typeDefs as chatQueryMutation } from './chat'
@@ -88,7 +88,7 @@ import { resolvers as taskResolvers } from './tasks'
 import { resolvers as templateResolvers } from './templates'
 import { resolvers as sourceResolvers } from './sources'
 import { resolvers as pomodoroResolvers } from './pomodoros'
-import { resolvers as dbUpdateResolvers } from '../util/db_updates'
+import { resolvers as dbUpdateResolvers } from '../util/db_migrate'
 import { resolvers as recapResolvers } from './recaps'
 import { resolvers as fileserverResolvers } from './fileserver'
 import { resolvers as chatResolvers } from './chat'
@@ -99,7 +99,7 @@ import './schedules'
 
 let pjson = require('../package.json')
 console.log('server version: ' + pjson.version)
-console.log('environment: ' + process.env.npm_lifecycle_event)
+console.log('environment: ' + process.env.NODE_ENV)
 
 // context
 const context = req => ({
