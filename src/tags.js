@@ -38,13 +38,12 @@ export const resolvers = {
                     .toArray()
                 tagsonarea = await InsightTags.find({ area: inputareas[0]._id })
                     .toArray()
-            }
-            else if(args.type === 'goals') {
+            }else if(args.type === 'goals') {
                 alltags = await GoalTags.find({ profileid: getprofileid(req.session) })
                     .toArray()
                 tagsonarea = await GoalTags.find({ area: inputareas[0]._id })
                     .toArray()
-            } 
+            }
 
             let insightspromptset = []
             let insightspromptdue = []

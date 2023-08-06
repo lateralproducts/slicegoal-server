@@ -4,7 +4,7 @@ import { triggererror } from './graphqlserver';
 import DbConnection from './database'
 import { getprofileid } from './users'
 import { activityrecord } from './pomodoros';
-import { date2str } from '../util/functions';
+import { date2str, startOfDay, daylater } from '../util/functions';
 //import { activityrecord } from './pomodoros'
 
 export const schema = `
@@ -22,21 +22,31 @@ export const schema = `
         rescheduled: Int,
         tasks: [Task]
         parenttask: Task
+        tags: [Area]
+    }
+    type TaskTag {
+        _id: String
+        taskid: String
+        areaid: String
+        area: Area
+        task: Task
     }
 `
 
 export const typeDefs = `
     extend type Query {
-        tasks(starttime: String, endtime: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String) : [Task]
+        tasks(starttime: String, endtime: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String, filter: String) : [Task]
         task(taskid: String!): Task
         searchTasks(search: String!): [Task]
-        pastTasks(date: String!): [Task]
+        pastTasks(date: String!, filter: String): [Task]
         taskInsights(taskid: String!): [Insight]
+        taskDayListTags(day: String): [Area]
+        taskMainListTags(date: String!): [Area]
     }
     
     extend type Mutation {
-        newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean) : String        
-        editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean) : Boolean
+        newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, tags: [String]) : String        
+        editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean, tags: [String]) : Boolean
         deleteTask(taskid: String!) : Boolean
 
         listTask(taskid: String!) : Boolean
@@ -72,6 +82,10 @@ export const resolvers = {
 
             const starttime = new Date(args.starttime)
             const endtime = new Date(args.endtime) 
+
+            if(args.filter) {
+                query.tags = args.filter
+            } 
 
             if(!args.complete) {
                 query.$or = [ //only return if complete not equal to true (or doesn't exist)
@@ -151,12 +165,14 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
-            return await Tasks.findOne(
+            const task = await Tasks.findOne(
                 {
                     profile: getprofileid(req.session),
                     _id: ObjectId(args.taskid)
                 }
             )
+            console.log(task)
+            return task
         },
         searchTasks: async(_, {search}, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
@@ -164,19 +180,25 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             return await Tasks.find({profile: getprofileid(req.session), title: new RegExp(search, 'i')}).sort({created: -1}).toArray()
         },
-        pastTasks: async(_, {date}, { req }) => {
+        pastTasks: async(_, {date, filter}, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const starttime = new Date(date)
-            return await Tasks.find({
+            let query = {
                 profile: getprofileid(req.session), 
                 starttime: {$lt: starttime}, 
                 $or: [
                     {complete: null},
                     {complete: false},
                     {complete: {$exists: false}}
-                ]}).sort({starttime: -1}).toArray()
+                ]}
+
+            if(filter) {
+                query.tags = filter
+            } 
+
+            return await Tasks.find(query).sort({starttime: -1}).toArray()
         },
         taskInsights: async(_, {taskid}, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
@@ -192,6 +214,110 @@ export const resolvers = {
                     }
                 }).toArray()
             else return []
+        },
+        taskDayListTags: async(_, {day}, { req }) => {
+            console.log('daylist')
+            //could replace the day task list query with this one.
+            if (!req.session.user) return triggererror('Invalid Session')
+            //return triggererror('Test Error')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            const Areas = db.collection('areas')
+            let query = new Object()
+
+            const daytime = new Date(day)
+            const starttime = startOfDay(daytime)
+            const endtime = daylater(daytime)
+            
+            query.$and = [
+                {'starttime': {$gte: starttime}},
+                {'starttime': {$lt: endtime}}
+            ]
+
+            query.$or = [ //only return if complete not equal to true (or doesn't exist)
+                {complete: null},
+                {complete: false},
+                {complete: {$exists: false}},
+            ]
+
+            //if (filter) query.tags = filter
+            
+            const tasks = await Tasks.find(query).sort({dayorder: 1}).toArray()
+            console.log(tasks) 
+
+            let areas = []
+            if(tasks.length > 1) {
+                tasks.map(task => {
+                    if(task.tags) areas.push(...task.tags)
+                })
+            }
+            
+            //only makes sense to filter if the task list is larger than 1
+
+            if(areas.length > 0){
+                areas = areas.map(area => ObjectId(area))
+                console.log(areas)
+
+                const tags = await Areas.find(
+                    {_id: {$in: areas}}
+                ).toArray()
+
+                console.log(tags)
+                return tags
+            }
+
+            return []
+        },
+        taskMainListTags: async(_, {date}, { req }) => {
+            console.log('mainlist')
+            //could replace the day task list query with this one.
+            if (!req.session.user) return triggererror('Invalid Session')
+            //return triggererror('Test Error')
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            const Areas = db.collection('areas')
+            let query = new Object()
+            const today = new Date(date)
+            
+            query.$and = [
+                {$or: [
+                    {schedule: true},
+                    {starttime: {$lt: today}}
+                ]},
+                {$or:[ //only return if complete not equal to true (or doesn't exist)
+                    {complete: null},
+                    {complete: false},
+                    {complete: {$exists: false}},
+                ]}
+            ]
+
+            query.type = {$ne: 'subtask'}
+
+            
+            //if (filter) query.tags = filter
+
+            console.log(query)
+            
+            const tasks = await Tasks.find(query).toArray()
+            console.log(tasks) 
+
+            let areas = []
+            if(tasks.length > 1) tasks.map(task => {if(task.tags) areas.push(...task.tags)})
+            //only makes sense to filter if the task list is larger than 1
+
+            if(areas.length > 1){
+                areas = areas.map(area => ObjectId(area))
+                console.log(areas)
+
+                const tags = await Areas.find(
+                    {_id: {$in: areas}}
+                ).toArray()
+
+                console.log(tags)
+                return tags
+            }
+
+            return []
         }
     },
     Task: {
@@ -200,23 +326,34 @@ export const resolvers = {
             const Goals = db.collection('goals')
             return await Goals.findOne({ _id: ObjectId(goal) })
         },
-        tasks: async(parent, __, { req }) => {
+        tags: async(task) => {
                 try {
                     const db = await DbConnection.Get()
-                    const Tasks = db.collection('tasks')
-                    const TaskLinks = db.collection('tasklinks')
-                    
-                    const tasklist = await TaskLinks.find({parenttask: parent._id.toString()}).toArray()
-                    
-                    return await Tasks.find({_id: {
-                        $in: tasklist.map(function(link) {
-                            return ObjectId(link.subtask)
-                        })
-                    }}).toArray()
+                    const Areas = db.collection('areas')
+                    if(task.tags) return await Areas.find({_id: {$in: task.tags.map(sourceid => {return ObjectId(sourceid)})}}).toArray()
+                    else return []
                 }
                  catch (error) {
                     return []
                 }
+        },
+        tasks: async(parent, __, { req }) => {
+            try {
+                const db = await DbConnection.Get()
+                const Tasks = db.collection('tasks')
+                const TaskLinks = db.collection('tasklinks')
+                
+                const tasklist = await TaskLinks.find({parenttask: parent._id.toString()}).toArray()
+                
+                return await Tasks.find({_id: {
+                    $in: tasklist.map(function(link) {
+                        return ObjectId(link.subtask)
+                    })
+                }}).toArray()
+            }
+             catch (error) {
+                return []
+            }
         },
         parenttask: async(task, __, { req }) => {
             const db = await DbConnection.Get()
@@ -230,6 +367,18 @@ export const resolvers = {
                 const parenttask = await Tasks.findOne({_id: ObjectId(tasklink.parenttask)})
                 return parenttask
             } else return null
+        }
+    },
+    TaskTag: {
+        area: async parent => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            return await Areas.findOne({ _id: ObjectId(parent.area) })
+        },
+        task: async parent => {
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            return await Tasks.findOne({ _id: ObjectId(parent.taskid) })
         }
     },
     Mutation: {
@@ -279,7 +428,7 @@ export const resolvers = {
             if(args.description !== null) updates.description = args.description
             if(args.goal) {updates.goal = args.goal}
             else {updates.goal = null}
-
+            if(args.tags) {updates.tags = args.tags}
             //would be better to check links before deleting and inserting. Separate into function.
             await TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: args.taskid})
             if (args.parenttask) {
@@ -576,11 +725,11 @@ async function deleteTask(taskid, req){
     return (await Tasks.deleteOne({_id: ObjectId(taskid)})).result.ok === 1
 }
 
-async function createNewTask({title, description, goal, complete, setdate, starttime, endtime, profileid, type}) {
+async function createNewTask({title, description, goal, complete, setdate, starttime, endtime, profileid, type, tags}) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
 
-    var task = new Object({title: title, description: description, goal: goal, complete: complete })
+    var task = new Object({title: title, description: description, goal: goal, complete: complete, tags: tags })
     task.starttime = starttime ? new Date(starttime) : (setdate ? new Date(setdate) : null)
     task.created = new Date()
 

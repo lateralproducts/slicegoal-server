@@ -27,6 +27,8 @@ nodemailer.createTransport({ //test and development email client: mailhog.
 
 const Mustache = require('mustache')
 
+
+//could change these to read files as a function to avoid persisting in memory.
 const newpersonal = fs
     .readFileSync(__dirname + '/emailtemplates/newpersonal.html')
     .toString()

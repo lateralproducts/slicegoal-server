@@ -491,7 +491,7 @@ export const resolvers = {
     }
 }
 
-async function creategoal(newgoal, req) {
+export async function creategoal(newgoal, req) {
     const db = await DbConnection.Get()
     const Goals = db.collection('goals')
     const GoalTags = db.collection('goaltags')

@@ -28,3 +28,21 @@ export const date2str = (x, y) => {
 
 export const botips = [/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./]
 export const ignoreips = /.103.204.240.174./ //my ip
+
+export const startOfDay = datetime => {
+    if (datetime)
+    return new Date(
+            datetime.getFullYear(),
+            datetime.getMonth(),
+            datetime.getDate()
+        )
+    else return null
+}
+
+export const daylater = starttime => {
+    if (starttime)
+    {const daylater = new Date(starttime)
+    daylater.setDate(daylater.getDate() + 1)
+    return daylater}
+    else return null
+}
