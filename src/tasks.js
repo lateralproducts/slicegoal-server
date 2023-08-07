@@ -171,7 +171,6 @@ export const resolvers = {
                     _id: ObjectId(args.taskid)
                 }
             )
-            console.log(task)
             return task
         },
         searchTasks: async(_, {search}, { req }) => {
@@ -216,7 +215,6 @@ export const resolvers = {
             else return []
         },
         taskDayListTags: async(_, {day}, { req }) => {
-            console.log('daylist')
             //could replace the day task list query with this one.
             if (!req.session.user) return triggererror('Invalid Session')
             //return triggererror('Test Error')
@@ -239,11 +237,8 @@ export const resolvers = {
                 {complete: false},
                 {complete: {$exists: false}},
             ]
-
-            //if (filter) query.tags = filter
             
-            const tasks = await Tasks.find(query).sort({dayorder: 1}).toArray()
-            console.log(tasks) 
+            const tasks = await Tasks.find(query).sort({dayorder: 1}).toArray() 
 
             let areas = []
             if(tasks.length > 1) {
@@ -256,20 +251,15 @@ export const resolvers = {
 
             if(areas.length > 0){
                 areas = areas.map(area => ObjectId(area))
-                console.log(areas)
-
                 const tags = await Areas.find(
                     {_id: {$in: areas}}
                 ).toArray()
-
-                console.log(tags)
                 return tags
             }
 
             return []
         },
         taskMainListTags: async(_, {date}, { req }) => {
-            console.log('mainlist')
             //could replace the day task list query with this one.
             if (!req.session.user) return triggererror('Invalid Session')
             //return triggererror('Test Error')
@@ -292,14 +282,7 @@ export const resolvers = {
             ]
 
             query.type = {$ne: 'subtask'}
-
-            
-            //if (filter) query.tags = filter
-
-            console.log(query)
-            
             const tasks = await Tasks.find(query).toArray()
-            console.log(tasks) 
 
             let areas = []
             if(tasks.length > 1) tasks.map(task => {if(task.tags) areas.push(...task.tags)})
@@ -307,13 +290,9 @@ export const resolvers = {
 
             if(areas.length > 1){
                 areas = areas.map(area => ObjectId(area))
-                console.log(areas)
-
                 const tags = await Areas.find(
                     {_id: {$in: areas}}
                 ).toArray()
-
-                console.log(tags)
                 return tags
             }
 

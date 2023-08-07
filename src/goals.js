@@ -92,13 +92,12 @@ export const resolvers = {
             order = { orderrank: 1 }
             let query = new Object()
             query.profileid = getprofileid(req.session) //show goals from profileid.
-            query.complete = { $ne: true } //only show goals that aren't complete.
+            query.complete = { $eq: null } //only show goals that aren't complete.
 
             if(args.area) query.area = args.area
 
             if (args.search || args.date) { //this is the search query on a goal.
                 query.profileid = getprofileid(req.session)
-                query.complete = { $eq: null }
                 if (args.search) query.goal = new RegExp(args.search, 'i')
                 if (args.date)
                     query.$or = [
