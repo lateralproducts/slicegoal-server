@@ -97,7 +97,6 @@ export const resolvers = {
             if(args.area) query.area = args.area
 
             if (args.search || args.date) { //this is the search query on a goal.
-                query.profileid = getprofileid(req.session)
                 if (args.search) query.goal = new RegExp(args.search, 'i')
                 if (args.date)
                     query.$or = [
@@ -163,8 +162,8 @@ export const resolvers = {
             const GoalTags = db.collection('goaltags')
             
             let query = Object()
-            args.area ? (query.areaid = args.area) : ''
-            args.goal ? (query.goalid = args.goal) : ''
+            if(args.area) query.areaid = args.area
+            if(args.goal) query.goalid = args.goal
             query.profileid = getprofileid(req.session)
             query.complete = { $eq: null }
             query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }]
@@ -541,4 +540,12 @@ export async function creategoal(newgoal, req) {
     } catch (error) {
         console.log(error)
     }
+}
+
+export async function testfunction(newgoal, req) {
+    const db = await DbConnection.Get()
+    const Areas = db.collection('areas')
+    let res = await Areas.insert(newgoal)
+    res.wheelid = getwheelid(req.session)
+    return res
 }
