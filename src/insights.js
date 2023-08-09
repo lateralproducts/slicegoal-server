@@ -170,7 +170,7 @@ export const resolvers = {
             )
             .toArray())
             .map(insight => {
-                return ObjectId(insight.insightid)
+                return new ObjectId(insight.insightid)
             })
 
             // insight objects to return/filter
@@ -243,7 +243,7 @@ export const resolvers = {
             const Insights = db.collection('insights')
             const Users = db.collection('users')
             const user = await Users.findOne({
-                _id: ObjectId(getuserid(req.session))
+                _id: new ObjectId(getuserid(req.session))
             })
 
             const totalSharedInsights = await Insights.find({
@@ -286,12 +286,12 @@ export const resolvers = {
         area: async parent => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            return await Areas.findOne({ _id: ObjectId(parent.area) })
+            return await Areas.findOne({ _id: new ObjectId(parent.area) })
         },
         insight: async parent => {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
-            return await Insights.findOne({ _id: ObjectId(parent.insightid) })
+            return await Insights.findOne({ _id: new ObjectId(parent.insightid) })
         },
         spaced: async parent => {
             const db = await DbConnection.Get()
@@ -314,7 +314,7 @@ export const resolvers = {
             const Users = db.collection('users')
 
             const user = await Users.findOne({
-                _id: ObjectId(userid)
+                _id: new ObjectId(userid)
             })
 
             if(!user) return 'someone' //if a user is deleted, this function will fail here.
@@ -329,7 +329,7 @@ export const resolvers = {
             const Users = db.collection('users')
 
             const user = await Users.findOne({
-                _id: ObjectId(getuserid(req.session))
+                _id: new ObjectId(getuserid(req.session))
             })
 
             return await Insights.find({
@@ -454,7 +454,7 @@ export const resolvers = {
             let insightid = args.insightid
             delete args.insightid
             Insights.updateOne(
-                { _id: ObjectId(insightid) },
+                { _id: new ObjectId(insightid) },
                 { $set: args },
             )
 
@@ -523,7 +523,7 @@ export const resolvers = {
                 Areas.updateOne(
                     {
                         wheelid: getwheelid(req.session),
-                        _id: ObjectId(areaid)
+                        _id: new ObjectId(areaid)
                     },
                     { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
                 )
@@ -548,7 +548,7 @@ export const resolvers = {
             const InsightTags = db.collection('insighttags')
             args.profileid = getprofileid(req.session)
             InsightTags.updateOne(
-                { _id: ObjectId(args.tagid) },
+                { _id: new ObjectId(args.tagid) },
                 { $set: { notes: args.notes } },
                 function(err) {
                     if (err) throw err
@@ -563,7 +563,7 @@ export const resolvers = {
             args.profileid = getprofileid(req.session)
             InsightTags.deleteOne(
                 {
-                    _id: ObjectId(args.tagid),
+                    _id: new ObjectId(args.tagid),
                     profileid: args.profileid
                 },
                 function(err) {
@@ -625,9 +625,9 @@ export const resolvers = {
             const SourceTags = db.collection('sourcetags')
 
             //Check ownership
-            const insight = await Insights.findOne({ _id: ObjectId(insightid) })
+            const insight = await Insights.findOne({ _id: new ObjectId(insightid) })
             if (insight) {
-                const profile = await Profiles.findOne({ _id: ObjectId(insight.profileid) })
+                const profile = await Profiles.findOne({ _id: new ObjectId(insight.profileid) })
                 if (profile.user !== getuserid(req.session)) {
                     return triggererror('Unauthorised Insight Delete')
                 } else {
@@ -644,7 +644,7 @@ export const resolvers = {
                         }
                     )
                     await Insights.deleteOne(
-                        { _id: ObjectId(insightid) },
+                        { _id: new ObjectId(insightid) },
                         function(err) {
                             if (err) throw err
                         },
@@ -662,7 +662,7 @@ export const resolvers = {
             const Users = db.collection('users')
 
             const currentUser = await Users.findOne({
-                _id: ObjectId(getuserid(req.session))
+                _id: new ObjectId(getuserid(req.session))
             })
 
             await createUserConnection( //and creates user targetUser profile if new
@@ -685,7 +685,7 @@ export const resolvers = {
                 //let to = args.targetUser
                 let interactionid = (await newIx(currentUser._id.toString(),targetUser._id.toString(),'share insight email', args.insightid, args.shareNote)).insertedId.toString()
                 return await Insights.findOne({
-                    _id: ObjectId(args.insightid)
+                    _id: new ObjectId(args.insightid)
                 })
                 .then(insight => {
                     //save shared insight to be accessed.
@@ -698,7 +698,7 @@ export const resolvers = {
                         answer: insight.answer
                     })
                     .then(result => {
-                        Insights.findOne({_id: ObjectId(result.insertedId)})
+                        Insights.findOne({_id: new ObjectId(result.insertedId)})
                         .then(result => { 
                             //save interaction to track
                             try {
@@ -744,11 +744,11 @@ export const resolvers = {
             const Users = db.collection('users')
 
             const user = await Users.findOne({
-                _id: ObjectId(getuserid(req.session))
+                _id: new ObjectId(getuserid(req.session))
             })
 
             const insight = await Insights.findOne({
-                _id: ObjectId(args.insightid)
+                _id: new ObjectId(args.insightid)
             })
 
             if(!insight || !user) return triggererror("can\'t remove from the list")
@@ -757,7 +757,7 @@ export const resolvers = {
                 return triggererror('can\'t remove from the list')
             else {
                 const result = await Insights.deleteOne({
-                    _id: ObjectId(args.insightid)
+                    _id: new ObjectId(args.insightid)
                 })
                 if (result.result.ok === 1) return true
                 else return false
@@ -809,7 +809,7 @@ async function createinsight(newinsight, req) {
     if (newinsight.profileid) {
         //get wheelid from profile.
         const profile = await Profiles.findOne({
-            _id: ObjectId(newinsight.profileid)
+            _id: new ObjectId(newinsight.profileid)
         })
         if (profile) newinsight.wheelid = profile.wheel
     } else newinsight.profileid = getprofileid(req.session)
@@ -864,7 +864,7 @@ async function createinsight(newinsight, req) {
                         wheelid: newinsight.wheelid
                             ? newinsight.wheelid
                             : getwheelid(req.session),
-                        _id: ObjectId(areaid)
+                        _id: new ObjectId(areaid)
                     },
                     { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
                 )

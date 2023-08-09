@@ -258,7 +258,7 @@ export const resolvers = {
                     if(txnresponse.ResponseCode === '00' || txnresponse.ResponseCode === '08') {
                         const user_id = getuserid(req.session)
                         Users.updateOne( //update the user profile with payments and active offer information
-                            { _id: ObjectId(user_id) },
+                            { _id: new ObjectId(user_id) },
                             { $set: { 
                                 TokenCustomerId: txnresponse.TokenCustomerID, // Attach TokenCustomerID to user for future payments
                                 hideupgrade:  true, // Hide upgrade on profile
@@ -371,7 +371,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             Users.updateOne(
-                { _id: ObjectId(user_id) },
+                { _id: new ObjectId(user_id) },
                 { $set: { TokenCustomerId: TokenCustomerID } },
             )
             //With using the rapid SDK, we can charge the customer immediately once they put their details in, then save the token.
@@ -394,7 +394,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             Users.updateOne(
-                { _id: ObjectId(user_id) },
+                { _id: new ObjectId(user_id) },
                 { $set: { 
                     hideupgrade: planid === 0 ? false : true, // Show the upgrade button on profile again.
                     activeofferid: planid, //update the active offerid
@@ -407,7 +407,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             Users.updateOne(
-                { _id: ObjectId(user_id) },
+                { _id: new ObjectId(user_id) },
                 { $set: { lastname: lastname } },
             )
             return true
@@ -418,7 +418,7 @@ export const resolvers = {
 export async function getoffers(req){
     const db = await DbConnection.Get()
     const Users = db.collection('users')
-    const user = await Users.findOne({_id: ObjectId(getuserid(req.session))}) //don't use session user instance, as that doesn't work.
+    const user = await Users.findOne({_id: new ObjectId(getuserid(req.session))}) //don't use session user instance, as that doesn't work.
     var returnoffers = new Object()
     const activeofferid = user.activeofferid ? user.activeofferid : 0 //0 is free offer ID.
     returnoffers.activeid = activeofferid 

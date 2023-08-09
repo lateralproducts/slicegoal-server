@@ -57,7 +57,7 @@ async function goalnudge(email) {
         const goals = await Goals.find({
             _id: {
                 $in: links.map(function(link) {
-                    return ObjectId(link.goal)
+                    return new ObjectId(link.goal)
                 })
             },
             $or: [{ snooze: null }, { snooze: { $lt: new Date() } }]
@@ -104,7 +104,7 @@ async function ranknudge() {
     const profiles = await Profiles.find({
         _id: {
             $nin: olduserranks.map(function(userrank) {
-                return userrank._id ? ObjectId(userrank._id) : null
+                return userrank._id ? new ObjectId(userrank._id) : null
             })
         }
     }).toArray()
@@ -112,7 +112,7 @@ async function ranknudge() {
     const sendtousers = await Users.find({
         _id: {
             $in: profiles.map(function(profile) {
-                return profile.user ? ObjectId(profile.user) : null
+                return profile.user ? new ObjectId(profile.user) : null
             })
         }
         //state: "verified" //could add this later on to ensure that these emails are only sent to users who are verified.

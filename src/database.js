@@ -6,7 +6,8 @@ let DbConnection = () => {
         let MONGO_AUTH = process.env.MONGODB_PWD ? `${process.env.MONGODB_USR}:${process.env.MONGODB_PWD}@` : ''
         let MONGO_URL = `mongodb://${MONGO_AUTH}${process.env.MONGODB_URL}`
         console.log('attempting to open server: ' + `${process.env.MONGODB_URL}` + ' with auth')
-        let _db = await MongoClient.connect(MONGO_URL)
+        let client = await MongoClient.connect(MONGO_URL)
+        var _db = client.db(`${process.env.MONGODB_DB}`);
         return _db
     }
 

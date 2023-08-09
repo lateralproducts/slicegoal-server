@@ -37,7 +37,7 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Files = db.collection('files')
-            var file = await Files.findOne({_id: ObjectId(fileid), profileid: getprofileid(req.session)})
+            var file = await Files.findOne({_id: new ObjectId(fileid), profileid: getprofileid(req.session)})
             if (!file) throw Error('File not found.')
             
             var awsfile = new Object()
@@ -63,7 +63,7 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Files = db.collection('files')
-            const file = (await Files.find({_id: ObjectId(fileid), profileid: getprofileid(req.session)}))
+            const file = (await Files.find({_id: new ObjectId(fileid), profileid: getprofileid(req.session)}))
 
             if(file) {
                 var awsfile = new Object()
@@ -98,12 +98,12 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Files = db.collection('files')
-            const file = (await Files.find({_id: ObjectId(fileid), profileid: getprofileid(req.session)}))
+            const file = (await Files.find({_id: new ObjectId(fileid), profileid: getprofileid(req.session)}))
             if (!file) throw Error('File not found.')
 
             const Insights = db.collection('insights')
             Insights.updateOne(
-                { _id: ObjectId(insightid) },
+                { _id: new ObjectId(insightid) },
                 { $set: { file: fileid } },
                 function(err) {
                     if (err) throw err
@@ -114,12 +114,12 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Files = db.collection('files')
-            const file = (await Files.find({_id: ObjectId(fileid), profileid: getprofileid(req.session)}))
+            const file = (await Files.find({_id: new ObjectId(fileid), profileid: getprofileid(req.session)}))
             if (!file) throw Error('File not found.')
 
             const Sources = db.collection('sources')
             Sources.updateOne(
-                { _id: ObjectId(sourceid) },
+                { _id: new ObjectId(sourceid) },
                 { $set: { file: fileid } },
                 function(err) {
                     if (err) throw err

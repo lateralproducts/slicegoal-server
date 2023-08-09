@@ -111,14 +111,14 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
             if (chatid){ //if chatid, check existing chat for the chatid.
-                const chat = await Chats.findOne({_id: ObjectId(chatid), profileid: profileid})
+                const chat = await Chats.findOne({_id: new ObjectId(chatid), profileid: profileid})
                 if (chat !== undefined) {
                     const userid = getuserid(req.session)
                     chat.userid = userid
                     if (chat.unseen)
                         if(chat.unseen.includes(userid)){ //if not already seen, update seen status.
                             Chats.updateOne(
-                                {_id: ObjectId(chatid), profileid: profileid},
+                                {_id: new ObjectId(chatid), profileid: profileid},
                                 {$pull: {unseen: userid}}
                             )
                         }
@@ -169,7 +169,7 @@ export const resolvers = {
         task: async({taskid}, __, { req }) => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            if (taskid) return await Tasks.findOne({_id: ObjectId(taskid)})
+            if (taskid) return await Tasks.findOne({_id: new ObjectId(taskid)})
             else return null
         },
     },
@@ -179,7 +179,7 @@ export const resolvers = {
                 if (userid === getuserid(req.session)) return null
                 const db = await DbConnection.Get()
                 const Users = db.collection('users')
-                const user = await Users.findOne({_id: ObjectId(userid)})
+                const user = await Users.findOne({_id: new ObjectId(userid)})
                 
                 if (user !== null) return user.firstname
                 else return 'unknown'}
@@ -198,7 +198,7 @@ export const resolvers = {
             const profileid = getprofileid(req.session) */
             
             if (args.contextid) { //rate context if there is a context.
-                const context = await ChatContext.findOne({_id: ObjectId(args.contextid)})
+                const context = await ChatContext.findOne({_id: new ObjectId(args.contextid)})
             
                 let newrating = 0
                 if (context.match > -1) {
@@ -207,7 +207,7 @@ export const resolvers = {
                 } else {newrating = args.rating}
 
                 ChatContext.updateOne(
-                { _id: ObjectId(args.contextid) },
+                { _id: new ObjectId(args.contextid) },
                 { 
                     $set: { match: newrating},
                     $push: {
@@ -264,7 +264,7 @@ export const resolvers = {
                 const promptmessage = {promptid: args.promptid, message: args.message, userid: userid, datetime: new Date()}
                 
                 Prompts.updateOne( //update data on prompt usage.
-                    { _id: ObjectId(args.promptid) },
+                    { _id: new ObjectId(args.promptid) },
                     { $inc: { selected: 1 } }
                 )
                 //record sent prompt to the chat.
@@ -276,7 +276,7 @@ export const resolvers = {
                     const responses = await Response.find( //find and update multiple responses
                         {_id: {
                             $in: contexts.map(function(context) {
-                                if (context.responseid) return ObjectId(context.responseid)
+                                if (context.responseid) return new ObjectId(context.responseid)
                             })}
                         }
                     ).sort({ match: -1 }).toArray()
@@ -312,14 +312,14 @@ async function sendTaskChatMessage(profileid, chatid, message, userid, wheelid) 
     const db = await DbConnection.Get()
     const Chats = db.collection('chats')
     const Views = db.collection('views')
-    const chat = await Chats.findOne({ _id: ObjectId(chatid) })
+    const chat = await Chats.findOne({ _id: new ObjectId(chatid) })
 
     const wheelviews = await Views.find({wheel: wheelid}).toArray() //subscribe all people with a view to the wheel to chat updates.
     const subscribelist = wheelviews.map(view => view.user).filter(user => user !== userid) //filter out this user's ID.
 
     if (chat) {
         Chats.updateOne(
-            { _id: ObjectId(chatid), profileid: profileid },
+            { _id: new ObjectId(chatid), profileid: profileid },
             {
                 $set: {
                     lastmessage: message,
@@ -375,7 +375,7 @@ export async function getunreadmessageusers() {
     }, []); */
 
     const Users = db.collection('users')
-    const users = await Users.find({_id: { $in: send.map(function(id) { return ObjectId(id) })}}).toArray()
+    const users = await Users.find({_id: { $in: send.map(function(id) { return new ObjectId(id) })}}).toArray()
 
     return users
 }

@@ -139,7 +139,7 @@ export const resolvers = {
 
             // Get area objects from resultant areaids
             if(areaids) {
-                const areaobjectids = areaids.map(area => {return ObjectId(area)})
+                const areaobjectids = areaids.map(area => {return new ObjectId(area)})
                 
                 return (await Areas.find({_id: {$in: areaobjectids}})
                     .toArray())

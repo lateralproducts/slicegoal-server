@@ -78,7 +78,7 @@ async function addCommunityInteraction(userid, friendid, eventtype, eventid) {
         .then(connectionid => {
 
             return Community.updateOne(
-                {_id: ObjectId(connectionid)},
+                {_id: new ObjectId(connectionid)},
                 {$push: {events: {
                     type: eventtype,
                     id: eventid,

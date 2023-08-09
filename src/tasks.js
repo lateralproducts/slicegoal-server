@@ -168,7 +168,7 @@ export const resolvers = {
             const task = await Tasks.findOne(
                 {
                     profile: getprofileid(req.session),
-                    _id: ObjectId(args.taskid)
+                    _id: new ObjectId(args.taskid)
                 }
             )
             return task
@@ -204,12 +204,12 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const Insights = db.collection('insights')
-            const task = await Tasks.findOne({profile: getprofileid(req.session), _id: ObjectId(taskid)})
+            const task = await Tasks.findOne({profile: getprofileid(req.session), _id: new ObjectId(taskid)})
 
             if (task.insights) 
                 return await Insights.find({
                     _id: {
-                        $in: task.insights.map(insightid => {return ObjectId(insightid)})
+                        $in: task.insights.map(insightid => {return new ObjectId(insightid)})
                     }
                 }).toArray()
             else return []
@@ -250,7 +250,7 @@ export const resolvers = {
             //only makes sense to filter if the task list is larger than 1
 
             if(areas.length > 0){
-                areas = areas.map(area => ObjectId(area))
+                areas = areas.map(area => new ObjectId(area))
                 const tags = await Areas.find(
                     {_id: {$in: areas}}
                 ).toArray()
@@ -289,7 +289,7 @@ export const resolvers = {
             //only makes sense to filter if the task list is larger than 1
 
             if(areas.length > 1){
-                areas = areas.map(area => ObjectId(area))
+                areas = areas.map(area => new ObjectId(area))
                 const tags = await Areas.find(
                     {_id: {$in: areas}}
                 ).toArray()
@@ -303,13 +303,13 @@ export const resolvers = {
         goal: async({ goal }) => {
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
-            return await Goals.findOne({ _id: ObjectId(goal) })
+            return await Goals.findOne({ _id: new ObjectId(goal) })
         },
         tags: async(task) => {
                 try {
                     const db = await DbConnection.Get()
                     const Areas = db.collection('areas')
-                    if(task.tags) return await Areas.find({_id: {$in: task.tags.map(sourceid => {return ObjectId(sourceid)})}}).toArray()
+                    if(task.tags) return await Areas.find({_id: {$in: task.tags.map(sourceid => {return new ObjectId(sourceid)})}}).toArray()
                     else return []
                 }
                  catch (error) {
@@ -326,7 +326,7 @@ export const resolvers = {
                 
                 return await Tasks.find({_id: {
                     $in: tasklist.map(function(link) {
-                        return ObjectId(link.subtask)
+                        return new ObjectId(link.subtask)
                     })
                 }}).toArray()
             }
@@ -343,7 +343,7 @@ export const resolvers = {
             const taskid = task._id.toString()
             const tasklink = await TaskLinks.findOne({subtask: taskid})
             if (tasklink){
-                const parenttask = await Tasks.findOne({_id: ObjectId(tasklink.parenttask)})
+                const parenttask = await Tasks.findOne({_id: new ObjectId(tasklink.parenttask)})
                 return parenttask
             } else return null
         }
@@ -352,12 +352,12 @@ export const resolvers = {
         area: async parent => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            return await Areas.findOne({ _id: ObjectId(parent.area) })
+            return await Areas.findOne({ _id: new ObjectId(parent.area) })
         },
         task: async parent => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            return await Tasks.findOne({ _id: ObjectId(parent.taskid) })
+            return await Tasks.findOne({ _id: new ObjectId(parent.taskid) })
         }
     },
     Mutation: {
@@ -424,7 +424,7 @@ export const resolvers = {
             }
 
             return (await Tasks.updateOne(
-                {_id: ObjectId(args.taskid)},
+                {_id: new ObjectId(args.taskid)},
                 updatetask
             )).result.ok === 1
         },
@@ -437,7 +437,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             return (await Tasks.updateOne(
-                {_id: ObjectId(args.taskid)},
+                {_id: new ObjectId(args.taskid)},
                 {
                     $set: {schedule: true}, 
                     $unset: {starttime: null}
@@ -450,7 +450,7 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
 
             return (await Tasks.updateOne(
-                {_id: ObjectId(args.taskid)},
+                {_id: new ObjectId(args.taskid)},
                 {
                     $unset: { schedule: null },
                     $inc: { rescheduled: 1}
@@ -463,7 +463,7 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             args.tasks.map(function(_id, count) {
                 Tasks.updateOne(
-                    { _id: ObjectId(_id) },
+                    { _id: new ObjectId(_id) },
                     { $set: { dayorder: count } },
                 )
             })
@@ -475,7 +475,7 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             args.tasks.map(function(_id, count) {
                 Tasks.updateOne(
-                    { _id: ObjectId(_id) },
+                    { _id: new ObjectId(_id) },
                     { $set: { goalorder: count } },
                 )
             })
@@ -487,7 +487,7 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             args.tasks.map(function(_id, count) {
                 Tasks.updateOne(
-                    { _id: ObjectId(_id) },
+                    { _id: new ObjectId(_id) },
                     { $set: { listorder: count } },
                 )
             })
@@ -523,7 +523,7 @@ export const resolvers = {
             }
 
             return (await Tasks.updateOne(
-                {_id: ObjectId(args.taskid)},
+                {_id: new ObjectId(args.taskid)},
                 updates
             )).result.ok === 1    
         },
@@ -539,7 +539,7 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
 
             return (await Tasks.updateOne(
-                {_id: ObjectId(args.taskid)},
+                {_id: new ObjectId(args.taskid)},
                 {$unset: {goal:''}}
             )).result.ok === 1
         },
@@ -549,7 +549,7 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
 
             return (await Tasks.updateOne(
-                {_id: ObjectId(taskid)},
+                {_id: new ObjectId(taskid)},
                 {$set: {goal: goalid}}
             )).result.ok === 1
         },
@@ -597,7 +597,7 @@ export async function linkInsightTask(taskid, insightid){
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
     return (await Tasks.updateOne(
-        {_id: ObjectId(taskid)},
+        {_id: new ObjectId(taskid)},
         {$push: {insights: insightid}}
     )).result.ok === 1
 }
@@ -606,7 +606,7 @@ export async function linkSourceTask(taskid, sourceid){
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
     return (await Tasks.updateOne(
-        {_id: ObjectId(taskid)},
+        {_id: new ObjectId(taskid)},
         {$push: {sources: sourceid}}
     )).result.ok === 1
 }
@@ -622,7 +622,7 @@ export async function createRepeatTask(taskid, req){
     tasktorepeat = await Tasks.findOne( 
         {
             profile: getprofileid(req.session),
-            _id: ObjectId(taskid)
+            _id: new ObjectId(taskid)
         }
     )
     delete tasktorepeat._id
@@ -658,7 +658,7 @@ async function copySubTasksFromTask(taskid, newtaskid, req) {
             profile: getprofileid(req.session), 
             _id: {
                 $in: links.map(function(link) {
-                    return ObjectId(link.subtask)
+                    return new ObjectId(link.subtask)
                 })
             }
         }).toArray()
@@ -701,7 +701,7 @@ async function deleteTask(taskid, req){
             {subtask: taskid}
         ]
     }) //delete all links.
-    return (await Tasks.deleteOne({_id: ObjectId(taskid)})).result.ok === 1
+    return (await Tasks.deleteOne({_id: new ObjectId(taskid)})).result.ok === 1
 }
 
 async function createNewTask({title, description, goal, complete, setdate, starttime, endtime, profileid, type, tags}) {
@@ -741,7 +741,7 @@ export async function checkTask(args, req){
         if (tasklist.length > 0){
             const subtasks = await Tasks.find({_id: {
                 $in: tasklist.map(function(link) {
-                    return ObjectId(link.subtask)
+                    return new ObjectId(link.subtask)
                 })
             }}).toArray()
             const incomplete = subtasks.filter(task => task.complete !== true)
@@ -757,7 +757,7 @@ export async function checkTask(args, req){
     updatetask.complete = args.checked
 
     return (await Tasks.updateOne(
-        {_id: ObjectId(args.taskid)},
+        {_id: new ObjectId(args.taskid)},
         {$set: updatetask}
     )).result.ok === 1
 }

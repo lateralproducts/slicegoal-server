@@ -68,7 +68,7 @@ export const resolvers = {
                 profile: getprofileid(req.session), 
                 _id: {
                     $in: links.map(function(link) {
-                        return ObjectId(link.subtemplate)
+                        return new ObjectId(link.subtemplate)
                     })
                 }
             }).toArray()
@@ -81,7 +81,7 @@ export const resolvers = {
             return await Templates.findOne(
                 {
                     profile: getprofileid(req.session),
-                    _id: ObjectId(args.templateid)
+                    _id: new ObjectId(args.templateid)
                 }
             )
         },
@@ -96,12 +96,12 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
             const Insights = db.collection('insights')
-            const template = await Templates.findOne({profile: getprofileid(req.session), _id: ObjectId(templateid)})
+            const template = await Templates.findOne({profile: getprofileid(req.session), _id: new ObjectId(templateid)})
 
             if (template.insights) 
                 return await Insights.find({
                     _id: {
-                        $in: template.insights.map(insightid => {return ObjectId(insightid)})
+                        $in: template.insights.map(insightid => {return new ObjectId(insightid)})
                     }
                 }).toArray()
             else return []
@@ -111,7 +111,7 @@ export const resolvers = {
         goal: async({ goal }) => {
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
-            return await Goals.findOne({ _id: ObjectId(goal) })
+            return await Goals.findOne({ _id: new ObjectId(goal) })
         },
         templates: async(parent, __, { req }) => {
                 try {
@@ -123,7 +123,7 @@ export const resolvers = {
                     
                     return await Templates.find({_id: {
                         $in: templatelist.map(function(link) {
-                            return ObjectId(link.subtemplate)
+                            return new ObjectId(link.subtemplate)
                         })
                     }}).toArray()
                 }
@@ -139,7 +139,7 @@ export const resolvers = {
             //return a single parent template for now.
             const templatelink = await TemplateLinks.findOne({subtemplate: parent._id.toString()})
             if (templatelink){
-                const parenttemplate = await Templates.findOne({_id: ObjectId(templatelink.parenttemplate)})
+                const parenttemplate = await Templates.findOne({_id: new ObjectId(templatelink.parenttemplate)})
                 return parenttemplate
             } else return null
         }
@@ -172,7 +172,7 @@ export const resolvers = {
             template = await Templates.findOne( 
                 {
                     profile: getprofileid(req.session),
-                    _id: ObjectId(templateid)
+                    _id: new ObjectId(templateid)
                 }
             )
             delete template._id
@@ -202,7 +202,7 @@ export const resolvers = {
             task = await Tasks.findOne( 
                 {
                     profile: getprofileid(req.session),
-                    _id: ObjectId(taskid)
+                    _id: new ObjectId(taskid)
                 }
             )
             delete task._id
@@ -242,7 +242,7 @@ export const resolvers = {
             if (args.parenttemplate) TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: args.parenttemplate, subtemplate: args.templateid, created: new Date()})
 
             return (await Templates.updateOne(
-                {_id: ObjectId(args.templateid)},
+                {_id: new ObjectId(args.templateid)},
                 updatetemplate
             )).result.ok === 1
         },
@@ -256,7 +256,7 @@ export const resolvers = {
             const Templates = db.collection('templates')
             args.templates.map(function(_id, count) {
                 Templates.updateOne(
-                    { _id: ObjectId(_id) },
+                    { _id: new ObjectId(_id) },
                     { $set: { listorder: count } },
                 )
             })
@@ -268,7 +268,7 @@ export const resolvers = {
             const Templates = db.collection('templates')
 
             return (await Templates.updateOne(
-                {_id: ObjectId(args.templateid)},
+                {_id: new ObjectId(args.templateid)},
                 {$unset: {goal:''}}
             )).result.ok === 1
         },
@@ -278,7 +278,7 @@ export const resolvers = {
             const Templates = db.collection('templates')
 
             return (await Templates.updateOne(
-                {_id: ObjectId(templateid)},
+                {_id: new ObjectId(templateid)},
                 {$set: {goal: goalid}}
             )).result.ok === 1
         },
@@ -325,7 +325,7 @@ export async function linkInsightTemplate(templateid, insightid){
     const db = await DbConnection.Get()
     const Templates = db.collection('templates')
     return (await Templates.updateOne(
-        {_id: ObjectId(templateid)},
+        {_id: new ObjectId(templateid)},
         {$push: {insights: insightid}}
     )).result.ok === 1
 }
@@ -334,7 +334,7 @@ export async function linkSourceTemplate(templateid, sourceid){
     const db = await DbConnection.Get()
     const Templates = db.collection('templates')
     return (await Templates.updateOne(
-        {_id: ObjectId(templateid)},
+        {_id: new ObjectId(templateid)},
         {$push: {sources: sourceid}}
     )).result.ok === 1
 }
@@ -354,7 +354,7 @@ async function deleteTemplate(templateid, req){
             {subtemplate: templateid}
         ]
     }) //delete all links.
-    return (await Templates.deleteOne({_id: ObjectId(templateid)})).result.ok === 1
+    return (await Templates.deleteOne({_id: new ObjectId(templateid)})).result.ok === 1
 }
 
 async function createNewTemplate({title, description, goal, profileid, type}) {
@@ -383,7 +383,7 @@ async function createSubTasksFromTemplate(templateid, newtaskid, req) {
         profile: getprofileid(req.session), 
         _id: {
             $in: links.map(function(link) {
-                return ObjectId(link.subtemplate)
+                return new ObjectId(link.subtemplate)
             })
         }
     }).toArray()
@@ -423,7 +423,7 @@ async function createSubTemplatesFromSubTasks(taskid, newtemplateid, req) {
             profile: getprofileid(req.session), 
             _id: {
                 $in: links.map(function(link) {
-                    return ObjectId(link.subtask)
+                    return new ObjectId(link.subtask)
                 })
             }
         }).toArray()

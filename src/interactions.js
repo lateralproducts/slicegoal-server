@@ -58,7 +58,7 @@ export async function updateIx(ixid, status, action, channel, ip){
     if(status) fields.status = status
     try {
         Interactions.update(
-            { _id: ObjectId(ixid) },
+            { _id: new ObjectId(ixid) },
             {
                 $set: fields,
                 $push: {
