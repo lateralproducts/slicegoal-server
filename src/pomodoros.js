@@ -179,7 +179,7 @@ export const resolvers = {
         task: async(parent) => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            return await Tasks.findOne({_id: ObjectId(parent.task)})
+            return await Tasks.findOne({_id: new ObjectId(parent.task)})
         }
     },
     Mutation: {
@@ -206,7 +206,7 @@ export async function activityrecord({templateid, taskid, goalid, notes, checked
     
     if(taskid){ 
         record.task = taskid //this is masking the problem that I don't have a universally defined variable for "taskid"
-        const Task = await Tasks.findOne({ _id: ObjectId(taskid)})
+        const Task = await Tasks.findOne({ _id: new ObjectId(taskid)})
         if (Task) {
             record.goal = Task.goal //add a goal if attached.
             record.templateid = Task.templateid //add a goal if attached.

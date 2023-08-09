@@ -54,7 +54,7 @@ export const resolvers = {
             //prod profileid = '5d2adcf120f52b0d7d7faba0'
             
             try {
-                const Area = await Areas.findOne({_id: ObjectId(args.areaid)});
+                const Area = await Areas.findOne({_id: new ObjectId(args.areaid)});
 
                 let newsource = {
                     profileid: args.profileid,
@@ -85,7 +85,7 @@ export const resolvers = {
             }
 
             await InsightTags.deleteMany({area: args.areaid})
-            await Areas.deleteOne({_id: ObjectId(args.areaid)})
+            await Areas.deleteOne({_id: new ObjectId(args.areaid)})
             
             return true
         } */

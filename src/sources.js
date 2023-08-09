@@ -111,12 +111,12 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const Sources = db.collection('sources')
-            const task = await Tasks.findOne({profile: getprofileid(req.session), _id: ObjectId(taskid)})
+            const task = await Tasks.findOne({profile: getprofileid(req.session), _id: new ObjectId(taskid)})
 
             if (task.sources) 
                 return await Sources.find({
                     _id: {
-                        $in: task.sources.map(sourceid => {return ObjectId(sourceid)})
+                        $in: task.sources.map(sourceid => {return new ObjectId(sourceid)})
                     }
                 }).toArray()
             else return []
@@ -127,12 +127,12 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
             const Sources = db.collection('sources')
-            const template = await Templates.findOne({profile: getprofileid(req.session), _id: ObjectId(templateid)})
+            const template = await Templates.findOne({profile: getprofileid(req.session), _id: new ObjectId(templateid)})
 
             if (template.sources) 
                 return await Sources.find({
                     _id: {
-                        $in: template.sources.map(sourceid => {return ObjectId(sourceid)})
+                        $in: template.sources.map(sourceid => {return new ObjectId(sourceid)})
                     }
                 }).toArray()
             else return []
@@ -154,12 +154,12 @@ export const resolvers = {
 
             const insightlist = sourcetags.map(tag => {
                 return {
-                    insightid: ObjectId(tag.resourceid),
+                    insightid: new ObjectId(tag.resourceid),
                     pinned: tag.pinned || false
                 }
             })
 
-            const source = await Sources.findOne({ _id: ObjectId(sourceid)})
+            const source = await Sources.findOne({ _id: new ObjectId(sourceid)})
 
             return {
                 notes: source.notes,
@@ -199,7 +199,7 @@ export const resolvers = {
             const Sources = db.collection('sources')
 
             return (await Sources.updateOne(
-                {_id: ObjectId(args.sourceid)},
+                {_id: new ObjectId(args.sourceid)},
                 {$set: {name: args.name, url: args.url, type: args.type, notes: args.notes}}
             )).matchedCount === 1
 
@@ -213,7 +213,7 @@ export const resolvers = {
             // Remove tags to source and then tag itself 
             return (await SourceTags.remove({ sourceid: sourceid })
                 .then(() => {
-                    return Sources.deleteOne({ _id: ObjectId(sourceid) })
+                    return Sources.deleteOne({ _id: new ObjectId(sourceid) })
                 })).deleteCount === 1
         },
         shareSource: async(_, args, { req }) => {
@@ -223,7 +223,7 @@ export const resolvers = {
             const Users = db.collection('users')
 
             const currentUser = await Users.findOne({
-                _id: ObjectId(getuserid(req.session))
+                _id: new ObjectId(getuserid(req.session))
             })
 
             await createUserConnection( //and creates user targetUser profile if new
@@ -246,7 +246,7 @@ export const resolvers = {
                 //let to = args.targetUser
                 let interactionid = (await newIx(currentUser._id.toString(),targetUser._id.toString(),'share source email', args.sourceid, args.shareNote)).insertedId.toString()
                 return await Sources.findOne({
-                    _id: ObjectId(args.sourceid)
+                    _id: new ObjectId(args.sourceid)
                 })
                 .then(source => {
                     //save shared source to be accessed.
@@ -259,7 +259,7 @@ export const resolvers = {
                         title: source.title
                     })
                     .then(result => {
-                        Sources.findOne({_id: ObjectId(result.insertedId)})
+                        Sources.findOne({_id: new ObjectId(result.insertedId)})
                         .then(result => { 
                             //save interaction to track
                             try {
@@ -311,7 +311,7 @@ export const resolvers = {
             const Sources = db.collection('sources')
 
             return await Sources.findOne(
-                {_id: ObjectId(parent.sourceid)}
+                {_id: new ObjectId(parent.sourceid)}
             )
         }
     },
@@ -354,7 +354,7 @@ export async function attachSources(sourcelist, resourcetype, resourceid, profil
     )
     .toArray()
     .then(deletetags => {
-        const deletetagids = deletetags.map(tag => {return ObjectId(tag._id)})
+        const deletetagids = deletetags.map(tag => {return new ObjectId(tag._id)})
         SourceTags.remove(
             {_id: {$in: deletetagids}}
         )
@@ -383,7 +383,7 @@ export async function attachSources(sourcelist, resourcetype, resourceid, profil
 
             Sources.updateOne(
                 {
-                    _id: ObjectId(sourcetag._id),
+                    _id: new ObjectId(sourcetag._id),
                     profileid: profileid
                 },  
                 {$set: {accessedit: new Date()}}

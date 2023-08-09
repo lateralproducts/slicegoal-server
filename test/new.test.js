@@ -34,7 +34,7 @@ jest.mock('../src/database', () => ({
 describe('newtest', () => {
     it('should fetch and return the user', async () => {
       const userId = '60fe4789be88d61281ab7316';
-      const mockUser = { _id: ObjectId(userId), name: 'John Doe' };
+      const mockUser = { _id: new ObjectId(userId), name: 'John Doe' };
   
       // Mock the database connection and collection methods
       const findOneMock = jest.fn().mockResolvedValueOnce(mockUser);
@@ -52,7 +52,7 @@ describe('newtest', () => {
   
       // Verify that the findOne method was called with the correct argument
       expect(collectionMock).toHaveBeenCalledWith('users');
-      expect(findOneMock).toHaveBeenCalledWith({ _id: ObjectId(userId) });
+      expect(findOneMock).toHaveBeenCalledWith({ _id: new ObjectId(userId) });
   
       // Verify that the result matches the expected user
       expect(result).toEqual(mockUser);
@@ -77,7 +77,7 @@ describe('anothertest', () => {
         }
       };
 
-      const mockUser = { _id: ObjectId(userid), name: 'John Doe' };
+      const mockUser = { _id: new ObjectId(userid), name: 'John Doe' };
       // Create separate collection mocks for each collection
       const collectionMocks = {
         views: {
@@ -106,8 +106,8 @@ describe('anothertest', () => {
       expect(DbConnection.Get).toHaveBeenCalledWith();
   
       // Verify that the findOne method was called with the correct argument
-      //expect(collectionMocks.views.insertOne).toHaveBeenCalledWith({ _id: ObjectId(userid) });
-      //expect(collectionMocks.profiles.find).toHaveBeenCalledWith({ _id: ObjectId(userid) });
+      //expect(collectionMocks.views.insertOne).toHaveBeenCalledWith({ _id: new ObjectId(userid) });
+      //expect(collectionMocks.profiles.find).toHaveBeenCalledWith({ _id: new ObjectId(userid) });
 
       // Verify that the result matches the expected user
       //expect(result).toEqual(mockUser);

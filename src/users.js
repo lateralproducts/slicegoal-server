@@ -2,7 +2,6 @@ import { ObjectId } from 'mongodb'
 import { triggererror } from './graphqlserver';
 import bcrypt from 'bcryptjs'
 
-
 import {
     emailNewClient,
     emailNewPersonal,
@@ -93,7 +92,7 @@ export const resolvers = {
             if (req.session.user) {
                 sessiontrack(req, args, 'app', 'arrived', 'session refresh')
                 const user = await Users.findOne({
-                    _id: ObjectId(getuserid(req.session))
+                    _id: new ObjectId(getuserid(req.session))
                 })
                 return user
             } else {
@@ -112,7 +111,7 @@ export const resolvers = {
             .toArray()
 
             const user_ids = community.map(connection => {
-                return ObjectId(connection.friend)
+                return new ObjectId(connection.friend)
             })
             return await Users.find(
                 {_id: {$in: user_ids}}
@@ -125,7 +124,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             return startarea
-                ? await Areas.findOne({ _id: ObjectId(startarea) })
+                ? await Areas.findOne({ _id: new ObjectId(startarea) })
                 : null
         },
         views: async(_, __, { req }) => {
@@ -142,7 +141,7 @@ export const resolvers = {
                 const db = await DbConnection.Get()
                 const Views = db.collection('views')
                 const Users = db.collection('users')
-                const user = await Users.findOne({_id: ObjectId(req.session.user._id)})
+                const user = await Users.findOne({_id: new ObjectId(req.session.user._id)})
                 let query = new Object()
                 query.user = getuserid(req.session)
                 if(user.activeofferid !== 2) query.type = 'owner' //block shared views if not upgraded.
@@ -158,7 +157,7 @@ export const resolvers = {
             const Users = db.collection('users')
 
             let user = await Users.findOneAndUpdate(
-                { _id: ObjectId(getuserid(req.session)) }, //update this
+                { _id: new ObjectId(getuserid(req.session)) }, //update this
                 { $set: args },
                 { returnOriginal: false },
             )
@@ -280,7 +279,7 @@ export const resolvers = {
             const Users = db.collection('users')
 
             let user = await Users.findOne({
-                $and: [{ _id: ObjectId(args.userid) }, { code: args.code }]
+                $and: [{ _id: new ObjectId(args.userid) }, { code: args.code }]
             })
             if(!user) return triggererror('Verify details not found. You can try and reset password again.')
 
@@ -300,7 +299,7 @@ export const resolvers = {
             checkPasswordFormat(args.password)
 
             user = await Users.findOneAndUpdate(
-                { _id: ObjectId(args.userid), code: args.code },
+                { _id: new ObjectId(args.userid), code: args.code },
                 {
                     $set: {
                         state: 'verified',
@@ -326,7 +325,7 @@ export const resolvers = {
             if(!args.code) return triggererror('Reset details not found. Please try and reset your password again.')
 
             let user = await Users.findOne({
-                $and: [{ _id: ObjectId(args.userid) }, { code: args.code }]
+                $and: [{ _id: new ObjectId(args.userid) }, { code: args.code }]
             })
             if(!user) return triggererror('Reset details not found. Please try and reset your password again.')
 
@@ -341,7 +340,7 @@ export const resolvers = {
             checkPasswordFormat(args.password)
 
             user = await Users.findOneAndUpdate(
-                { _id: ObjectId(args.userid), code: args.code },
+                { _id: new ObjectId(args.userid), code: args.code },
                 {
                     $set: {
                         password: bcrypt.hashSync(args.password, 10),
@@ -376,7 +375,7 @@ export const resolvers = {
                     } else {
                         sessiontrack(req, args, 'app', 'login-failed', 'failed - too many incorrect tries or not verified', 'email')
                         await Users.updateOne(
-                            { _id: ObjectId(user._id) },
+                            { _id: new ObjectId(user._id) },
                             {
                                 $set: {
                                     incorrecttries:
@@ -388,7 +387,7 @@ export const resolvers = {
                     }
                 } else {
                     await Users.updateOne(
-                        { _id: ObjectId(user._id) },
+                        { _id: new ObjectId(user._id) },
                         {
                             $set: {
                                 incorrecttries:
@@ -744,7 +743,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
-            let user = await Users.findOne({ _id: ObjectId(args.userid) })
+            let user = await Users.findOne({ _id: new ObjectId(args.userid) })
             if (user.state !== 'verified')
                 return triggererror(
                     'Password cannot be updated on unverified account',
@@ -754,7 +753,7 @@ export const resolvers = {
             if (!check) return triggererror('Incorrect current password')
 
             user = await Users.findOneAndUpdate(
-                { _id: ObjectId(args.userid) },
+                { _id: new ObjectId(args.userid) },
                 {
                     $set: {
                         password: bcrypt.hashSync(args.newpassword, 10)
@@ -807,7 +806,7 @@ async function login(user, args, req) {
     let view
     let query = new Object()
     query.user = getuserid(req.session)
-    if(args.setView) query._id = ObjectId(args.setView)
+    if(args.setView) query._id = new ObjectId(args.setView)
     if(user.activeofferid !== 2) query.type = 'owner'
     view = await Views.findOne(query)
 
@@ -828,7 +827,7 @@ async function login(user, args, req) {
 
     //update user profile with last login details.
     await Users.updateOne( 
-        { _id: ObjectId(user._id) },
+        { _id: new ObjectId(user._id) },
         {
             $set: {
                 uiversion: args.uiversion,

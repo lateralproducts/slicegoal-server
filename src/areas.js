@@ -168,7 +168,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Views = db.collection('views')
             const Users = db.collection('users')
-            const user = await Users.findOne({_id: ObjectId(getuserid(req.session))}) //don't use session user instance, as that doesn't work.
+            const user = await Users.findOne({_id: new ObjectId(getuserid(req.session))}) //don't use session user instance, as that doesn't work.
             let query = new Object()
             query.user = getuserid(req.session)
             if (args.type === 'notcurrent')
@@ -185,7 +185,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Views = db.collection('views')
             const Users = db.collection('users')
-            const user = await Users.findOne({_id: ObjectId(getuserid(req.session))}) //don't use session user instance, as that doesn't work.
+            const user = await Users.findOne({_id: new ObjectId(getuserid(req.session))}) //don't use session user instance, as that doesn't work.
             let query = new Object()
             query.user = getuserid(req.session)
             query.type = 'shared' //asking for shared wheels.
@@ -201,7 +201,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
             return await Wheels.findOne({
-                _id: ObjectId(wheelid),
+                _id: new ObjectId(wheelid),
                 global: true
             })
         },
@@ -261,7 +261,7 @@ export const resolvers = {
             logareaclick(_id, navdirection, req)
 
             let area = await Areas.findOne({
-                _id: ObjectId(_id),
+                _id: new ObjectId(_id),
                 $or: [{ wheelid: getwheelid(req.session) }, { global: true }]
             })
             return area
@@ -347,7 +347,7 @@ export const resolvers = {
                     { type: 'shared' },
                     { type: 'average' }
                 ]
-            //if (args.default) query._id = ObjectId(parent.view.defaultprofile); //if asking for default profile only return the default.
+            //if (args.default) query._id = new ObjectId(parent.view.defaultprofile); //if asking for default profile only return the default.
             return await Profiles.find(query)
                 .sort({ type: -1, name: 1 })
                 .toArray()
@@ -356,7 +356,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             let query = new Object()
-            query._id = ObjectId(parent.startarea)
+            query._id = new ObjectId(parent.startarea)
             return await Areas.findOne(query)
         },
         unseen: async(parent, __, { req }) => {
@@ -377,7 +377,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
             return await Wheels.findOne({
-                _id: ObjectId(parent.wheel)
+                _id: new ObjectId(parent.wheel)
             })
         }
     },
@@ -387,9 +387,9 @@ export const resolvers = {
             const Areas = db.collection('areas')
             return parent.rootarea
                 ? await Areas.findOne({
-                      _id: ObjectId(parent.rootarea)
+                      _id: new ObjectId(parent.rootarea)
                   })
-                : { _id: ObjectId(parent.area), name: null }
+                : { _id: new ObjectId(parent.area), name: null }
         }
     },
     View: {
@@ -397,7 +397,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
             let wheel = await Wheels.findOne({
-                _id: ObjectId(obj.wheel)
+                _id: new ObjectId(obj.wheel)
             })
             if (wheel) wheel.view = obj
             return wheel
@@ -406,14 +406,14 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             return await Users.findOne({
-                _id: ObjectId(view.user)
+                _id: new ObjectId(view.user)
             })
         },
         sharedby: async view => {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             return await Users.findOne({
-                _id: ObjectId(view.sharedby)
+                _id: new ObjectId(view.sharedby)
             })
         }
     },
@@ -461,7 +461,7 @@ export const resolvers = {
             return await Areas.find({
                 _id: {
                     $in: arealinks.map(function(id) {
-                        return ObjectId(id)
+                        return new ObjectId(id)
                     })
                 },
                 $or: [
@@ -628,11 +628,11 @@ export const resolvers = {
             const Users = db.collection('users')
             const Profiles = db.collection('profiles')
 
-            const user = await Users.findOne({_id: ObjectId(req.session.user._id)})
+            const user = await Users.findOne({_id: new ObjectId(req.session.user._id)})
 
             //set wheel, view, and profile to the context.
             let query = new Object()
-            query._id = ObjectId(viewid)
+            query._id = new ObjectId(viewid)
             query.user = getuserid(req.session)
             const view = await Views.findOne(query)
             if(view.type === "shared" && user.activeofferid !== 2){
@@ -665,7 +665,7 @@ export const resolvers = {
             } else {
                 //if not owner, just delete the view
                 await Views.findOneAndDelete({
-                    _id: ObjectId(viewid),
+                    _id: new ObjectId(viewid),
                     user: getuserid(req.session)
                 })
             }
@@ -678,7 +678,7 @@ export const resolvers = {
 
             //Find the view object that should be deleted
             const view = await Views.findOne({
-                _id: ObjectId(viewid)
+                _id: new ObjectId(viewid)
             })
 
             //Use view to check if request comes from owner of wheel
@@ -686,7 +686,7 @@ export const resolvers = {
 
             if (!isOwner) return triggererror('Unauthorised Deletion of View')
 
-            Views.removeOne({ _id: ObjectId(viewid) }, function(err) {
+            Views.removeOne({ _id: new ObjectId(viewid) }, function(err) {
                 if (err) throw err
             })
             return true
@@ -713,7 +713,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             await Users.updateOne(
-                { _id: ObjectId(getprofileid(req.session)) },
+                { _id: new ObjectId(getprofileid(req.session)) },
                 { $set: { startarea: null } },
             )
 
@@ -726,9 +726,9 @@ export const resolvers = {
             const AreaLinks = db.collection('arealinks')
             const Wheels = db.collection('wheels')
 
-            Wheels.findOne({ _id: ObjectId(getwheelid(req.session)) })
+            Wheels.findOne({ _id: new ObjectId(getwheelid(req.session)) })
                 .then(wheel => {
-                    return Areas.findOne({ _id: ObjectId(wheel.startarea) })
+                    return Areas.findOne({ _id: new ObjectId(wheel.startarea) })
                 })
                 .then(previousStartArea => {
                     AreaLinks.insertOne({
@@ -740,7 +740,7 @@ export const resolvers = {
                     })
 
                     Wheels.updateOne(
-                        { _id: ObjectId(getwheelid(req.session)) },
+                        { _id: new ObjectId(getwheelid(req.session)) },
                         { $set: { startarea: areaid } },
                     )
                 })
@@ -766,7 +766,7 @@ export const resolvers = {
                 { $set: { focus: focusflag } },
             )
             await Areas.updateOne(
-                { _id: ObjectId(args.area) },
+                { _id: new ObjectId(args.area) },
                 { $set: { focus: focusflag } },
             )
             return focusflag
@@ -782,12 +782,12 @@ export const resolvers = {
             const Wheels = db.collection('wheels')
 
             //Check for right to delete area
-            const area = await Areas.findOne({ _id: ObjectId(areaid) })
-            const wheel = await Wheels.findOne({ _id: ObjectId(area.wheelid) })
+            const area = await Areas.findOne({ _id: new ObjectId(areaid) })
+            const wheel = await Wheels.findOne({ _id: new ObjectId(area.wheelid) })
             if (wheel.user !== getuserid(req.session))
                 return triggererror('Unauthorised area delete')
             else {
-                const areaDel = Areas.deleteOne({ _id: ObjectId(areaid) })
+                const areaDel = Areas.deleteOne({ _id: new ObjectId(areaid) })
                 const areaLinksDel = AreaLinks.deleteMany({
                     area: areaid
                 })
@@ -816,7 +816,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Profiles = db.collection('profiles')
             const profile = await Profiles.findOne({
-                _id: ObjectId(profileid),
+                _id: new ObjectId(profileid),
                 wheel: req.session.view.wheel
             })
 
@@ -916,7 +916,7 @@ export const resolvers = {
             const Areas = db.collection('areas')
 
             Areas.update(
-                {_id: ObjectId(args.anchorarea)},
+                {_id: new ObjectId(args.anchorarea)},
                 {$set: {lastranked: new Date(args.datetime)}}
             )
             
@@ -953,7 +953,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             await Areas.updateOne(
-                { _id: ObjectId(args.area), wheelid: getwheelid(req.session) },
+                { _id: new ObjectId(args.area), wheelid: getwheelid(req.session) },
                 { $set: args },
             )
             args._id = args.area
@@ -996,7 +996,7 @@ export async function createWheel(
 
     //Update startarea to have correct wheelid
     Areas.updateOne(
-        { _id: ObjectId(startArea) },
+        { _id: new ObjectId(startArea) },
         { $set: { wheelid: wheelid } },
     )
 
@@ -1068,7 +1068,7 @@ async function copywheel(wheelid, userid) {
     //only using userid as a tag to keep track of the copy.
     //wheel - global
     let newwheel = await Wheels.findOne({
-        _id: ObjectId(wheelid)
+        _id: new ObjectId(wheelid)
         //need to work out security here.
     })
 
@@ -1102,7 +1102,7 @@ async function copywheel(wheelid, userid) {
             ._id.toString()
 
         Wheels.updateOne(
-            { _id: ObjectId(newwheelid) },
+            { _id: new ObjectId(newwheelid) },
             { $set: { startarea: newstartareaid } },
         )
         //arealinks - global
@@ -1170,7 +1170,7 @@ export async function logareaclick(_id, navdirection, req) {
             Areas.updateOne(
                 {
                     wheelid: getprofileid(req.session),
-                    _id: ObjectId(_id)
+                    _id: new ObjectId(_id)
                 },
                 { $inc: { clicks: 1 }, $set: { lastclicked: new Date() } },
             )
@@ -1183,7 +1183,7 @@ export async function logareaclick(_id, navdirection, req) {
 async function isWheelOwner(req, viewid) {
     const db = await DbConnection.Get()
     const Views = db.collection('views')
-    const view = await Views.findOne({ _id: ObjectId(viewid) }) //find view to get wheel.
+    const view = await Views.findOne({ _id: new ObjectId(viewid) }) //find view to get wheel.
 
     let query = new Object()
     query.wheel = view.wheel
@@ -1210,7 +1210,7 @@ async function deleteWheelAll(req, viewid) {
     //assuming only owner can call this function.
 
     const view = await Views.findOne({
-        _id: ObjectId(viewid),
+        _id: new ObjectId(viewid),
         user: getuserid(req.session)
     })
 
@@ -1229,5 +1229,5 @@ async function deleteWheelAll(req, viewid) {
     Views.deleteMany({ wheel: view.wheel })
     Areas.deleteMany({ wheelid: view.wheel })
     AreaLinks.deleteMany({ wheelid: view.wheel })
-    Wheels.deleteMany({ _id: ObjectId(view.wheel) })
+    Wheels.deleteMany({ _id: new ObjectId(view.wheel) })
 }

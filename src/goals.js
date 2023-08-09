@@ -80,7 +80,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
 
-            return await Goals.findOne({profileid: getprofileid(req.session), _id: ObjectId(args.goalid)})
+            return await Goals.findOne({profileid: getprofileid(req.session), _id: new ObjectId(args.goalid)})
         },
         goals: async(_, args, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
@@ -108,7 +108,7 @@ export const resolvers = {
             
             if(args.goal) {
                 var linklist = await GoalLinks.find({profileid: getprofileid(req.session), rootgoal: args.goal}).toArray()
-                query._id = {$in: linklist.map(function(link) {return ObjectId(link.goal)})}
+                query._id = {$in: linklist.map(function(link) {return new ObjectId(link.goal)})}
                 //need to eventually fix the sort on linked goals. Think this will task a refactor to figure out the way to do it.
             }
 
@@ -140,7 +140,7 @@ export const resolvers = {
             query.rootgoal = args.goal //find all goals that this goal links to.
 
             var linklist = await GoalLinks.find(query).toArray()
-            return await Goals.find({ _id: { $in: linklist.map(function(link) {return ObjectId(link.goal)}) }}).sort({orderrank: 1}).toArray()
+            return await Goals.find({ _id: { $in: linklist.map(function(link) {return new ObjectId(link.goal)}) }}).sort({orderrank: 1}).toArray()
         },
         parentgoals: async(_, args, { req }) => {
             //show linked sub goals on a goal.
@@ -155,7 +155,7 @@ export const resolvers = {
             query.rootgoal = {$not: {$eq: args.filterid}}
 
             var linklist = await GoalLinks.find(query).toArray()
-            return await Goals.find({ _id: { $in: linklist.map(function(link) {return ObjectId(link.rootgoal)}) }}).sort({orderrank: 1}).toArray()
+            return await Goals.find({ _id: { $in: linklist.map(function(link) {return new ObjectId(link.rootgoal)}) }}).sort({orderrank: 1}).toArray()
         },
         goalTags: async(_, args, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
@@ -195,7 +195,7 @@ export const resolvers = {
                 return await Areas.find({
                     _id: {
                         $in: links.map(link => {
-                            return ObjectId(link)
+                            return new ObjectId(link)
                         })
                     }
                 }).toArray()
@@ -239,7 +239,7 @@ export const resolvers = {
             return await Goals.find({
                 _id: {
                     $in: goallinks.map(function(id) {
-                        return ObjectId(id)
+                        return new ObjectId(id)
                     })
                 }
             }).toArray()
@@ -273,12 +273,12 @@ export const resolvers = {
         area: async({ areaid }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            return await Areas.findOne({ _id: ObjectId(areaid) })
+            return await Areas.findOne({ _id: new ObjectId(areaid) })
         },
         goal: async({ goalid }) => {
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
-            return await Goals.findOne({ _id: ObjectId(goalid) })
+            return await Goals.findOne({ _id: new ObjectId(goalid) })
         }
     },
     Mutation: {
@@ -299,7 +299,7 @@ export const resolvers = {
             const GoalTags = db.collection('goaltags')
             args.profileid = getprofileid(req.session)
             GoalTags.updateOne(
-                { _id: ObjectId(args.tagid) },
+                { _id: new ObjectId(args.tagid) },
                 { $set: { notes: args.notes } },
                 function(err) {
                     if (err) throw err
@@ -342,7 +342,7 @@ export const resolvers = {
             args.profileid = getprofileid(req.session)
             GoalTags.deleteOne(
                 {
-                    _id: ObjectId(args.tagid),
+                    _id: new ObjectId(args.tagid),
                     profileid: args.profileid
                 },
                 function(err) {
@@ -360,7 +360,7 @@ export const resolvers = {
                 activityrecord({goalid: args.goal, req: req, notes: 'marked as complete 🎉'})
                 if (args.notes) activityrecord({goalid: args.goal, req: req, notes: args.notes, minutes: args.minutes}) //save note as a record.
                 await Goals.updateOne(
-                    { _id: ObjectId(args.goal), profileid: getprofileid(req.session)  },
+                    { _id: new ObjectId(args.goal), profileid: getprofileid(req.session)  },
                     {
                         $set: {
                             complete: args.complete,
@@ -381,7 +381,7 @@ export const resolvers = {
             //args.complete = args.complete ? new Date(args.complete) : null;
             args.lastupdated = new Date()
             let goal = await Goals.findOneAndUpdate(
-                { _id: ObjectId(goalId), profileid: getprofileid(req.session) },
+                { _id: new ObjectId(goalId), profileid: getprofileid(req.session) },
                 { $set: args },
                 { returnOriginal: false },
             )
@@ -395,7 +395,7 @@ export const resolvers = {
             const GoalLinks = db.collection('goallinks')
             await GoalTags.deleteMany({ goalid: goalid, profileid: getprofileid(req.session) })
             await GoalLinks.deleteMany({ $or: [{rootgoal: goalid},{goal: goalid}], profileid: getprofileid(req.session) })
-            Goals.deleteMany({ _id: ObjectId(goalid), profileid: getprofileid(req.session) }).then(result => {
+            Goals.deleteMany({ _id: new ObjectId(goalid), profileid: getprofileid(req.session) }).then(result => {
                 if (result.result.n > 0) return true
                 else return false
             })
@@ -407,7 +407,7 @@ export const resolvers = {
             const Goals = db.collection('goals')
             args.goals.map(function(_id, count) {
                 Goals.updateOne(
-                    { _id: ObjectId(_id) },
+                    { _id: new ObjectId(_id) },
                     { $set: { orderrank: count } },
                 )
             })
@@ -419,7 +419,7 @@ export const resolvers = {
             const GoalTags = db.collection('goaltags')
             args.goals.map(function(_id, count) {
                 GoalTags.updateOne(
-                    { _id: ObjectId(_id) },
+                    { _id: new ObjectId(_id) },
                     { $set: { orderrank: count } },
                 )
             })
@@ -434,7 +434,7 @@ export const resolvers = {
             args.snoozedate = new Date(args.snooze)
             args.snoozedate.setHours(0, 0, 0, 0)
             await Goals.update(
-                { _id: ObjectId(args.goalid) },
+                { _id: new ObjectId(args.goalid) },
                 { $set: { snooze: args.snoozedate }}
             )
             await GoalTags.updateMany(
@@ -460,7 +460,7 @@ export const resolvers = {
                     created: new Date()
                 })
                 Goals.update(
-                    { _id: ObjectId(args.goal) },
+                    { _id: new ObjectId(args.goal) },
                     { $set: { linkreferenced: true }}
                 )
                 return true
@@ -482,7 +482,7 @@ export const resolvers = {
                 }
             )
             Goals.update(
-                { _id: ObjectId(goal) },
+                { _id: new ObjectId(goal) },
                 { $unset: { linkreferenced: '' }}
             )
             return res
