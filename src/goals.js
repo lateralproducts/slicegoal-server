@@ -522,7 +522,7 @@ export async function creategoal(newgoal, req) {
                             created: new Date()
                         }
 
-                        const res = await Areas.insert(area)
+                        const res = await Areas.insertOne(area)
                         areaid = res.insertedIds[0].toString()
                     }
 
@@ -533,7 +533,7 @@ export async function creategoal(newgoal, req) {
                     goaltag.datetime = newgoal.datetime
                     goaltag.date = new Date(newgoal.datetime)
                     goaltag.datecreated = new Date()
-                    GoalTags.insert(goaltag)
+                    GoalTags.insertOne(goaltag)
                 })
             return result.insertedId
         })
@@ -545,7 +545,7 @@ export async function creategoal(newgoal, req) {
 export async function testfunction(newgoal, req) {
     const db = await DbConnection.Get()
     const Areas = db.collection('areas')
-    let res = await Areas.insert(newgoal)
+    let res = await Areas.insertOne(newgoal)
     res.wheelid = getwheelid(req.session)
     return res
 }

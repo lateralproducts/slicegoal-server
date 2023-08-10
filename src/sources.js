@@ -211,7 +211,7 @@ export const resolvers = {
             const SourceTags = db.collection('sourcetags')
 
             // Remove tags to source and then tag itself 
-            return (await SourceTags.remove({ sourceid: sourceid })
+            return (await SourceTags.deleteOne({ sourceid: sourceid })
                 .then(() => {
                     return Sources.deleteOne({ _id: new ObjectId(sourceid) })
                 })).deleteCount === 1
@@ -355,7 +355,7 @@ export async function attachSources(sourcelist, resourcetype, resourceid, profil
     .toArray()
     .then(deletetags => {
         const deletetagids = deletetags.map(tag => {return new ObjectId(tag._id)})
-        SourceTags.remove(
+        SourceTags.deleteOne(
             {_id: {$in: deletetagids}}
         )
     })

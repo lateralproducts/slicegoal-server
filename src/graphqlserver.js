@@ -21,7 +21,7 @@ console.log('app-session-store-0001-001.app-session-store.rgjl3g.apse2.cache.ama
 
 // Initialize client.
 let redisClient = createClient({
-    url: 'redis://app-session-store-0001-001.app-session-store.rgjl3g.apse2.cache.amazonaws.com:6379'
+    url: 'redis://' + redis_db + ':6379'
     //not using authentication as AWS manages authentication between devices with VPC.
 })
 redisClient.connect().catch(console.error)

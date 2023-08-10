@@ -149,7 +149,7 @@ export async function reSendEmail() {
     var emails = await Emails.find({response:{$exists: false}}).toArray()
     emails.map(email => {
         sendEmail(email.to, email.subject, email.html, email.attachments, email._id)
-        Emails.update({_id: email._id}, {$set: {response: 'retried'}})
+        Emails.updateOne({_id: email._id}, {$set: {response: 'retried'}})
     })
 }
 

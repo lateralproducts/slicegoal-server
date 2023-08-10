@@ -388,7 +388,7 @@ export const resolvers = {
                         newspaced.fib1 = 1
                         newspaced.datenext = nextdate
                         newspaced.datecreated = new Date()
-                        Spaced.insert(newspaced)
+                        Spaced.insertOne(newspaced)
                     }
                     InsightTags.update(
                         { insightid: insightid, profileid: getprofileid(req.session) },
@@ -431,7 +431,7 @@ export const resolvers = {
                         newspaced.markedno = 1
                         newspaced.datenext = nextdate
                         newspaced.datecreated = new Date()
-                        Spaced.insert(newspaced)
+                        Spaced.insertOne(newspaced)
                     }
 
                     await InsightTags.update(
@@ -492,7 +492,7 @@ export const resolvers = {
                     let nextdate = new Date() //set nextdate for tomorrow.
                     nextdate.setDate(nextdate.getDate() + 1)
                     newspaced.datenext = nextdate
-                    Spaced.insert(newspaced)
+                    Spaced.insertOne(newspaced)
                 }
             }
             return {
@@ -579,7 +579,7 @@ export const resolvers = {
             let newarea = new Object() //create new area.
             newarea.wheelid = getprofileid(req.session)
             newarea.name = args.areaname
-            const res = await Areas.insert(newarea)
+            const res = await Areas.insertOne(newarea)
 
             await InsightTags.insertOne({
                 //insert the link to connect insight and new area.
@@ -828,7 +828,7 @@ async function createinsight(newinsight, req) {
             let nextdate = new Date() //set nextdate for tomorrow.
             nextdate.setDate(nextdate.getDate() + 1)
             spaced.datenext = nextdate
-            Spaced.insert(spaced)
+            Spaced.insertOne(spaced)
         }
 
         if (newinsight.areatags)
@@ -847,7 +847,7 @@ async function createinsight(newinsight, req) {
                         created: new Date()
                     }
 
-                    const res = await Areas.insert(area)
+                    const res = await Areas.insertOne(area)
                     areaid = res.insertedIds[0].toString()
                 }
 
@@ -857,7 +857,7 @@ async function createinsight(newinsight, req) {
                 insighttag.area = areaid
                 insighttag.notes = link.notes
                 insighttag.datecreated = new Date()
-                insightTags.insert(insighttag)
+                insightTags.insertOne(insighttag)
 
                 Areas.updateOne(
                     {

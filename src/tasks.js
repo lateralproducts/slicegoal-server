@@ -596,10 +596,12 @@ export const resolvers = {
 export async function linkInsightTask(taskid, insightid){
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
-    return (await Tasks.updateOne(
+    const result = await Tasks.updateOne(
         {_id: new ObjectId(taskid)},
         {$push: {insights: insightid}}
-    )).result.ok === 1
+    )
+    console.log(result)
+    return true
 }
 
 export async function linkSourceTask(taskid, sourceid){

@@ -452,7 +452,7 @@ export const resolvers = {
                     'signup',
                     'failed, url in name',
                 )
-                IPAddresses.insert({
+                IPAddresses.insertOne({
                     ip: getipaddress(req),
                     block: true,
                     reason: 'attempted to put link in firstname'
@@ -477,7 +477,7 @@ export const resolvers = {
                     'signup',
                     'failed, 15 account limit, blocking',
                 )
-                IPAddresses.insert({
+                IPAddresses.insertOne({
                     ip: getipaddress(req),
                     block: true,
                     reason: 'account limit at 15'

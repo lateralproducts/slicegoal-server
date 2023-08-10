@@ -9,7 +9,6 @@ export async function sendSESEmail(mailOptions, handleResponse){
 
     // Handle promise's fulfilled/rejected states
     sendPromise.then(function(data) {
-      console.log(data.MessageId)
       mailOptions.response = data.MessageId
       handleResponse(mailOptions);
     }).catch(function(err) {

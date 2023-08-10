@@ -94,15 +94,13 @@ export const resolvers = {
                 }
             }
             //if no chatid or taskid, create new chat.
-            const chat = await startChat(
+            const chatid = await startChat(
                 getprofileid(req.session), 
                 taskid,
                 getuserid(req.session), 
                 getwheelid(req.session)
             )
-            console.log('new chat')
-            console.log(chat)
-            return chat._id.toString()
+            return chatid.toString()
         },
         getchat: async(_, {chatid}, { req }) => {
             //get chat id.
@@ -350,9 +348,8 @@ async function startChat(profileid, taskid, userid, wheelid){
         subscribe: subscribelist,
     })
     if (taskid) chat.taskid = taskid
-    const newchat = (await Chats.insert(chat)).ops[0]
-    console.log(newchat)
-    return newchat
+    const chatsaved = await Chats.insertOne(chat)
+    return chatsaved.insertedId
 }
 
 

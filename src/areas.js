@@ -419,7 +419,8 @@ export const resolvers = {
     },
     Area: {
         clicks: async({ _id }, __, { req }) => {
-            const db = await DbConnection.Get()
+            return 0
+            /* const db = await DbConnection.Get()
             const Clicks = db.collection('clicks')
             let currentDate = new Date()
             currentDate.setDate(currentDate.getDate() - 7) //currently reading one week's trailing data.
@@ -446,7 +447,7 @@ export const resolvers = {
                         resolve(data[0] ? data[0] : 0)
                     },
                 )
-            })
+            }) */
         },
         areas: async(parent, __, { req }) => {
             const db = await DbConnection.Get()
@@ -555,58 +556,51 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
 
-            return new Promise(function(resolve) {
-                let currentDate = new Date()
-                currentDate.setDate(currentDate.getDate() - 7) //currently reading one week's trailing data.
-                Pomodoros.aggregate(
-                    {
-                        $match: {
-                            profileid: getprofileid(req.session),
-                            date: {
-                                $gte: currentDate
-                            },
-                            $or: [
-                                /*{
-                                    area: _id,
-                                }, */
-                                {
-                                    links: _id.toString()
+            let currentDate = new Date()
+            currentDate.setDate(currentDate.getDate() - 7) //currently reading one week's trailing data.
+            const aggCursor = await Pomodoros.aggregate(
+                [{
+                    $match: {
+                        profileid: getprofileid(req.session),
+                        date: {
+                            $gte: currentDate
+                        },
+                        $or: [
+                            /*{
+                                area: _id,
+                            }, */
+                            {
+                                links: _id.toString()
+                            }
+                        ]
+                    }
+                },
+                {
+                    $group: {
+                        _id: { links: null }, //"$area"
+                        count: { $sum: '$minutes' },
+                        records: { $sum: 1 },
+                        direct: {
+                            $sum: {
+                                $cond: {
+                                    if: { $eq: ['$area', _id.toString()] },
+                                    then: 1,
+                                    else: 0
                                 }
-                            ]
-                        }
-                    },
-                    {
-                        $group: {
-                            _id: { links: null }, //"$area"
-                            count: { $sum: '$minutes' },
-                            records: { $sum: 1 },
-                            direct: {
-                                $sum: {
-                                    $cond: {
-                                        if: { $eq: ['$area', _id.toString()] },
-                                        then: 1,
-                                        else: 0
-                                    }
-                                }
-                            },
-                            countdirect: {
-                                $sum: {
-                                    $cond: {
-                                        if: { $eq: ['$area', _id.toString()] },
-                                        then: '$minutes',
-                                        else: 0
-                                    }
+                            }
+                        },
+                        countdirect: {
+                            $sum: {
+                                $cond: {
+                                    if: { $eq: ['$area', _id.toString()] },
+                                    then: '$minutes',
+                                    else: 0
                                 }
                             }
                         }
-                    },
-
-                    function(err, data) {
-                        if (err) throw err
-                        resolve(data[0] ? data[0] : 0)
-                    },
-                )
-            })
+                    }
+                }])
+            return aggCursor
         },
         rankdue: async area => {
             let checkDate = new Date()
@@ -686,7 +680,7 @@ export const resolvers = {
 
             if (!isOwner) return triggererror('Unauthorised Deletion of View')
 
-            Views.removeOne({ _id: new ObjectId(viewid) }, function(err) {
+            Views.deleteOne({ _id: new ObjectId(viewid) }, function(err) {
                 if (err) throw err
             })
             return true
@@ -865,18 +859,17 @@ export const resolvers = {
             args.uiversion = getuiversion(req.session)
             args.created = new Date()
 
-            const res = await Areas.insert(args)
-
+            const res = await Areas.insertOne(args)
             await AreaLinks.insertOne({
                 rootarea: args.rootarea,
-                area: res.insertedIds[0].toString(),
+                area: res.insertedId.toString(),
                 areaname: args.name,
                 wheelid: getwheelid(req.session),
                 serverversion: pjson.version,
                 uiversion: getuiversion(req.session)
             })
             return await Areas.findOne({
-                _id: res.insertedIds[0],
+                _id: res.insertedId,
                 wheelid: getwheelid(req.session)
             })
         },
@@ -891,11 +884,11 @@ export const resolvers = {
             args.created = new Date()
             args.coach = true
 
-            const res = await Areas.insert(args)
+            const res = await Areas.insertOne(args)
 
             await AreaLinks.insertOne({
                 rootarea: args.rootarea,
-                area: res.insertedIds[0].toString(),
+                area: res.insertedId.toString(),
                 areaname: args.name,
                 wheelid: getwheelid(req.session),
                 serverversion: pjson.version,
@@ -903,7 +896,7 @@ export const resolvers = {
             })
 
             const area = await Areas.findOne({
-                _id: res.insertedIds[0],
+                _id: res.insertedId,
                 wheelid: getwheelid(req.session)
             })
 
@@ -942,7 +935,7 @@ export const resolvers = {
             args.uiversion = getuiversion(req.session)
             args.date = new Date(args.datetime)
             if (args.goaldate) args.goaldate = new Date(args.goaldate)
-            const res = await GoalTimes.insert(args)
+            const res = await GoalTimes.insertOne(args)
             return {
                 _id: res.insertedIds[1],
                 message: 'new goal entry created'
@@ -1028,7 +1021,7 @@ export async function createWheel(
             }
         })
 
-        AreaLinks.insert(insertAreaLinks) //inserting in one request
+        AreaLinks.insertMany(insertAreaLinks) //inserting in one request
     }
 
     //create new view
