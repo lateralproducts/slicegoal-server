@@ -8,6 +8,7 @@ let DbConnection = () => {
         console.log('attempting to open server: ' + `${process.env.MONGODB_URL}` + ' with auth')
         let client = await MongoClient.connect(MONGO_URL)
         var _db = client.db(`${process.env.MONGODB_DB}`);
+        console.log('database name: ' + `${process.env.MONGODB_DB}`)
         return _db
     }
 
