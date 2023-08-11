@@ -65,8 +65,6 @@ export const typeDefs = `
         newSubTask(taskid: String!, task: String!): Boolean
 
         addTaskLink(parenttaskid: String!, subtaskid: String!): Boolean
-        removeTaskLink(parenttaskid: String!, subtaskid: String!): Boolean
-        removeTaskParentLinks(subtaskid: String!): Boolean
         linkInsightToTask(taskid: String!, insightid: String!): Boolean
         linkSourceToTask(taskid: String!, sourceid: String!): Boolean
     }
@@ -423,10 +421,11 @@ export const resolvers = {
                 updatetask.$inc = { rescheduled: 1}
             }
 
-            return (await Tasks.updateOne(
+            const result = await Tasks.updateOne(
                 {_id: new ObjectId(args.taskid)},
                 updatetask
-            )).result.ok === 1
+            )
+            return result.modifiedCount === 1
         },
         deleteTask: async(_, args, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
@@ -436,26 +435,28 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            return (await Tasks.updateOne(
+            const result = await Tasks.updateOne(
                 {_id: new ObjectId(args.taskid)},
                 {
                     $set: {schedule: true}, 
                     $unset: {starttime: null}
                 }
-            )).result.ok === 1
+            )
+            return result.modifiedCount === 1
         },
         unlistTask: async(_, args, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
-            return (await Tasks.updateOne(
+            const result = await Tasks.updateOne(
                 {_id: new ObjectId(args.taskid)},
                 {
                     $unset: { schedule: null },
                     $inc: { rescheduled: 1}
                 }
-            )).result.ok === 1
+            )
+            return result.modifiedCount === 1
         },
         updateDayTaskOrder: async(parent, args, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
@@ -522,10 +523,11 @@ export const resolvers = {
                 }
             }
 
-            return (await Tasks.updateOne(
+            const result = await Tasks.updateOne(
                 {_id: new ObjectId(args.taskid)},
                 updates
-            )).result.ok === 1    
+            )
+            return result.modifiedCount === 1   
         },
         checkTask: async(_, args, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
@@ -538,20 +540,22 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
-            return (await Tasks.updateOne(
+            const result = await Tasks.updateOne(
                 {_id: new ObjectId(args.taskid)},
                 {$unset: {goal:''}}
-            )).result.ok === 1
+            )
+            return result.modifiedCount === 1
         },
         setTaskGoal: async(_, {taskid,goalid}, {req}) => {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
-            return (await Tasks.updateOne(
+            const result = await Tasks.updateOne(
                 {_id: new ObjectId(taskid)},
                 {$set: {goal: goalid}}
-            )).result.ok === 1
+            )
+            return result.modifiedCount === 1
         },
         newSubTask: async(_, {taskid,task}, {req}) => {
             if (!req.session.user) return triggererror('Invalid Session')
@@ -561,7 +565,8 @@ export const resolvers = {
             const TaskLinks = db.collection('tasklinks')
             
             if(taskid !== subtaskid){
-                return (await TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: taskid, subtask: subtaskid, created: new Date()})).result.ok === 1
+                const result = await TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: taskid, subtask: subtaskid, created: new Date()})
+                return result.acknowledged === true
             }else{
                 return triggererror('Can\'t link task to the same task')
             }
@@ -570,18 +575,25 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             return await linksubtask({parenttaskid, subtaskid, req})
         },
-        removeTaskLink: async(_, {parenttaskid,subtaskid}, {req}) => {
+        //removeTaskLink(parenttaskid: String!, subtaskid: String!): Boolean
+        /* removeTaskLink: async(_, {parenttaskid,subtaskid}, {req}) => {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const TaskLinks = db.collection('tasklinks')
-            return (await TaskLinks.deleteMany({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid})).result.ok === 1
-        },
-        removeTaskParentLinks: async(_, {subtaskid}, {req}) => {
+            const result = await TaskLinks.deleteMany({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid})
+            console.log(result)
+            return true
+        }, */
+        //removeTaskParentLinks(subtaskid: String!): Boolean
+        /* removeTaskParentLinks: async(_, {subtaskid}, {req}) => {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const TaskLinks = db.collection('tasklinks')
-            return (await TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: subtaskid})).result.ok === 1
-        },
+            
+            const result = await TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: subtaskid})
+            console.log(result)
+            return true
+        }, */
         linkInsightToTask: async(_, {taskid,insightid}, {req}) => {
             if (!req.session.user) return triggererror('Invalid Session')
             return await linkInsightTask(taskid, insightid)
@@ -600,17 +612,17 @@ export async function linkInsightTask(taskid, insightid){
         {_id: new ObjectId(taskid)},
         {$push: {insights: insightid}}
     )
-    console.log(result)
     return true
 }
 
 export async function linkSourceTask(taskid, sourceid){
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
-    return (await Tasks.updateOne(
+    const result = await Tasks.updateOne(
         {_id: new ObjectId(taskid)},
         {$push: {sources: sourceid}}
-    )).result.ok === 1
+    )
+    return result.modifiedCount === 1
 }
 
 export async function createRepeatTask(taskid, req){
@@ -703,7 +715,8 @@ async function deleteTask(taskid, req){
             {subtask: taskid}
         ]
     }) //delete all links.
-    return (await Tasks.deleteOne({_id: new ObjectId(taskid)})).result.ok === 1
+    const result = await Tasks.deleteOne({_id: new ObjectId(taskid)})
+    return result.deletedCount === 1
 }
 
 async function createNewTask({title, description, goal, complete, setdate, starttime, endtime, profileid, type, tags}) {
@@ -758,10 +771,11 @@ export async function checkTask(args, req){
     }
     updatetask.complete = args.checked
 
-    return (await Tasks.updateOne(
+    const result = await Tasks.updateOne(
         {_id: new ObjectId(args.taskid)},
         {$set: updatetask}
-    )).result.ok === 1
+    )
+    return result.modifiedCount === 1
 }
 
 export async function linksubtask({parenttaskid, subtaskid, req}){
@@ -769,7 +783,8 @@ export async function linksubtask({parenttaskid, subtaskid, req}){
     const TaskLinks = db.collection('tasklinks')
 
     if(parenttaskid !== subtaskid){ //new linking.
-        return (await TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid, created: new Date()})).result.ok === 1
+        const result = await TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid, created: new Date()})
+        return true
     }else{
         return triggererror('Can\'t link task to the same task')
     }

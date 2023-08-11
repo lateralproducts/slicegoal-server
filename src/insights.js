@@ -368,7 +368,7 @@ export const resolvers = {
                         args.lastmarked = new Date()
                         args.fib1 = spaced.fib0 + spaced.fib1
                         args.fib0 = spaced.fib1
-                        Spaced.update(
+                        Spaced.updateMany(
                             { insightid: insightid, profileid: getprofileid(req.session) },
                             {
                                 $set: args,
@@ -390,7 +390,7 @@ export const resolvers = {
                         newspaced.datecreated = new Date()
                         Spaced.insertOne(newspaced)
                     }
-                    InsightTags.update(
+                    InsightTags.updateMany(
                         { insightid: insightid, profileid: getprofileid(req.session) },
                         {
                             $set: { nextdate: nextdate }
@@ -411,7 +411,7 @@ export const resolvers = {
                         args.fib0 = 0
                         args.fib1 = 1
                         args.markedno = spaced.markedno ? spaced.markedno + 1 : 1
-                        await Spaced.update(
+                        await Spaced.updateMany(
                             { insightid: insightid, profileid: getprofileid(req.session) },
                             {
                                 $set: args,
@@ -434,7 +434,7 @@ export const resolvers = {
                         Spaced.insertOne(newspaced)
                     }
 
-                    await InsightTags.update(
+                    await InsightTags.updateMany(
                         { insightid: insightid, profileid: getprofileid(req.session) },
                         {
                             $set: { nextdate: nextdate }
@@ -476,7 +476,7 @@ export const resolvers = {
                     let fib = new Object()
                     fib.fib0 = 0
                     fib.fib1 = 1
-                    Spaced.update(
+                    Spaced.updateMany(
                         { insightid: insightid, profileid: getprofileid(req.session) },
                         {
                             $set: fib
@@ -759,8 +759,8 @@ export const resolvers = {
                 const result = await Insights.deleteOne({
                     _id: new ObjectId(args.insightid)
                 })
-                if (result.result.ok === 1) return true
-                else return false
+                console.log(result)
+                return true
             }
         },
         pinInsight: async(_, args) => {

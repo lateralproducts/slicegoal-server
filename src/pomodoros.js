@@ -97,82 +97,72 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
-            return new Promise(function(resolve) {
-                Pomodoros.aggregate(
-                    {
-                        $match: {
-                            $or: [
-                                {
-                                    area: area
-                                },
-                                {
-                                    links: area
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        $group: {
-                            _id: { links: null }, //"$area"
-                            count: { $sum: '$minutes' },
-                            records: { $sum: 1 },
-                            direct: {
-                                $sum: {
-                                    $cond: {
-                                        if: { $eq: ['$area', area] },
-                                        then: 1,
-                                        else: 0
-                                    }
-                                }
+            const data = await Pomodoros.aggregate(
+                [{
+                    $match: {
+                        $or: [
+                            {
+                                area: area
                             },
-                            countdirect: {
-                                $sum: {
-                                    $cond: {
-                                        if: { $eq: ['$area', area] },
-                                        then: '$minutes',
-                                        else: 0
-                                    }
+                            {
+                                links: area
+                            }
+                        ]
+                    }
+                },
+                {
+                    $group: {
+                        _id: { links: null }, //"$area"
+                        count: { $sum: '$minutes' },
+                        records: { $sum: 1 },
+                        direct: {
+                            $sum: {
+                                $cond: {
+                                    if: { $eq: ['$area', area] },
+                                    then: 1,
+                                    else: 0
+                                }
+                            }
+                        },
+                        countdirect: {
+                            $sum: {
+                                $cond: {
+                                    if: { $eq: ['$area', area] },
+                                    then: '$minutes',
+                                    else: 0
                                 }
                             }
                         }
-                    },
-
-                    function(err, data) {
-                        if (err) throw err
-                        resolve(data[0] ? data[0] : 0)
-                    },
-                )
-            })
+                    }
+                }]
+            )
+            if (data[0]) return data[0] 
+            else return 0
         },
         readGoalPomoData: async(_, { goal }, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
-            return new Promise(function(resolve) {
-                Pomodoros.aggregate(
-                    {
-                        $match: {
-                            $or: [
-                                {
-                                    goal: goal
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        $group: {
-                            _id: { links: null },
-                            count: { $sum: '$minutes' },
-                            records: { $sum: 1 }
-                        }
-                    },
-
-                    function(err, data) {
-                        if (err) throw err
-                        resolve(data[0] ? data[0] : 0)
-                    },
-                )
-            })
+            const data = await Pomodoros.aggregate(
+                [{
+                    $match: {
+                        $or: [
+                            {
+                                goal: goal
+                            }
+                        ]
+                    }
+                },
+                {
+                    $group: {
+                        _id: { links: null },
+                        count: { $sum: '$minutes' },
+                        records: { $sum: 1 }
+                    }
+                }]
+            )   
+            if (data[0]) return data[0] 
+            else return 0
         }
     },
     Pomodoro: {

@@ -77,29 +77,22 @@ async function ranknudge() {
     const Users = db.collection('users')
 
 
-    let olduserranks = await new Promise(function(resolve) {
-        let twoweeksago = new Date()
-        twoweeksago.setDate(twoweeksago.getDate() - 6)
+    let twoweeksago = new Date()
+    twoweeksago.setDate(twoweeksago.getDate() - 6)
 
-        RankTimes.aggregate(
-            //group by user (profile) and see which haven't had a rank for over two weeeks.
-            {
-                $group: {
-                    _id: '$userid', //profiles
-                    user: { $first: '$userid' }, //profiles
-                    lastrank: { $max: '$date' }
-                }
-            },
-            {
-                $match: { lastrank: { $gte: twoweeksago } } //I'm currently also missing all the people who have not updated their ranks.
-            },
-            function(err, userrankss) {
-                if (err) throw err
-                if (userrankss) resolve(userrankss)
-                else resolve(null)
-            },
-        )
-    })
+    const olduserranks = await RankTimes.aggregate(
+        //group by user (profile) and see which haven't had a rank for over two weeeks.
+        [{
+            $group: {
+                _id: '$userid', //profiles
+                user: { $first: '$userid' }, //profiles
+                lastrank: { $max: '$date' }
+            }
+        },
+        {
+            $match: { lastrank: { $gte: twoweeksago } } //I'm currently also missing all the people who have not updated their ranks.
+        }]
+    )
 
     const profiles = await Profiles.find({
         _id: {

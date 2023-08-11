@@ -313,7 +313,7 @@ export async function signupEmailFunnel(funnelpackage, name, email){
         emaildate.setDate(today.getDate() + funnelemail.day)
 
         try { //scheduling emails to be sent on days specified.
-            LeadFunnel.update(
+            LeadFunnel.updateOne(
                 { day: date2str(emaildate,'MM-dd-yyyy') },
                 {
                     $push: {emails: {

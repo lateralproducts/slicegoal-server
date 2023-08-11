@@ -203,27 +203,22 @@ export const resolvers = {
         time: async({ _id }, _, { req }) => {
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
-            return new Promise(function(resolve) {
-                Pomodoros.aggregate(
-                    {
-                        $match: {
-                            profileid: getprofileid(req.session),
-                            goal: _id.toString()
-                        }
-                    },
-                    {
-                        $group: {
-                            _id: { links: null }, //"$area"
-                            count: { $sum: '$minutes' }
-                        }
-                    },
-
-                    function(err, data) {
-                        if (err) throw err
-                        resolve(data[0] ? data[0] : 0)
-                    },
-                )
-            })
+            const data = await Pomodoros.aggregate(
+                [{
+                    $match: {
+                        profileid: getprofileid(req.session),
+                        goal: _id.toString()
+                    }
+                },
+                {
+                    $group: {
+                        _id: { links: null }, //"$area"
+                        count: { $sum: '$minutes' }
+                    }
+                }]
+            )
+            if (data[0]) return data[0]
+            else return 0
         },
         goals: async(parent, __, { req }) => {
             const db = await DbConnection.Get()
@@ -432,7 +427,7 @@ export const resolvers = {
             args.profileid = getprofileid(req.session)
             args.snoozedate = new Date(args.snooze)
             args.snoozedate.setHours(0, 0, 0, 0)
-            await Goals.update(
+            await Goals.updateOne(
                 { _id: new ObjectId(args.goalid) },
                 { $set: { snooze: args.snoozedate }}
             )
@@ -458,7 +453,7 @@ export const resolvers = {
                     profileid: getprofileid(req.session),
                     created: new Date()
                 })
-                Goals.update(
+                Goals.updateOne(
                     { _id: new ObjectId(args.goal) },
                     { $set: { linkreferenced: true }}
                 )
@@ -480,7 +475,7 @@ export const resolvers = {
                     profileid: getprofileid(req.session)
                 }
             )
-            Goals.update(
+            Goals.updateOne(
                 { _id: new ObjectId(goal) },
                 { $unset: { linkreferenced: '' }}
             )

@@ -40,8 +40,7 @@ export const typeDefs = `
         newSubTemplate(templateid: String!, template: String!): Boolean
 
         addTemplateLink(parenttemplateid: String!, subtemplateid: String!): Boolean
-        removeTemplateLink(parenttemplateid: String!, subtemplateid: String!): Boolean
-        removeTemplateParentLinks(subtemplateid: String!): Boolean
+        
         linkInsightToTemplate(templateid: String!, insightid: String!): Boolean
         linkSourceToTemplate(templateid: String!, sourceid: String!): Boolean
 
@@ -241,10 +240,11 @@ export const resolvers = {
             await TemplateLinks.deleteMany({profileid: getprofileid(req.session), subtemplate: args.templateid})
             if (args.parenttemplate) TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: args.parenttemplate, subtemplate: args.templateid, created: new Date()})
 
-            return (await Templates.updateOne(
+            const result = await Templates.updateOne(
                 {_id: new ObjectId(args.templateid)},
                 updatetemplate
-            )).result.ok === 1
+            )
+            return result.modifiedCount === 1
         },
         deleteTemplate: async(_, args, { req }) => {
             if (!req.session.user) return triggererror('Invalid Session')
@@ -267,20 +267,22 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
 
-            return (await Templates.updateOne(
+            const result = await Templates.updateOne(
                 {_id: new ObjectId(args.templateid)},
                 {$unset: {goal:''}}
-            )).result.ok === 1
+            )
+            return result.modifiedCount === 1
         },
         setTemplateGoal: async(_, {templateid,goalid}, {req}) => {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
 
-            return (await Templates.updateOne(
+            const result = await Templates.updateOne(
                 {_id: new ObjectId(templateid)},
                 {$set: {goal: goalid}}
-            )).result.ok === 1
+            )
+            return result.modifiedCount === 1
         },
         newSubTemplate: async(_, {templateid,template}, {req}) => {
             if (!req.session.user) return triggererror('Invalid Session')
@@ -289,7 +291,8 @@ export const resolvers = {
             const TemplateLinks = db.collection('templatelinks')
             
             if(templateid !== subtemplateid){
-                return (await TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: templateid, subtemplate: subtemplateid, created: new Date()})).result.ok === 1
+                const result = await TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: templateid, subtemplate: subtemplateid, created: new Date()})
+                return result.insertedId ? true : false
             }else{
                 return triggererror('Can\'t link template to the same template')
             }
@@ -298,18 +301,22 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             
         },
-        removeTemplateLink: async(_, {parenttemplateid,subtemplateid}, {req}) => {
+        // removeTemplateLink(parenttemplateid: String!, subtemplateid: String!): Boolean
+        /* removeTemplateLink: async(_, {parenttemplateid,subtemplateid}, {req}) => {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const TemplateLinks = db.collection('templatelinks')
-            return (await TemplateLinks.deleteMany({profileid: getprofileid(req.session), parenttemplate: parenttemplateid, subtemplate: subtemplateid})).result.ok === 1
-        },
-        removeTemplateParentLinks: async(_, {subtemplateid}, {req}) => {
+            const result = await TemplateLinks.deleteMany({profileid: getprofileid(req.session), parenttemplate: parenttemplateid, subtemplate: subtemplateid})
+            console.log(result)
+            return true
+        }, */
+        // removeTemplateParentLinks(subtemplateid: String!): Boolean
+        /* removeTemplateParentLinks: async(_, {subtemplateid}, {req}) => {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const TemplateLinks = db.collection('templatelinks')
             return (await TemplateLinks.deleteMany({profileid: getprofileid(req.session), subtemplate: subtemplateid})).result.ok === 1
-        },
+        }, */
         linkInsightToTemplate: async(_, {templateid,insightid}, {req}) => {
             if (!req.session.user) return triggererror('Invalid Session')
             return await linkInsightTemplate(templateid, insightid)
@@ -324,19 +331,21 @@ export const resolvers = {
 export async function linkInsightTemplate(templateid, insightid){
     const db = await DbConnection.Get()
     const Templates = db.collection('templates')
-    return (await Templates.updateOne(
+    const result = await Templates.updateOne(
         {_id: new ObjectId(templateid)},
         {$push: {insights: insightid}}
-    )).result.ok === 1
+    )
+    return result.modifiedCount === 1
 }
 
 export async function linkSourceTemplate(templateid, sourceid){
     const db = await DbConnection.Get()
     const Templates = db.collection('templates')
-    return (await Templates.updateOne(
+    const result = await Templates.updateOne(
         {_id: new ObjectId(templateid)},
         {$push: {sources: sourceid}}
-    )).result.ok === 1
+    )
+    return result.modifiedCount === 1
 }
 
 async function deleteTemplate(templateid, req){
@@ -354,7 +363,8 @@ async function deleteTemplate(templateid, req){
             {subtemplate: templateid}
         ]
     }) //delete all links.
-    return (await Templates.deleteOne({_id: new ObjectId(templateid)})).result.ok === 1
+    const result = await Templates.deleteOne({_id: new ObjectId(templateid)})
+    return result.deletedCount === 1
 }
 
 async function createNewTemplate({title, description, goal, profileid, type}) {
@@ -456,7 +466,8 @@ async function linksubtemplate({parenttemplateid, subtemplateid, req}){
     const TemplateLinks = db.collection('templatelinks')
 
     if(parenttemplateid !== subtemplateid){ //new linking.
-        return (await TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: parenttemplateid, subtemplate: subtemplateid, created: new Date()})).result.ok === 1
+        const result = await TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: parenttemplateid, subtemplate: subtemplateid, created: new Date()})
+        return result.insertedId ? true : false
     }else{
         return triggererror('Can\'t link template to the same template')
     }

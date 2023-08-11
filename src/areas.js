@@ -486,52 +486,45 @@ export const resolvers = {
                         wheel: req.session.profile.wheel
                     }).toArray()
 
-                    return new Promise(function(resolve) {
-                        //returning the average of the area for coaching
-                        RankTimes.aggregate(
-                            {
-                                $match: {
-                                    area: _id.toString(),
-                                    //userid: req.session.profile.wheel
-                                    profileid: {
-                                        $in: profiles.map(profile => {
-                                            return profile._id.toString()
-                                        })
-                                    }
+                    //returning the average of the area for coaching
+                    const rank = await RankTimes.aggregate(
+                        [{
+                            $match: {
+                                area: _id.toString(),
+                                //userid: req.session.profile.wheel
+                                profileid: {
+                                    $in: profiles.map(profile => {
+                                        return profile._id.toString()
+                                    })
                                 }
-                            },
-                            {
-                                $group: {
-                                    _id: {
-                                        area: '$area',
-                                        profileid: '$userid'
-                                    },
-                                    date: {
-                                        $last: '$date'
-                                    },
-                                    rank: { $last: '$rank' }
-                                }
-                            },
-                            {
-                                $group: {
-                                    _id: '$*_*id.area',
-                                    rank: { $avg: '$rank' }
-                                }
-                            },
-
-                            function(err, data) {
-                                if (err) throw err
-                                resolve(
-                                    data[0]
-                                        ? {
-                                              rank: parseInt(data[0].rank),
-                                              note: 'team average'
-                                          }
-                                        : null,
-                                )
-                            },
-                        )
-                    })
+                            }
+                        },
+                        {
+                            $group: {
+                                _id: {
+                                    area: '$area',
+                                    profileid: '$userid'
+                                },
+                                date: {
+                                    $last: '$date'
+                                },
+                                rank: { $last: '$rank' }
+                            }
+                        },
+                        {
+                            $group: {
+                                _id: '$*_*id.area',
+                                rank: { $avg: '$rank' }
+                            }
+                        }]
+                    )
+                     
+                    if (rank[0]) return {
+                        rank: parseInt(data[0].rank),
+                        note: 'team average'
+                    }
+                    else return null
+                    
                 } else {
                     const rank = await RankTimes.findOne(
                         {
@@ -908,7 +901,7 @@ export const resolvers = {
             const RankTimes = db.collection('ranktimes')
             const Areas = db.collection('areas')
 
-            Areas.update(
+            Areas.updateOne(
                 {_id: new ObjectId(args.anchorarea)},
                 {$set: {lastranked: new Date(args.datetime)}}
             )
