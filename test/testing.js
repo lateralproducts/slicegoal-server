@@ -5,7 +5,7 @@ export async function newtest(userid) {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
     const user = await Users.findOne({
-        _id: ObjectId(userid)
+        _id: new ObjectId(userid)
     })
     return user
 }

@@ -370,14 +370,14 @@ export async function attachSources(sourcelist, resourcetype, resourceid, profil
                     sourceid: sourcetag._id,
                     resourceid: resourceid
                 },
-                {   
+                {$set: {   
                     sourceid: sourcetag._id,
                     resourcetype: resourcetype,
                     resourceid: resourceid,
                     note: sourcetag.note,
                     datetime: new Date(),
                     profileid: profileid
-                },
+                }},
                 {upsert: true}
             )
 
