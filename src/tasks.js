@@ -286,7 +286,7 @@ export const resolvers = {
             if(tasks.length > 1) tasks.map(task => {if(task.tags) areas.push(...task.tags)})
             //only makes sense to filter if the task list is larger than 1
 
-            if(areas.length > 1){
+            if(areas.length > 0){
                 areas = areas.map(area => new ObjectId(area))
                 const tags = await Areas.find(
                     {_id: {$in: areas}}

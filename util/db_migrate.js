@@ -1,23 +1,37 @@
 import DbConnection from '../src/database'
-//import { ObjectId } from 'mongodb' \n import { triggererror } from './graphqlserver';
+import { ObjectId } from 'mongodb'
+//import { triggererror } from './graphqlserver';
 //import { getprofileid } from '../src/users';
 //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
 
 export const typeDefs = `
     extend type Mutation {
-        migrateUpdateGoalTimesUserIDs: Boolean
+        migrateUpdateGoalLinkedReference: Boolean
     }`
 
 export const resolvers = {
     Mutation: {
-        migrateUpdateGoalTimesUserIDs: async() => {
+        migrateUpdateGoalLinkedReference: async() => {
+            const db = await DbConnection.Get()
+            const GoalLinks = db.collection('goallinks')
+            const Goals = db.collection('goals')
+
+            const links = await GoalLinks.find({}).toArray()
+            links.map(link => {
+                Goals.updateOne({_id: new ObjectId(link.goal)}, {$set: {linkreferenced: true}})
+            })
+
+            //GoalTimes.updateMany({}, { $rename: { userid: 'profileid' } })
+            return true
+        }
+        /* migrateUpdateGoalTimesUserIDs: async() => {
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
             //const TaskLinks = db.collection('tasklinks')
 
             GoalTimes.updateMany({}, { $rename: { userid: 'profileid' } })
             return true
-        }
+        } */
         //updateAreaToSource(areaid: String, resource: String, profileid: String): Boolean
         /* updateTaskLinks: async(parent, args, { req }) => {
             const db = await DbConnection.Get()
