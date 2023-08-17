@@ -78,8 +78,9 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             let query = new Object()
 
-            const starttime = new Date(args.starttime)
-            const endtime = new Date(args.endtime) 
+            const daytime = new Date(args.starttime) //time set from client argument
+            const starttime = startOfDay(daytime)
+            const endtime = daylater(daytime)
 
             if(args.filter) {
                 query.tags = args.filter
@@ -120,7 +121,7 @@ export const resolvers = {
             }
 
             if (args.scheduled && args.list === 'day') { //return list of unscheduled/unfinished tasks for scheduler
-                const today = new Date(args.today)
+                const today = new Date(args.today) //time set from client argument
                 return await Tasks.find(
                     {
                         profile: getprofileid(req.session),
@@ -181,7 +182,7 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            const starttime = new Date(date)
+            const starttime = startOfDay(new Date(date)) //time set from client argument
             let query = {
                 profile: getprofileid(req.session), 
                 starttime: {$lt: starttime}, 
@@ -221,7 +222,7 @@ export const resolvers = {
             const Areas = db.collection('areas')
             let query = new Object()
 
-            const daytime = new Date(day)
+            const daytime = new Date(day) //time set from client argument
             const starttime = startOfDay(daytime)
             const endtime = daylater(daytime)
             
@@ -265,7 +266,7 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             const Areas = db.collection('areas')
             let query = new Object()
-            const today = new Date(date)
+            const today = new Date(date) //time set from client argument
             
             query.$and = [
                 {$or: [
@@ -385,7 +386,7 @@ export const resolvers = {
 
             var updates = new Object()
             if (args.endtime) {
-                updates.endtime = new Date(args.endtime),
+                updates.endtime = new Date(args.endtime), //time set from client argument
                 updates.daytask = false
             }
             else {
@@ -397,7 +398,7 @@ export const resolvers = {
             else updates.schedule = false
 
             if(args.setdate || args.starttime) 
-                {updates.starttime = args.starttime ? new Date(args.starttime) : new Date(args.setdate)} 
+                {updates.starttime = args.starttime ? new Date(args.starttime) : new Date(args.setdate)} //time set from client argument
             /* else 
                 updates.starttime = null */
             if(args.title) updates.title = args.title
@@ -505,7 +506,7 @@ export const resolvers = {
             }
             
             if(args.setdate) {
-                const date = args.starttime ? new Date(args.starttime) : new Date(args.setdate)
+                const date = args.starttime ? new Date(args.starttime) : new Date(args.setdate) //time set from client argument
                 activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'MM-dd-yyyy'), req: req})
                 updates.$set = {
                     starttime: date,
@@ -724,14 +725,14 @@ async function createNewTask({title, description, goal, complete, setdate, start
     const Tasks = db.collection('tasks')
 
     var task = new Object({title: title, description: description, goal: goal, complete: complete, tags: tags })
-    task.starttime = starttime ? new Date(starttime) : (setdate ? new Date(setdate) : null)
+    task.starttime = starttime ? new Date(starttime) : (setdate ? new Date(setdate) : null) //time set from client argument
     task.created = new Date()
 
     if (!goal && !starttime) task.schedule = true
     else task.schedule = false
     
     if (endtime) {
-        task.endtime = new Date(endtime),
+        task.endtime = new Date(endtime), //time set from client argument
         task.daytask = false
     }
     else {

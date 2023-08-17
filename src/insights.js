@@ -450,7 +450,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const Spaced = db.collection('spaced')
-            args.lastedited = new Date(args.datetime)
+            args.lastedited = new Date(args.datetime) //time set from client argument
             let insightid = args.insightid
             delete args.insightid
             Insights.updateOne(
@@ -586,7 +586,7 @@ export const resolvers = {
                 insightid: args.insightid,
                 profileid: getprofileid(req.session),
                 area: res.insertedIds[0].toString(),
-                datecreated: new Date(args.datetime),
+                datecreated: new Date(args.datetime), //time set from client argument
             })
             return res.insertedIds[1] ? true : false
         }, */
@@ -594,8 +594,8 @@ export const resolvers = {
             if (!req.session.user) return triggererror('Invalid Session')
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
-            args.datecreated = new Date(args.datetime)
-            args.lastedited = new Date(args.datetime)
+            args.datecreated = new Date(args.datetime) //time set from client argument
+            args.lastedited = new Date(args.datetime) //time set from client argument
 
             return await createinsight(args, req)
                 .then(insertedId => {
@@ -769,28 +769,24 @@ export const resolvers = {
             const SourceTags = db.collection('sourcetags')
 
             if(args.resourcetype === 'source') {
-                return await SourceTags.updateOne(
+                const resultsourcetags = await SourceTags.updateOne(
                     {
                         sourceid: args.sourceid,
                         resourceid: args.insightid
                     },
                     {$set: {pinned: args.setpinned}}
                 )
-                .then(res => {
-                    if(res.result.n) return true
-                })
+                return (resultsourcetags !== null)
             }
             else if(args.resourcetype === 'insight') {
-                return await InsightTags.updateOne(
+                const resultinsighttags = await InsightTags.updateOne(
                     {
                         area: args.areaid,
                         insightid: args.insightid
                     },
                     {$set: {pinned: args.setpinned}}
                 )
-                .then(res => {
-                    if(res.result.n) return true
-                })
+                return (resultinsighttags !== null)
             }
         }
     }

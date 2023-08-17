@@ -82,8 +82,8 @@ export const resolvers = {
             let query = new Object()
             query.profileid = getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
 
-            var start = new Date(date)
-            var end = new Date(date)
+            var start = new Date(date) //time set from client argument
+            var end = new Date(date) //time set from client argument
             end.setDate(start.getDate() + 1)
 
             query.$and = [
@@ -213,7 +213,7 @@ export async function activityrecord({templateid, taskid, goalid, notes, checked
     record.checked = checked
     record.minutes = minutes
 
-    if(datetime) record.date = new Date(datetime)
+    if(datetime) record.date = new Date(datetime) //time set from client argument
     else record.date = new Date()
 
     await Pomodoros.insertOne(record)

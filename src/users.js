@@ -28,7 +28,7 @@ const PASSWORD_MIN_LENGTH = 8
 export const typeDefs = `
 
   extend type Query {
-      isLoggedin (url: String): User
+      isLoggedin (url: String, timezoneoffset: Int): User
       getConnectedUsers: [User]
   }
 
@@ -86,6 +86,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
+            req.session.timezone = args.timezoneoffset
             req.session.ipaddress = getipaddress(req) //add ip address to session.
             if (!req.session.url) req.session.url = args.url //set the URL string to send back once logged in to load state. rerank. mostly for google auth.
         

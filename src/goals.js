@@ -101,7 +101,7 @@ export const resolvers = {
                 if (args.date)
                     query.$or = [
                         { date: null },
-                        { date: { $lte: new Date(args.date) } }
+                        { date: { $lte: new Date(args.date) } } //time set from client argument
                     ]
             } else query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }] //if not a search query, only show unsnoozed goals.
             
@@ -281,7 +281,7 @@ export const resolvers = {
             args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
-            args.date = args.datetime ? new Date(args.datetime) : null
+            args.date = args.datetime ? new Date(args.datetime) : null //time set from client argument
             args.datecreated = new Date()
             return creategoal(args, req).then(goalid => {
                 return {_id: goalid, goal: args.goal}
@@ -371,8 +371,8 @@ export const resolvers = {
             const Goals = db.collection('goals')
             let goalId = args.goalId
             delete args.goalId
-            args.date = args.datetime ? new Date(args.datetime) : null
-            //args.complete = args.complete ? new Date(args.complete) : null;
+            args.date = args.datetime ? new Date(args.datetime) : null //time set from client argument
+            //args.complete = args.complete ? new Date(args.complete) : null; //time set from client argument
             args.lastupdated = new Date()
             let goal = await Goals.findOneAndUpdate(
                 { _id: new ObjectId(goalId), profileid: getprofileid(req.session) },
@@ -425,7 +425,7 @@ export const resolvers = {
             const Goals = db.collection('goals')
             const GoalTags = db.collection('goaltags')
             args.profileid = getprofileid(req.session)
-            args.snoozedate = new Date(args.snooze)
+            args.snoozedate = new Date(args.snooze) //time set from client argument
             args.snoozedate.setHours(0, 0, 0, 0)
             await Goals.updateOne(
                 { _id: new ObjectId(args.goalid) },
@@ -526,7 +526,7 @@ export async function creategoal(newgoal, req) {
                     goaltag.profileid = newgoal.profileid
                     goaltag.areaid = areaid
                     goaltag.datetime = newgoal.datetime
-                    goaltag.date = new Date(newgoal.datetime)
+                    goaltag.date = new Date(newgoal.datetime) //time set from client argument
                     goaltag.datecreated = new Date()
                     GoalTags.insertOne(goaltag)
                 })

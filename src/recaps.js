@@ -40,7 +40,7 @@ export const resolvers = {
 
             let query = new Object()
             query.profileid = getprofileid(req.session) //show goals from profileid.
-            query.date = new Date(args.date)
+            query.date = new Date(args.date) //time set from client argument
 
             return await Recaps.findOne(query)
         }
@@ -54,7 +54,7 @@ export const resolvers = {
             args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
-            args.date = args.date ? new Date(args.date) : null
+            args.date = args.date ? new Date(args.date) : null //time set from client argument
             args.created = new Date()
             Recaps.insertOne(args)
             return true
@@ -67,7 +67,7 @@ export const resolvers = {
             args.profileid = getprofileid(req.session)
             Recaps.updateOne(
                 {   
-                    date: new Date(args.date),
+                    date: new Date(args.date), //time set from client argument
                     profileid: getprofileid(req.session)
                 },
                 { $set: { recap: args.recap } },
@@ -84,7 +84,7 @@ export const resolvers = {
 
             Recaps.deleteOne(
                 {
-                    date: new Date(args.date),
+                    date: new Date(args.date), //time set from client argument
                     profileid: args.profileid
                 },
                 function(err) {

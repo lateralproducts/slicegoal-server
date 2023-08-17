@@ -903,12 +903,12 @@ export const resolvers = {
 
             Areas.updateOne(
                 {_id: new ObjectId(args.anchorarea)},
-                {$set: {lastranked: new Date(args.datetime)}}
+                {$set: {lastranked: new Date(args.datetime)}} //time set from client argument
             )
             
             const ranktimeargs = {
                 profileid: getprofileid(req.session),
-                date: new Date(args.datetime),
+                date: new Date(args.datetime), //time set from client argument
                 rank: args.rank,
                 note: args.note,
                 area: args.area
@@ -926,8 +926,8 @@ export const resolvers = {
             args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
-            args.date = new Date(args.datetime)
-            if (args.goaldate) args.goaldate = new Date(args.goaldate)
+            args.date = new Date(args.datetime) //time set from client argument
+            if (args.goaldate) args.goaldate = new Date(args.goaldate) //time set from client argument
             const res = await GoalTimes.insertOne(args)
             return {
                 _id: res.insertedIds[1],
@@ -1081,11 +1081,13 @@ async function copywheel(wheelid, userid) {
             delete area._id
             return area
         })
-        let insertedareas = (await Areas.insertMany(newareas)).ops
 
-        let newstartareaid = insertedareas
+        let insertedareas = (await Areas.insertMany(newareas)).insertedIds
+
+        let newstartareaid = insertedareas[0]
+        /* insertedareas
             .find(o => o.copyarea === newwheel.startarea)
-            ._id.toString()
+            ._id.toString() */
 
         Wheels.updateOne(
             { _id: new ObjectId(newwheelid) },
@@ -1114,8 +1116,8 @@ async function copywheel(wheelid, userid) {
             return arealink
         })
 
-        AreaLinks.insertMany(newarealinks)
-
+        if(newarealinks.length > 0) AreaLinks.insertMany(newarealinks)
+        
         //create new profile
         let newprofile = {
             user: userid,
