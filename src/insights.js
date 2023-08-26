@@ -216,12 +216,12 @@ export const resolvers = {
 
             return insights
         },
-        insightList: async(_, args, { req }) => {
+        insightList: async(_, {page}, { req }) => {
             //if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
 
-            const insights = await Insights.find({profileid: getprofileid(req.session)}).sort({datecreated: -1 }).skip(args.page*10).limit(10).toArray()
+            const insights = await Insights.find({profileid: getprofileid(req.session)}).sort({datecreated: -1 }).skip(page*10).limit(10).toArray()
             return insights
         },
         newsharedinsights: async(_, __, { req }) => {

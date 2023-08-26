@@ -41,7 +41,7 @@ export const typeDefs = `
     logout: Boolean!
 
     updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
-    createClient(email: String!, firstname: String, lastname: String): createClientResponse
+    createClient(email: String!): createClientResponse
     
     resetPassword(email: String): Boolean
     setPassword(userid: String, code: String, password: String): User
