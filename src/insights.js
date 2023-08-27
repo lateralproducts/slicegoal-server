@@ -222,7 +222,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
 
-            var skip = 10
+            var skip = 0
             if(page) skip = page*10
             console.log(skip)
             try {
