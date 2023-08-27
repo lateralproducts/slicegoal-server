@@ -226,7 +226,7 @@ export const resolvers = {
             //if(page !== null) skip = page
             console.log(skip)
             try {
-                const insights = await Insights.find({profileid: getprofileid(req.session)}).sort({datecreated: -1 }).toArray() //.skip(page*10).limit(10)
+                const insights = await Insights.find({profileid: getprofileid(req.session)}).sort({datecreated: -1 }).skip(10).limit(10).toArray() //.skip(page*10).limit(10)
                 console.log('insights')
                 console.log(insights)
                 return insights
