@@ -222,6 +222,8 @@ export const resolvers = {
             const Insights = db.collection('insights')
 
             const insights = await Insights.find({profileid: getprofileid(req.session)}).sort({datecreated: -1 }).skip(page*10).limit(10).toArray()
+            console.log('insights')
+            console.log(insights)
             return insights
         },
         newsharedinsights: async(_, __, { req }) => {
