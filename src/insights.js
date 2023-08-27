@@ -222,11 +222,11 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
 
-            var skip = 1
-            //if(page !== null) skip = page
+            var skip = 10
+            if(page !== null) skip = page*10
             console.log(skip)
             try {
-                const insights = await Insights.find({profileid: getprofileid(req.session)}).sort({datecreated: -1 }).skip(10).limit(10).toArray() //.skip(page*10).limit(10)
+                const insights = await Insights.find({profileid: getprofileid(req.session)}).sort({datecreated: -1 }).skip(skip).limit(10).toArray() //.skip(page*10).limit(10)
                 console.log('insights')
                 console.log(insights)
                 return insights
