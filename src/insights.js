@@ -221,6 +221,8 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
 
+            var skip = 0
+            if(page !== null) skip = page
             const insights = await Insights.find({profileid: getprofileid(req.session)}).sort({datecreated: -1 }).skip(page*10).limit(10).toArray()
             console.log('insights')
             console.log(insights)
