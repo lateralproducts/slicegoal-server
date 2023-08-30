@@ -217,22 +217,16 @@ export const resolvers = {
             return insights
         },
         insightList: async(_, {page}, { req }) => {
-            console.log('insightList')
-            //if (!req.session.user) return triggererror('Invalid Session')
+            if (!req.session.user) return triggererror('Invalid Session')
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
 
             var skip = 0
             if(page) skip = page*10
-            console.log(skip)
             try {
                 const insights = await Insights.find({profileid: getprofileid(req.session)}).sort({datecreated: -1 }).skip(skip).limit(10).toArray() //.skip(page*10).limit(10)
-                console.log('insights')
-                console.log(insights)
                 return insights
             } catch (error) {
-                console.log(insightList)
-                console.log(error)
                 return []
             }
         },
