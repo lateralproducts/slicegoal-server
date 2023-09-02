@@ -233,7 +233,7 @@ export const graphql = async() => {
 
             const filename = path.basename(req.path);
             
-            if (filename === 'slicgoallong.png' || filename === 'cavesteplong.png' || filename === 'pixel.png') {
+            if (filename === 'slicegoallong.png' || filename === 'cavesteplong.png' || filename === 'pixel.png') {
                 //logaccess
                 getfile(filename, res)
                 const item = req.query
@@ -242,7 +242,10 @@ export const graphql = async() => {
                     //console.log('slicegoal image accessed - ' + item.ix)
                 }
             } else {
-                getfile(filename, res)
+                //check that there is a valid session before giving access to any files.
+                //if (!req.session && !req.session.user) 
+                res.status(401).json({ error: 'Unauthorized' });
+                //getfile(filename, res)
             }
 
         }) // ✔️🚀
