@@ -158,7 +158,7 @@ export async function sessiontrack(
 ) {
     const db = await DbConnection.Get()
     const Sessions = db.collection('sessions')
-    const Session = await Sessions.findOne({
+    const session = await Sessions.findOne({
         session: req.session.id
     })
     //currently query string coming through as different fields on website and app.
@@ -180,7 +180,7 @@ export async function sessiontrack(
         console.log(error)
     }
 
-    if (Session) {
+    if (session) {
         const pageentry = new Object()
         pageentry.time = new Date()
         pageentry.page = page

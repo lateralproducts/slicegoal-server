@@ -57,7 +57,7 @@ export const resolvers = {
             return true
         } */
         /* updateAreaToSource: async(parent, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             if (args.profileid !== getprofileid(req.session)) return triggererror('Wrong profile')
 
             const db = await DbConnection.Get()

@@ -153,7 +153,7 @@ export const resolvers = {
     },
     Mutation: {
         updateProfile: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Users = db.collection('users')
 
@@ -166,7 +166,7 @@ export const resolvers = {
         },
 
         createClient: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
 
             const db = await DbConnection.Get()
             const Users = db.collection('users')

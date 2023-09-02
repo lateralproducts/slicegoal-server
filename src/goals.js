@@ -76,14 +76,14 @@ export const schema = `
 export const resolvers = {
     Query: {
         goal: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
 
             return await Goals.findOne({profileid: getprofileid(req.session), _id: new ObjectId(args.goalid)})
         },
         goals: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
             const GoalLinks = db.collection('goallinks')
@@ -117,7 +117,7 @@ export const resolvers = {
         },
         goalstolink: async(_, args, { req }) => {
             //used for giving list of goals that can be selected. ie. to link to a task.
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
 
@@ -129,7 +129,7 @@ export const resolvers = {
         },
         linkedgoals: async(_, args, { req }) => {
             //show linked sub goals on a goal.
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
             const Goals = db.collection('goals')
@@ -143,7 +143,7 @@ export const resolvers = {
         },
         parentgoals: async(_, args, { req }) => {
             //show linked sub goals on a goal.
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
             const Goals = db.collection('goals')
@@ -157,7 +157,7 @@ export const resolvers = {
             return await Goals.find({ _id: { $in: linklist.map(function(link) {return new ObjectId(link.rootgoal)}) }}).sort({orderrank: 1}).toArray()
         },
         goalTags: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalTags = db.collection('goaltags')
             
@@ -277,7 +277,7 @@ export const resolvers = {
     },
     Mutation: {
         createGoal: async(root, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             args.profileid = getprofileid(req.session)
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
@@ -288,7 +288,7 @@ export const resolvers = {
             })
         },
         updateGoalTag: async(root, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalTags = db.collection('goaltags')
             args.profileid = getprofileid(req.session)
@@ -302,7 +302,7 @@ export const resolvers = {
             return true
         },
         createGoalTag: async(root, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const GoalTags = db.collection('goaltags')
@@ -330,7 +330,7 @@ export const resolvers = {
             }
         },
         removeGoalTag: async(root, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalTags = db.collection('goaltags')
             args.profileid = getprofileid(req.session)
@@ -346,7 +346,7 @@ export const resolvers = {
             return true
         },
         finishGoal: async(root, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
 
@@ -366,7 +366,7 @@ export const resolvers = {
             return (true)
         },
         updateGoal: async(root, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
             let goalId = args.goalId
@@ -382,7 +382,7 @@ export const resolvers = {
             return goal.value
         },
         removeGoal: async(root, { goalid }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalTags = db.collection('goaltags')
             const Goals = db.collection('goals')
@@ -396,7 +396,7 @@ export const resolvers = {
         },
         updateGoalListOrder: async(parent, args, { req }) => {
             //update the main goal list order rank. persist in database.
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
             args.goals.map(function(_id, count) {
@@ -408,7 +408,7 @@ export const resolvers = {
             return true
         },
         updateGoalOrder: async(parent, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalTags = db.collection('goaltags')
             args.goals.map(function(_id, count) {
@@ -420,7 +420,7 @@ export const resolvers = {
             return true
         },
         snoozeGoal: async(root, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
             const GoalTags = db.collection('goaltags')
@@ -441,7 +441,7 @@ export const resolvers = {
             return true
         },
         createGoalLink: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
             const Goals = db.collection('goals')
@@ -463,7 +463,7 @@ export const resolvers = {
             }
         },
         deleteGoalLink: async(_, { rootgoal, goal }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
             const Goals = db.collection('goals')

@@ -46,7 +46,7 @@ export const schema = `
 export const resolvers = {
     Query: {
         goalpomodoros: async(_, { goalId }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
             return await Pomodoros.find(
@@ -58,7 +58,7 @@ export const resolvers = {
             ).toArray()
         },
         taskpomodoros: async(_, { taskId }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const TaskLinks = db.collection('tasklinks')
 
@@ -75,7 +75,7 @@ export const resolvers = {
             ).toArray()
         },
         daypomodoros: async(_, {date}, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
 
@@ -94,7 +94,7 @@ export const resolvers = {
             return await Pomodoros.find(query).sort({date: -1}).toArray()
         },
         readPomoData: async(_, { area }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
             const data = await Pomodoros.aggregate(
@@ -140,7 +140,7 @@ export const resolvers = {
             else return 0
         },
         readGoalPomoData: async(_, { goal }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
             const data = await Pomodoros.aggregate(
@@ -174,7 +174,7 @@ export const resolvers = {
     },
     Mutation: {
         savePomodoro: async(root, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             if(args.checked && args.taskid){ //Only mark as done if a taskid is sent. Not marking Goals as done.
                 const checkresult = await checkTask(args, req)
                 if (checkresult === 0) return triggererror('Not all sub tasks marked as complete.') 

@@ -73,7 +73,7 @@ export const typeDefs = `
 export const resolvers = {
     Query: {
         tasks: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             let query = new Object()
@@ -160,7 +160,7 @@ export const resolvers = {
             }
         },
         task: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
@@ -173,13 +173,13 @@ export const resolvers = {
             return task
         },
         searchTasks: async(_, {search}, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             return await Tasks.find({profile: getprofileid(req.session), title: new RegExp(search, 'i')}).sort({created: -1}).toArray()
         },
         pastTasks: async(_, {date, filter}, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const starttime = startOfDay(new Date(date)) //time set from client argument
@@ -199,7 +199,7 @@ export const resolvers = {
             return await Tasks.find(query).sort({starttime: -1}).toArray()
         },
         taskInsights: async(_, {taskid}, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const Insights = db.collection('insights')
@@ -215,7 +215,7 @@ export const resolvers = {
         },
         taskDayListTags: async(_, {day}, { req }) => {
             //could replace the day task list query with this one.
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             //return triggererror('Test Error')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
@@ -260,7 +260,7 @@ export const resolvers = {
         },
         taskMainListTags: async(_, {date}, { req }) => {
             //could replace the day task list query with this one.
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             //return triggererror('Test Error')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
@@ -362,7 +362,7 @@ export const resolvers = {
     Mutation: {
         newTask: async(_, args, { req }) => {
             //need to move business logic to server.
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const TaskLinks = db.collection('tasklinks')
 
@@ -379,7 +379,7 @@ export const resolvers = {
             return taskid
         },
         editTask: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const TaskLinks = db.collection('tasklinks')
@@ -429,11 +429,11 @@ export const resolvers = {
             return result.modifiedCount === 1
         },
         deleteTask: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             return await deleteTask(args.taskid, req)
         },
         listTask: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const result = await Tasks.updateOne(
@@ -446,7 +446,7 @@ export const resolvers = {
             return result.modifiedCount === 1
         },
         unlistTask: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
@@ -460,7 +460,7 @@ export const resolvers = {
             return result.modifiedCount === 1
         },
         updateDayTaskOrder: async(parent, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             args.tasks.map(function(_id, count) {
@@ -472,7 +472,7 @@ export const resolvers = {
             return true
         },
         updateGoalTaskOrder: async(parent, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             args.tasks.map(function(_id, count) {
@@ -484,7 +484,7 @@ export const resolvers = {
             return true
         },
         updateTaskListOrder: async(parent, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             args.tasks.map(function(_id, count) {
@@ -496,7 +496,7 @@ export const resolvers = {
             return true
         },
         scheduleTask: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             var updates = new Object()
@@ -531,13 +531,13 @@ export const resolvers = {
             return result.modifiedCount === 1   
         },
         checkTask: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const response = await checkTask(args, req)
             if (response === 0) return triggererror('Not all subtasks are marked as completed.')
             else return response
         },
         removeTaskGoal: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
@@ -548,7 +548,7 @@ export const resolvers = {
             return result.modifiedCount === 1
         },
         setTaskGoal: async(_, {taskid,goalid}, {req}) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
@@ -559,7 +559,7 @@ export const resolvers = {
             return result.modifiedCount === 1
         },
         newSubTask: async(_, {taskid,task}, {req}) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session), type: 'subtask'})
             activityrecord({taskid: subtaskid, notes: 'Task created.', req: req})
@@ -573,12 +573,12 @@ export const resolvers = {
             }
         },
         addTaskLink: async(_, {parenttaskid,subtaskid}, {req}) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             return await linksubtask({parenttaskid, subtaskid, req})
         },
         //removeTaskLink(parenttaskid: String!, subtaskid: String!): Boolean
         /* removeTaskLink: async(_, {parenttaskid,subtaskid}, {req}) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const TaskLinks = db.collection('tasklinks')
             const result = await TaskLinks.deleteMany({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid})
@@ -587,7 +587,7 @@ export const resolvers = {
         }, */
         //removeTaskParentLinks(subtaskid: String!): Boolean
         /* removeTaskParentLinks: async(_, {subtaskid}, {req}) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const TaskLinks = db.collection('tasklinks')
             
@@ -596,11 +596,11 @@ export const resolvers = {
             return true
         }, */
         linkInsightToTask: async(_, {taskid,insightid}, {req}) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             return await linkInsightTask(taskid, insightid)
         },
         linkSourceToTask: async(_, {taskid,sourceid}, {req}) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             return await linkSourceTask(taskid, sourceid)
         }
     }
@@ -628,7 +628,7 @@ export async function linkSourceTask(taskid, sourceid){
 
 export async function createRepeatTask(taskid, req){
     //need to move business logic to server.
-    if (!req.session.user) return triggererror('Invalid Session')
+    
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
 

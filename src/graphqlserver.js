@@ -1,23 +1,13 @@
-//import express from 'express'
-//import bodyParser from "body-parser";
-//import { graphqlExpress, graphiqlExpress } from "graphql-server-express";
-//import { makeExecutableSchema } from "graphql-tools";
-//import cors from 'cors'
-
-//import { querytojson } from './website'
-
-//import { AsyncResource } from "async_hooks";
-
 import express from 'express'
 import session from 'express-session'
 import { createServer, GraphQLYogaError } from '@graphql-yoga/node'
+import { makeExecutableSchema } from '@graphql-tools/schema'
+import { applyMiddleware } from 'graphql-middleware'
 
 import RedisStore from "connect-redis"
 import {createClient} from "redis"
 
 const redis_db = `${process.env.REDIS_DB}`
-console.log(redis_db)
-console.log('app-session-store-0001-001.app-session-store.rgjl3g.apse2.cache.amazonaws.com')
 
 // Initialize client.
 let redisClient = createClient({
@@ -108,65 +98,77 @@ const context = req => ({
 })
 
 // server
-const graphQLServer = createServer({
-    schema: {
-        typeDefs: [
-            Queries,
-            Mutations,
-            userSchema,
-            areaSchema,
-            insightSchema,
-            goalSchema,
-            tagSchema,
-            taskSchema,
-            templateSchema,
-            sourceSchema,
-            paymentSchema,
-            websiteSchema,
-            pomodoroSchema,
-            recapSchema,
-            fileserverSchema,
-            chatSchema,
-            paymentQueryMutation,
-            userQueryMutation,
-            insightQueryMutation,
-            areaQueryMutation,
-            goalQueryMutation,
-            feedbackQueryMutation,
-            webQueryMutation,
-            tagQueryMutation,
-            taskQueryMutation,
-            templateQueryMutation,
-            sourceQueryMutation,
-            pomodoroQueryMutation,
-            dbUpdateQueryMutation,
-            recapQueryMutation,
-            fileserverQueryMutation,
-            chatQueryMutation
-            //could combine the Schema and QueryMutation defs.
-        ],
-        resolvers: merge(
-            paymentResolvers,
-            userResolvers,
-            insightResolvers,
-            areaResolvers,
-            goalResolvers,
-            feedbackResolvers,
-            webResolvers,
-            tagResolvers,
-            taskResolvers,
-            templateResolvers,
-            sourceResolvers,
-            pomodoroResolvers,
-            dbUpdateResolvers,
-            recapResolvers,
-            fileserverResolvers,
-            chatResolvers
-        )
-    },
-    context
+const schema = makeExecutableSchema({
+    typeDefs: [
+        Queries,
+        Mutations,
+        userSchema,
+        areaSchema,
+        insightSchema,
+        goalSchema,
+        tagSchema,
+        taskSchema,
+        templateSchema,
+        sourceSchema,
+        paymentSchema,
+        websiteSchema,
+        pomodoroSchema,
+        recapSchema,
+        fileserverSchema,
+        chatSchema,
+        paymentQueryMutation,
+        userQueryMutation,
+        insightQueryMutation,
+        areaQueryMutation,
+        goalQueryMutation,
+        feedbackQueryMutation,
+        webQueryMutation,
+        tagQueryMutation,
+        taskQueryMutation,
+        templateQueryMutation,
+        sourceQueryMutation,
+        pomodoroQueryMutation,
+        dbUpdateQueryMutation,
+        recapQueryMutation,
+        fileserverQueryMutation,
+        chatQueryMutation
+        //could combine the Schema and QueryMutation defs.
+    ],
+    resolvers: merge(
+        paymentResolvers,
+        userResolvers,
+        insightResolvers,
+        areaResolvers,
+        goalResolvers,
+        feedbackResolvers,
+        webResolvers,
+        tagResolvers,
+        taskResolvers,
+        templateResolvers,
+        sourceResolvers,
+        pomodoroResolvers,
+        dbUpdateResolvers,
+        recapResolvers,
+        fileserverResolvers,
+        chatResolvers
+    )
 })
 
+const schemaWithMiddleware = applyMiddleware(schema, testMiddleWare);
+
+const graphQLServer = createServer({
+    schema: schemaWithMiddleware,
+});
+
+// List of query names that can be accessed by unauthenticated users
+const unauthenticatedQueries = ['isLoggedin', 'login', 'googleLogin', 'trackpage'];
+
+async function testMiddleWare(resolve, root, args, context, info) {
+    if (!unauthenticatedQueries.includes(info.operation.name.value)){
+        if (!context.req.session && !context.req.session.user) return triggererror('Invalid Session')
+    }
+    return resolve(root, args, context)
+}
 
 export const graphql = async() => {
     try {

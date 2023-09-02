@@ -164,7 +164,7 @@ export const schema = `
 export const resolvers = {
     Query: {
         allviews: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Views = db.collection('views')
             const Users = db.collection('users')
@@ -181,7 +181,7 @@ export const resolvers = {
             })
         },
         sharedviews: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Views = db.collection('views')
             const Users = db.collection('users')
@@ -218,7 +218,7 @@ export const resolvers = {
                 .toArray()
         },
         areas: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const wheel = !args.wheelid ? getwheelid(req.session) : args.wheelid
@@ -231,7 +231,7 @@ export const resolvers = {
             return areas
         },
         profiles: async(_, __, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Profiles = db.collection('profiles')
             if (req.session.view.type === 'coach') {
@@ -255,7 +255,7 @@ export const resolvers = {
                 .toArray()
         },
         area: async(_, { _id, navdirection }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             logareaclick(_id, navdirection, req)
@@ -267,7 +267,7 @@ export const resolvers = {
             return area
         },
         ranktimes: async(_, { areaId }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const RankTimes = db.collection('ranktimes')
             return await RankTimes.find({
@@ -278,7 +278,7 @@ export const resolvers = {
                 .toArray()
         },
         arealinks: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const AreaLinks = db.collection('arealinks')
             return await AreaLinks.find({
@@ -288,7 +288,7 @@ export const resolvers = {
             }).toArray()
         },
         /* goaltimes: async(_, __, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
             return await GoalTimes.find({ profileid: getprofileid(req.session) })
@@ -296,7 +296,7 @@ export const resolvers = {
                 .toArray()
         }, */
         lastranktime: async(_, { areaId }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const RankTimes = db.collection('ranktimes')
             //if coach, return average of coachees.
@@ -306,7 +306,7 @@ export const resolvers = {
             )
         },
         /* lastgoaltime: async(_, { areaId }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
             return await GoalTimes.findOne(
@@ -315,7 +315,7 @@ export const resolvers = {
             )
         }, */
         viewsOnWheel: async(_, { wheelid }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Views = db.collection('views')
             const views = await Views.find({
@@ -360,7 +360,7 @@ export const resolvers = {
             return await Areas.findOne(query)
         },
         unseen: async(parent, __, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
 
@@ -609,7 +609,7 @@ export const resolvers = {
     },
     Mutation: {
         setView: async(_, { viewid }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Views = db.collection('views')
             const Users = db.collection('users')
@@ -642,7 +642,7 @@ export const resolvers = {
             }
         },
         deleteView: async(_, { viewid }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Views = db.collection('views')
 
@@ -659,7 +659,7 @@ export const resolvers = {
             return await Views.findOne({ user: getuserid(req.session) })
         },
         removeViewFromUser: async(_, { viewid }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Views = db.collection('views')
 
@@ -679,7 +679,7 @@ export const resolvers = {
             return true
         },
         createNewWheel: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             //set wheel, view, and profile to the context.
             let { newview, newprofile } = await createWheel(
                 req.session.user,
@@ -696,7 +696,7 @@ export const resolvers = {
             return newview //need to return the view, area.
         },
         removeStartArea: async(_, __, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             await Users.updateOne(
@@ -707,7 +707,7 @@ export const resolvers = {
             return true
         },
         updateStartArea: async(_, { areaid }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const AreaLinks = db.collection('arealinks')
@@ -735,7 +735,7 @@ export const resolvers = {
             return true
         },
         toggleFocusFlag: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const AreaLinks = db.collection('arealinks')
             const Areas = db.collection('areas')
@@ -759,7 +759,7 @@ export const resolvers = {
             return focusflag
         },
         deleteArea: async(_, { areaid }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const AreaLinks = db.collection('arealinks')
@@ -799,7 +799,7 @@ export const resolvers = {
             }
         },
         setProfile: async(_, { profileid }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Profiles = db.collection('profiles')
             const profile = await Profiles.findOne({
@@ -813,12 +813,12 @@ export const resolvers = {
             return profile
         },
         copyWheel: async(_, { wheelid }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             copywheel(wheelid, getuserid(req.session))
             return true
         },
         deleteAreaLink: async(_, { rootarea, area }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const AreaLinks = db.collection('arealinks')
             const res = await AreaLinks.deleteMany(
@@ -831,7 +831,7 @@ export const resolvers = {
             return res
         },
         createAreaLink: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const AreaLinks = db.collection('arealinks')
             await AreaLinks.insertOne({
@@ -843,7 +843,7 @@ export const resolvers = {
             return true
         },
         createArea: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const AreaLinks = db.collection('arealinks')
@@ -867,7 +867,7 @@ export const resolvers = {
             })
         },
         createCoachArea: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const AreaLinks = db.collection('arealinks')
@@ -896,7 +896,7 @@ export const resolvers = {
             return area
         },
         createRankTime: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const RankTimes = db.collection('ranktimes')
             const Areas = db.collection('areas')
@@ -920,7 +920,7 @@ export const resolvers = {
                 })
         },
         createGoalTime: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
             args.profileid = getprofileid(req.session)
@@ -935,7 +935,7 @@ export const resolvers = {
             }
         },
         updateArea: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             await Areas.updateOne(

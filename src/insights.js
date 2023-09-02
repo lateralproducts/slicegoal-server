@@ -98,7 +98,7 @@ export const schema = `
 export const resolvers = {
     Query: {
         insights: async(_, { areas }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
 
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
@@ -139,7 +139,7 @@ export const resolvers = {
             return insights
         },
         spaced: async(_, { areas }, {req}) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
             const Insights = db.collection('insights')
@@ -196,7 +196,7 @@ export const resolvers = {
             }
         },
         searchinsights: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
 
@@ -217,7 +217,7 @@ export const resolvers = {
             return insights
         },
         insightList: async(_, {page}, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
 
@@ -231,7 +231,7 @@ export const resolvers = {
             }
         },
         newsharedinsights: async(_, __, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
 
@@ -244,7 +244,7 @@ export const resolvers = {
             else return 0
         },
         getSharedInsights: async(_, __, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const Users = db.collection('users')
@@ -267,7 +267,7 @@ export const resolvers = {
             }
         },
         insightTags: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
             const insighttags = await InsightTags.find({
@@ -347,7 +347,7 @@ export const resolvers = {
     },
     Mutation: {
         markSpaced: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Spaced = db.collection('spaced')
             const InsightTags = db.collection('insighttags')
@@ -452,7 +452,7 @@ export const resolvers = {
             }
         },
         updateInsight: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const Spaced = db.collection('spaced')
@@ -507,7 +507,7 @@ export const resolvers = {
             }
         },
         createInsightTag: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
             const Areas = db.collection('areas')
@@ -549,7 +549,7 @@ export const resolvers = {
             }
         },
         updateInsightTag: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
             args.profileid = getprofileid(req.session)
@@ -563,7 +563,7 @@ export const resolvers = {
             return true
         },
         removeInsightTag: async(root, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
             args.profileid = getprofileid(req.session)
@@ -597,7 +597,7 @@ export const resolvers = {
             return res.insertedIds[1] ? true : false
         }, */
         createInsight: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
             args.datecreated = new Date(args.datetime) //time set from client argument
@@ -623,7 +623,7 @@ export const resolvers = {
                 })
         },
         removeInsight: async(_, { insightid }, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
             const Insights = db.collection('insights')
@@ -662,7 +662,7 @@ export const resolvers = {
             }
         },
         shareInsight: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const Users = db.collection('users')
@@ -744,7 +744,7 @@ export const resolvers = {
             }
         },
         popSharedInsight: async(_, args, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const Users = db.collection('users')

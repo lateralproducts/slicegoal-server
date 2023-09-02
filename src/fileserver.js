@@ -34,7 +34,7 @@ export const typeDefs = `
 export const resolvers = {
     Query: {
         filePreview: async(_, {fileid}, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Files = db.collection('files')
             var file = await Files.findOne({_id: new ObjectId(fileid), profileid: getprofileid(req.session)})
@@ -60,7 +60,7 @@ export const resolvers = {
             return preview
         },
         fileDownloadUrl: async(_, {fileid}, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Files = db.collection('files')
             const file = (await Files.find({_id: new ObjectId(fileid), profileid: getprofileid(req.session)}))
@@ -76,7 +76,7 @@ export const resolvers = {
     },
     Mutation: {
         getUploadLink: async(_, {name, type, size}, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Files = db.collection('files')
             const uuid = (await Files.insertOne({name: name, type: type, profileid: getprofileid(req.session), uploadedby: getuserid(req.session), uploaded: new Date()})).insertedId.toString()
@@ -95,7 +95,7 @@ export const resolvers = {
             return returnurl
         },
         saveFileToInsight: async(_, {fileid, insightid}, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Files = db.collection('files')
             const file = (await Files.find({_id: new ObjectId(fileid), profileid: getprofileid(req.session)}))
@@ -111,7 +111,7 @@ export const resolvers = {
             )
         },
         saveFileToSource: async(_, {fileid, sourceid}, { req }) => {
-            if (!req.session.user) return triggererror('Invalid Session')
+            
             const db = await DbConnection.Get()
             const Files = db.collection('files')
             const file = (await Files.find({_id: new ObjectId(fileid), profileid: getprofileid(req.session)}))
