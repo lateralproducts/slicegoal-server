@@ -39,6 +39,7 @@ export const typeDefs = `
         task(taskid: String!): Task
         searchTasks(search: String!): [Task]
         pastTasks(date: String!, filter: String): [Task]
+        taskPriorityList(filter: String): [Task]
         taskInsights(taskid: String!): [Insight]
         taskDayListTags(day: String): [Area]
         taskMainListTags(date: String!): [Area]
@@ -177,6 +178,34 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             return await Tasks.find({profile: getprofileid(req.session), title: new RegExp(search, 'i')}).sort({created: -1}).toArray()
+        },
+        taskPriorityList: async(_, {filter}, { req }) => {
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            const daytime = new Date() //time set from client argument
+            const today = startOfDay(daytime)
+            let query = {
+                profile: getprofileid(req.session),
+                type: {$ne: 'subtask'},
+                $and: [{$or: [
+                    {complete: null},
+                    {complete: false},
+                    {complete: {$exists: false}}
+                ]},
+                {$or: [
+                    {starttime: null},
+                    {starttime: {$exists: false}},
+                    {starttime: {$lt: today}},
+                    {schedule: true}
+                ]}]
+            }
+
+            if(filter) {
+                query.tags = filter
+            } 
+
+            return await Tasks.find(query)
+            .sort({listorder: 1}).toArray()
         },
         pastTasks: async(_, {date, filter}, { req }) => {
             
