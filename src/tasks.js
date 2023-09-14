@@ -265,6 +265,8 @@ export const resolvers = {
                 {complete: false},
                 {complete: {$exists: false}},
             ]
+
+            query.profile = getprofileid(req.session)
             
             const tasks = await Tasks.find(query).sort({dayorder: 1}).toArray() 
 
@@ -308,6 +310,7 @@ export const resolvers = {
                     {complete: {$exists: false}},
                 ]}
             ]
+            query.profile = getprofileid(req.session)
 
             query.type = {$ne: 'subtask'}
             const tasks = await Tasks.find(query).toArray()

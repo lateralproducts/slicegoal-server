@@ -92,10 +92,7 @@ export const resolvers = {
         
             if (req.session.user) {
                 sessiontrack(req, args, 'app', 'arrived', 'session refresh')
-                const user = await Users.findOne({
-                    _id: new ObjectId(getuserid(req.session))
-                })
-                return user
+                return req.session.user
             } else {
                 sessiontrack(req, args, 'app', 'arrived')
                 return null
