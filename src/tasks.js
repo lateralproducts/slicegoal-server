@@ -187,17 +187,25 @@ export const resolvers = {
             let query = {
                 profile: getprofileid(req.session),
                 type: {$ne: 'subtask'},
-                $and: [{$or: [
-                    {complete: null},
-                    {complete: false},
-                    {complete: {$exists: false}}
-                ]},
-                {$or: [
-                    {starttime: null},
-                    {starttime: {$exists: false}},
-                    {starttime: {$lt: today}},
-                    {schedule: true}
-                ]}]
+                $and: [
+                    {$or: [
+                        {complete: null},
+                        {complete: false},
+                        {complete: {$exists: false}}
+                    ]},
+                    {$or: [
+                        {starttime: null},
+                        {starttime: {$exists: false}},
+                        {starttime: {$lt: today}},
+                        {schedule: true}
+                    ]},
+                    {$or: [
+                        {goal: {$eq: null}}, //no goal
+                        {goal: {$exists: false}}, //no goal
+                        {goal: {$ne: null}, schedule: true}, //is a goal and scheduled = true
+                        {goal: {$ne: null}, starttime: {$lt: today}} //is a goal and scheduled in past.
+                    ]}
+                ]
             }
 
             if(filter) {
@@ -485,7 +493,7 @@ export const resolvers = {
             const result = await Tasks.updateOne(
                 {_id: new ObjectId(args.taskid)},
                 {
-                    $unset: { schedule: null },
+                    $unset: { schedule: null, starttime: null },
                     $inc: { rescheduled: 1}
                 }
             )
@@ -539,7 +547,7 @@ export const resolvers = {
             
             if(args.setdate) {
                 const date = args.starttime ? new Date(args.starttime) : new Date(args.setdate) //time set from client argument
-                activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'MM-dd-yyyy'), req: req})
+                activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req})
                 updates.$set = {
                     starttime: date,
                     daytask: true,
