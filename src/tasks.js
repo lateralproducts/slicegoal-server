@@ -12,7 +12,6 @@ export const schema = `
         _id: String
         date: String
         starttime: String
-        endtime: String
         title: String
         description: String
         goal: Goal,
@@ -35,7 +34,7 @@ export const schema = `
 
 export const typeDefs = `
     extend type Query {
-        tasks(starttime: String, endtime: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String, filter: String) : [Task]
+        tasks(date: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String, filter: String) : [Task]
         task(taskid: String!): Task
         searchTasks(search: String!): [Task]
         pastTasks(date: String!, filter: String): [Task]
@@ -46,14 +45,14 @@ export const typeDefs = `
     }
     
     extend type Mutation {
-        newTask(setdate: String, starttime: String, endtime: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, tags: [String]) : String        
-        editTask(taskid: String!, starttime: String, endtime: String, title: String, description: String, setdate: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean, tags: [String]) : Boolean
+        newTask(date: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, tags: [String]) : String        
+        editTask(taskid: String!, date: String, title: String, description: String, date: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean, tags: [String]) : Boolean
         deleteTask(taskid: String!) : Boolean
 
         listTask(taskid: String!) : Boolean
         unlistTask(taskid: String!) : Boolean
         
-        scheduleTask(taskid: String!, setdate: String, reschedule: Boolean) : Boolean
+        scheduleTask(taskid: String!, date: String, reschedule: Boolean) : Boolean
         
         checkTask(taskid: String!, checked: Boolean) : Boolean
         setTaskGoal(taskid: String!, goalid: String!): Boolean
@@ -72,6 +71,7 @@ export const typeDefs = `
 `
 
 export const resolvers = {
+    //need to clean up starttime
     Query: {
         tasks: async(_, args, { req }) => {
             
@@ -79,13 +79,13 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             let query = new Object()
 
-            const daytime = new Date(args.starttime) //time set from client argument
+            const daytime = new Date(args.date) //time set from client argument
             const starttime = startOfDay(daytime)
-            const endtime = daylater(daytime)
+            const endtime = daylater(daytime) // can retire this later if I want to migrate old DB records.
 
             if(args.filter) {
                 query.tags = args.filter
-            } 
+            }
 
             if(!args.complete) {
                 query.$or = [ //only return if complete not equal to true (or doesn't exist)
@@ -93,7 +93,7 @@ export const resolvers = {
                     {complete: false},
                     {complete: {$exists: false}},
                 ]
-                if(args.starttime || args.endtime){
+                if(args.date){
                     query.$and = [
                             {'starttime': {$gte: starttime}},
                             {'starttime': {$lt: endtime}}
@@ -425,22 +425,14 @@ export const resolvers = {
             const TaskLinks = db.collection('tasklinks')
 
             var updates = new Object()
-            if (args.endtime) {
-                updates.endtime = new Date(args.endtime), //time set from client argument
-                updates.daytask = false
-            }
-            else {
-                updates.daytask = true
-                updates.endtime = null
-            }
+            
+            updates.daytask = true
 
-            if (!args.goal && !args.starttime) updates.schedule = true
+            if (!args.goal && !args.date) updates.schedule = true
             else updates.schedule = false
 
-            if(args.setdate || args.starttime) 
-                {updates.starttime = args.starttime ? new Date(args.starttime) : new Date(args.setdate)} //time set from client argument
-            /* else 
-                updates.starttime = null */
+            if(args.date) 
+                {updates.starttime = new Date(args.date)} //time set from client argument
             if(args.title) updates.title = args.title
             if(args.complete !== null) updates.complete = args.complete
             if(args.description !== null) updates.description = args.description
@@ -545,13 +537,12 @@ export const resolvers = {
                 updates.$inc = { rescheduled: 1}
             }
             
-            if(args.setdate) {
-                const date = args.starttime ? new Date(args.starttime) : new Date(args.setdate) //time set from client argument
+            if(args.date) {
+                const date = new Date(args.date) //time set from client argument
                 activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req})
                 updates.$set = {
                     starttime: date,
-                    daytask: true,
-                    endtime: null
+                    daytask: true
                 }
                 updates.$unset = {schedule: null}
             } else {
@@ -687,7 +678,6 @@ export async function createRepeatTask(taskid, req){
     delete tasktorepeat.complete
     delete tasktorepeat.completed
     delete tasktorepeat.starttime
-    delete tasktorepeat.endtime
     delete tasktorepeat.rescheduled
 
     //create new task from template and get id.
@@ -760,25 +750,18 @@ async function deleteTask(taskid, req){
     return result.deletedCount === 1
 }
 
-async function createNewTask({title, description, goal, complete, setdate, starttime, endtime, profileid, type, tags}) {
+async function createNewTask({title, description, goal, complete, date, starttime, profileid, type, tags}) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
 
     var task = new Object({title: title, description: description, goal: goal, complete: complete, tags: tags })
-    task.starttime = starttime ? new Date(starttime) : (setdate ? new Date(setdate) : null) //time set from client argument
+    task.starttime = starttime ? new Date(starttime) : (date ? new Date(date) : null) //time set from client argument
     task.created = new Date()
 
-    if (!goal && !starttime) task.schedule = true
+    if (!goal && (!starttime || !date)) task.schedule = true
     else task.schedule = false
     
-    if (endtime) {
-        task.endtime = new Date(endtime), //time set from client argument
-        task.daytask = false
-    }
-    else {
-        task.daytask = true
-        task.endtime = null
-    }
+    task.daytask = true
     task.profile = profileid
     task.type = type
 

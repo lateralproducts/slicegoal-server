@@ -454,7 +454,7 @@ async function createSubTemplatesFromSubTasks(taskid, newtemplateid, req) {
         let newSubTemplates = (await Templates.insertMany(insertSubTemplates)).insertedIds
         
         //link all subtasks to the parent task.
-        newSubTemplates.map(subtemplateid => {
+        if(newSubTemplates) newSubTemplates.map(subtemplateid => {
             //no activity records or history recorded against templates yet.
             linksubtemplate({parenttemplateid: newtemplateid, subtemplateid: subtemplateid.toString(), req: req})}
         )

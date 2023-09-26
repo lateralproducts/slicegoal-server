@@ -203,7 +203,7 @@ export const resolvers = {
         time: async({ _id }, _, { req }) => {
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
-            const data = await Pomodoros.aggregate(
+            const aggCursor = await Pomodoros.aggregate(
                 [{
                     $match: {
                         profileid: getprofileid(req.session),
@@ -212,13 +212,17 @@ export const resolvers = {
                 },
                 {
                     $group: {
-                        _id: { links: null }, //"$area"
+                        _id: _id.toString(), //"$area"
                         count: { $sum: '$minutes' }
                     }
                 }]
             )
-            if (data[0]) return data[0]
-            else return 0
+            
+            var result
+            await aggCursor.forEach(doc => {
+                result = doc
+            })
+            return result
         },
         goals: async(parent, __, { req }) => {
             const db = await DbConnection.Get()

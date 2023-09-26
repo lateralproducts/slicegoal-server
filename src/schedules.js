@@ -80,7 +80,7 @@ async function ranknudge() {
     let twoweeksago = new Date()
     twoweeksago.setDate(twoweeksago.getDate() - 6)
 
-    const olduserranks = await RankTimes.aggregate(
+    const aggCursor = await RankTimes.aggregate(
         //group by user (profile) and see which haven't had a rank for over two weeeks.
         [{
             $group: {
@@ -93,6 +93,11 @@ async function ranknudge() {
             $match: { lastrank: { $gte: twoweeksago } } //I'm currently also missing all the people who have not updated their ranks.
         }]
     )
+
+    var olduserranks
+    await aggCursor.forEach(doc => {
+        olduserranks = doc
+    })
 
     const profiles = await Profiles.find({
         _id: {

@@ -94,10 +94,9 @@ export const resolvers = {
             return await Pomodoros.find(query).sort({date: -1}).toArray()
         },
         readPomoData: async(_, { area }, { req }) => {
-            
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
-            const data = await Pomodoros.aggregate(
+            const aggCursor = await Pomodoros.aggregate(
                 [{
                     $match: {
                         $or: [
@@ -136,20 +135,20 @@ export const resolvers = {
                     }
                 }]
             )
-            if (data[0]) return data[0] 
-            else return 0
+            var result
+            await aggCursor.forEach(doc => {
+                result = doc
+            })
+            return result !== undefined ? result : null
         },
         readGoalPomoData: async(_, { goal }, { req }) => {
-            
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
-            const data = await Pomodoros.aggregate(
+            const aggCursor = await Pomodoros.aggregate(
                 [{
                     $match: {
                         $or: [
-                            {
-                                goal: goal
-                            }
+                            {goal: goal}
                         ]
                     }
                 },
@@ -161,8 +160,11 @@ export const resolvers = {
                     }
                 }]
             )   
-            if (data[0]) return data[0] 
-            else return 0
+            var result
+            await aggCursor.forEach(doc => {
+                result = doc
+            })
+            return result
         }
     },
     Pomodoro: {
