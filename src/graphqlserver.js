@@ -165,7 +165,8 @@ const unauthenticatedQueries = ['isLoggedin', 'login', 'googleLogin', 'trackpage
 
 async function testMiddleWare(resolve, root, args, context, info) {
     if (!unauthenticatedQueries.includes(info.operation.name.value)){
-        if (!context.req.session && !context.req.session.user) return triggererror('Invalid Session')
+        if (!context.req.session || !context.req.session.user) return triggererror('Invalid Session')
+        //what about introducing a check on the profile too? For profile specific requests.
     }
     return resolve(root, args, context)
 }
