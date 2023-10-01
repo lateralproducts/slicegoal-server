@@ -16,6 +16,7 @@ deploy:
         #- sudo rsync -r --delete ./public/ ~/Desktop/Build/production
     script:
         - echo "Deploying to Production..."
+        - apk update && apk add openssh-client rsync
         - rsync -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
         - rsync -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
         - rsync -ru --delete ./src/files ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
