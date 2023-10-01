@@ -29,6 +29,8 @@ publish:
 deploy:
     image: alpine:latest
     stage: deploy
+    dependencies:
+        - build
     tags:
         - deployment
     script:
