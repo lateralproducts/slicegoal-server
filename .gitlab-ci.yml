@@ -11,8 +11,8 @@ deploy:
     stage: deploy
     image: node:20
     before_script:
-        - npm install
-        - npm build
+        - yarn install
+        - yarn build
         #- sudo rsync -r --delete ./public/ ~/Desktop/Build/production
     script:
         - echo "Deploying to Production..."
