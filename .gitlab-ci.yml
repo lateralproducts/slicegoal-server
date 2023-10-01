@@ -18,6 +18,12 @@ publish:
     script:
         - yarn install
         - yarn build
+    only:
+        - master
+    #when: manual
+    ## manually deploy ^^
+    tags:
+        - production
 deploy:
     image: alpine:latest
     stage: deploy
