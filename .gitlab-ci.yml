@@ -9,6 +9,7 @@ stages:
 
 deploy:
     stage: deploy
+    image: node:20
     before_script:
         - yarn install
         - yarn build
