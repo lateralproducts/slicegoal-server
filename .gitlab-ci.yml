@@ -35,6 +35,8 @@ deploy:
         - echo -e "$DEPLOY_RSA" | tr -d '\r' | ssh-add -
         - mkdir -p ~/.ssh
         - chmod 700 ~/.ssh
+        - ssh-keyscan 13.211.38.119 >> ~/.ssh/known_hosts
+        - chmod 644 ~/.ssh/known_hosts
         ##
         - ssh ec2-user@13.211.38.119 "hostname && echo 'Welcome!!!' > welcome.txt"
         - echo "Deploying to Production..."
