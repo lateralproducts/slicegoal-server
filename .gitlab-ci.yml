@@ -19,6 +19,7 @@ publish:
         - yarn install
         - yarn build
         - echo "$PWD"
+        - echo *
     only:
         - master
     #when: manual
@@ -54,7 +55,8 @@ deploy:
         - ssh -tt -i "SchraderLaptop.pem" -o StrictHostKeyChecking=no ec2-user@13.211.38.119 "hostname && echo 'Welcome!!!' > welcome.txt"
         - echo "Deploying to Production..."
         - echo "$PWD"
-        - rsync -e "ssh -i SchraderLaptop.pem" -ru --delete ./dist ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
+        - echo *
+        - rsync -e "ssh -i SchraderLaptop.pem" -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
         - rsync -e "ssh -i SchraderLaptop.pem" -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
         - rsync -e "ssh -i SchraderLaptop.pem" -ru --delete ./src/files ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
         #send build to production folder and restart service with environment variables - add new prod env variables here:
