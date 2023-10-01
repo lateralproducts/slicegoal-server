@@ -15,10 +15,6 @@ stages:
 publish:
     image: node:20
     stage: publish
-    artifacts:
-        paths: 
-        - build/
-        - src/
     script:
         - yarn install
         - yarn build
@@ -33,6 +29,9 @@ publish:
 deploy:
     image: alpine:latest
     stage: deploy
+    artifacts:
+        paths: 
+        - build/
     tags:
         - deployment
     script:
