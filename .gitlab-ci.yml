@@ -30,23 +30,13 @@ deploy:
     tags:
         - deployment
     script:
-        - apk update && apk add ssh-agent openssh-client
-        ##
-        ## Run ssh-agent (inside the build environment)
-        ##
+        - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
         - eval $(ssh-agent -s)
-        ##
-        ## Give the right permissions, otherwise ssh-add will refuse to add files
-        ## Add the SSH key stored in SSH_PRIVATE_KEY file type CI/CD variable to the agent store
-        ##
-        - chmod 400 "$DEPLOY_RSA"
-        - ssh-add "$DEPLOY_RSA"
-        ##
-        ## Create the SSH directory and give it the right permissions
-        ##
+        - echo "$DEPLOY_RSA" | tr -d '\r' | ssh-add -
         - mkdir -p ~/.ssh
         - chmod 700 ~/.ssh
         ##
+        ssh ec2-user@13.211.38.119 "hostname && echo 'Welcome!!!' > welcome.txt"
         - echo "Deploying to Production..."
         - rsync -e "ssh -i $DEPLOY_RSA" -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
         - rsync -e "ssh -i $DEPLOY_RSA" -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
