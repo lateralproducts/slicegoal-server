@@ -36,8 +36,9 @@ deploy:
         ## Give the right permissions, otherwise ssh-add will refuse to add files
         ## Add the SSH key stored in SSH_PRIVATE_KEY file type CI/CD variable to the agent store
         ##
-        - chmod 400 "$DEPLOY_RSA"
-        - ssh-add "$DEPLOY_RSA"
+        - echo "$SchraderLaptop" > "SchraderLaptop.pem"
+        ##- chmod 400 "$SchraderLaptop"
+        ##- ssh-add "$SchraderLaptop"
         ##
         ## Create the SSH directory and give it the right permissions
         ##
@@ -47,13 +48,13 @@ deploy:
         ##- ssh-keyscan 13.211.38.119 >> ~/.ssh/known_hosts
         ##- chmod 644 ~/.ssh/known_hosts
         ##
-        - ssh -v ec2-user@13.211.38.119 "hostname && echo 'Welcome!!!' > welcome.txt"
+        - ssh -v -i "SchraderLaptop.pem" ec2-user@13.211.38.119 "hostname && echo 'Welcome!!!' > welcome.txt"
         - echo "Deploying to Production..."
-        - rsync -e "ssh -i $DEPLOY_RSA" -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
-        - rsync -e "ssh -i $DEPLOY_RSA" -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
-        - rsync -e "ssh -i $DEPLOY_RSA" -ru --delete ./src/files ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
+        - rsync -e "ssh -i $SchraderLaptop" -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
+        - rsync -e "ssh -i $SchraderLaptop" -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
+        - rsync -e "ssh -i $SchraderLaptop" -ru --delete ./src/files ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
         #send build to production folder and restart service with environment variables - add new prod env variables here:
-        - ssh -i $DEPLOY_RSA" -T ec2-user@13.211.38.119 -v "cd /home/ec2-user/strategyserver/ && PAYMENT_API_ENV='$PAYMENT_API_ENV' PAYMENT_API_KEY='$PAYMENT_API_KEY' PAYMENT_API_PASS='$PAYMENT_API_PASS' PAYMENT_MONTHLY_COST='$PAYMENT_MONTHLY_COST' PAYMENT_REDIRECT_URL='$PAYMENT_REDIRECT_URL' COPY_WHEELOFLIFE='$COPY_WHEELOFLIFE' NOTIFICATION_EMAIL='$NOTIFICATION_EMAIL' FEEDBACK_EMAIL='$FEEDBACK_EMAIL' MONGODB_URL='$MONGODB_URL' MONGODB_DB='$MONGODB_DB' MONGODB_USR='$MONGODB_USR' MONGODB_PWD='$MONGODB_PWD' GOOGLE_CLIENTID='$GOOGLE_CLIENTID' PATH_URL='$PATH_URL' EMAILCLIENT_USR='$EMAILCLIENT_USR' AWS_ACCESS_KEY_ID='$AWS_ACCESS_KEY_ID' AWS_SECRET_ACCESS_KEY='$AWS_SECRET_ACCESS_KEY' AWS_DEFAULT_REGION='$AWS_DEFAULT_REGION' AWS_BUCKET='$AWS_BUCKET' REDIS_DB='$REDIS_DB' pm2 restart index --update-env"
+        - ssh -i $SchraderLaptop" -T ec2-user@13.211.38.119 -v "cd /home/ec2-user/strategyserver/ && PAYMENT_API_ENV='$PAYMENT_API_ENV' PAYMENT_API_KEY='$PAYMENT_API_KEY' PAYMENT_API_PASS='$PAYMENT_API_PASS' PAYMENT_MONTHLY_COST='$PAYMENT_MONTHLY_COST' PAYMENT_REDIRECT_URL='$PAYMENT_REDIRECT_URL' COPY_WHEELOFLIFE='$COPY_WHEELOFLIFE' NOTIFICATION_EMAIL='$NOTIFICATION_EMAIL' FEEDBACK_EMAIL='$FEEDBACK_EMAIL' MONGODB_URL='$MONGODB_URL' MONGODB_DB='$MONGODB_DB' MONGODB_USR='$MONGODB_USR' MONGODB_PWD='$MONGODB_PWD' GOOGLE_CLIENTID='$GOOGLE_CLIENTID' PATH_URL='$PATH_URL' EMAILCLIENT_USR='$EMAILCLIENT_USR' AWS_ACCESS_KEY_ID='$AWS_ACCESS_KEY_ID' AWS_SECRET_ACCESS_KEY='$AWS_SECRET_ACCESS_KEY' AWS_DEFAULT_REGION='$AWS_DEFAULT_REGION' AWS_BUCKET='$AWS_BUCKET' REDIS_DB='$REDIS_DB' pm2 restart index --update-env"
         - echo "new version placed on server and started"
     only:
         - master
