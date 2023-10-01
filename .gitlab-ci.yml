@@ -16,6 +16,7 @@ publish:
     image: node:20
     stage: publish
     artifacts:
+        paths: 
         - build/
         - src/
     script:
