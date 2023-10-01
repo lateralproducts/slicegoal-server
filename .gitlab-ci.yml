@@ -32,7 +32,7 @@ deploy:
     script:
         - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
         - eval $(ssh-agent -s)
-        - echo "$DEPLOY_RSA" | tr -d '\r' | ssh-add -
+        - echo -e "$DEPLOY_RSA" | tr -d '\r' | ssh-add -
         - mkdir -p ~/.ssh
         - chmod 700 ~/.ssh
         ##
