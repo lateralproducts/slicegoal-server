@@ -30,20 +30,17 @@ deploy:
     tags:
         - deployment
     script:
-          - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )'
-
+        - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )'
         ##
         ## Run ssh-agent (inside the build environment)
         ##
         - eval $(ssh-agent -s)
-
         ##
         ## Give the right permissions, otherwise ssh-add will refuse to add files
         ## Add the SSH key stored in SSH_PRIVATE_KEY file type CI/CD variable to the agent store
         ##
         - chmod 400 "$DEPLOY_RSA"
         - ssh-add "$DEPLOY_RSA"
-
         ##
         ## Create the SSH directory and give it the right permissions
         ##
