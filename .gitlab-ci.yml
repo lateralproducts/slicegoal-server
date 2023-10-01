@@ -4,19 +4,28 @@ variables:
 # TARGET_DIR: /Users/danielschrader/Desktop/Build2/$CI_PROJECT_NAME
 # TEST_NAME: registry.gitlab.com/daniel175/production-strategy-platform:$CI_COMMIT_REF_NAME
 
-stages:
-    - deploy
+variables:
+  TAG_LATEST: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_NAME:latest
+  TAG_COMMIT: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_NAME:$CI_COMMIT_SHORT_SHA
 
-deploy:
-    stage: deploy
+stages:
+  - publish
+  - deploy
+
+publish:
     image: node:20
-    before_script:
+    stage: publish
+    script:
         - yarn install
         - yarn build
-        - apk update
-        - apk add openssh rsync
-        #- sudo rsync -r --delete ./public/ ~/Desktop/Build/production
+deploy:
+    image: alpine:latest
+    stage: deploy
+    tags:
+        - deployment
     script:
+        ##- chmod og= $ID_RSA
+        - apk update && apk add openssh-client rsync
         - echo "Deploying to Production..."
         - rsync -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
         - rsync -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
@@ -30,3 +39,5 @@ deploy:
     ## manually deploy ^^
     tags:
         - production
+
+    
