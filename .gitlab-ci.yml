@@ -30,20 +30,22 @@ deploy:
     tags:
         - deployment
     script:
-        - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
-        - eval $(ssh-agent -s)
+        ##- 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
+        ##- eval $(ssh-agent -s)
         ##
         ## Give the right permissions, otherwise ssh-add will refuse to add files
         ## Add the SSH key stored in SSH_PRIVATE_KEY file type CI/CD variable to the agent store
         ##
         - echo "$SchraderLaptop" > "SchraderLaptop.pem"
+        - chmod 600 SchraderLaptop.pem
+        - apk update && apk add openssh
         ##- chmod 400 "$SchraderLaptop"
         ##- ssh-add "$SchraderLaptop"
         ##
         ## Create the SSH directory and give it the right permissions
         ##
-        - mkdir -p ~/.ssh
-        - chmod 700 ~/.ssh
+        ##- mkdir -p ~/.ssh
+        ##- chmod 700 ~/.ssh
         ##- echo -e "$DEPLOY_RSA" | tr -d '\r' | ssh-add -
         ##- ssh-keyscan 13.211.38.119 >> ~/.ssh/known_hosts
         ##- chmod 644 ~/.ssh/known_hosts
