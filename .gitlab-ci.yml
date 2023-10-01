@@ -48,7 +48,7 @@ deploy:
         ##- ssh-keyscan 13.211.38.119 >> ~/.ssh/known_hosts
         ##- chmod 644 ~/.ssh/known_hosts
         ##
-        - ssh -v -i "SchraderLaptop.pem" ec2-user@13.211.38.119 "hostname && echo 'Welcome!!!' > welcome.txt"
+        - ssh -tt -i "SchraderLaptop.pem" -o StrictHostKeyChecking=no ec2-user@13.211.38.119 "hostname && echo 'Welcome!!!' > welcome.txt"
         - echo "Deploying to Production..."
         - rsync -e "ssh -i $SchraderLaptop" -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
         - rsync -e "ssh -i $SchraderLaptop" -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
