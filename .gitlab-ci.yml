@@ -18,6 +18,7 @@ publish:
     artifacts:
         paths: 
         - dist/
+        - node_modules/
     script:
         - yarn install
         - yarn build
