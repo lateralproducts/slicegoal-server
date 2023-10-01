@@ -38,7 +38,7 @@ deploy:
         ##
         - echo "$SchraderLaptop" > "SchraderLaptop.pem"
         - chmod 600 SchraderLaptop.pem
-        - apk update && apk add openssh
+        - apk update && apk add openssh rsync
         ##- chmod 400 "$SchraderLaptop"
         ##- ssh-add "$SchraderLaptop"
         ##
