@@ -31,14 +31,14 @@ deploy:
         - deployment
     script:
         - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
-        - eval $(ssh-agent -s)
         - echo -e "$DEPLOY_RSA" | tr -d '\r' | ssh-add -
         - mkdir -p ~/.ssh
         - chmod 700 ~/.ssh
         - ssh-keyscan 13.211.38.119 >> ~/.ssh/known_hosts
         - chmod 644 ~/.ssh/known_hosts
+        - eval $(ssh-agent -s)
         ##
-        - ssh ec2-user@13.211.38.119 "hostname && echo 'Welcome!!!' > welcome.txt"
+        - ssh -v ec2-user@13.211.38.119 "hostname && echo 'Welcome!!!' > welcome.txt"
         - echo "Deploying to Production..."
         - rsync -e "ssh -i $DEPLOY_RSA" -ru --delete ./ ec2-user@13.211.38.119:/home/ec2-user/strategyserver/
         - rsync -e "ssh -i $DEPLOY_RSA" -ru --delete ./src/emailtemplates ec2-user@13.211.38.119:/home/ec2-user/strategyserver/dist/
