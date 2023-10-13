@@ -568,34 +568,27 @@ export const resolvers = {
             
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            /* var updates = new Object()
-
-            if (args.reschedule){ //if date existing, then increment reschedule count.
-                updates.$inc = { rescheduled: 1}
-            }
+            var updates = new Object()
             
-            if(args.date) {
-                const date = new Date(args.date) //time set from client argument
-                activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req})
+            if(date) {
+                const newdate = new Date(date) //time set from client argument
+                //activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req})
                 updates.$set = {
-                    starttime: date,
+                    starttime: newdate, //new Date(date)
                     daytask: true
                 }
+                updates.$inc = {rescheduled: 1}
                 updates.$unset = {schedule: null}
             } else {
-                activityrecord({taskid: args.taskid, notes: 'Scheduled date unset.', req: req})
-                updates.$unset = { //unsetting, variables don't matter.
-                    starttime: ''
-                }
-                updates.$set = {
-                    schedule: true
-                }
-            } */
+                //activityrecord({taskid: args.taskid, notes: 'Scheduled date unset.', req: req})
+                //unsetting, variables don't matter.
+                updates.$unset = {starttime: ''}
+                updates.$set = {schedule: true}
+            } 
             taskids.map(function(taskid) {
                 Tasks.updateOne(
                     {_id: new ObjectId(taskid)},
-                    {$set:{starttime: new Date(date)}},
-                    {$inc:{rescheduled: 1}}
+                    updates
                 )
             })
             return true 

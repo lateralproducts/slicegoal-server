@@ -9,8 +9,23 @@ variables:
   TAG_COMMIT: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_NAME:$CI_COMMIT_SHORT_SHA
 
 stages:
+  - test
   - publish
   - deploy
+
+test:
+    image: node:20
+    stage: publish
+    artifacts:
+        paths:
+        - node_modules/
+    only:
+        - master
+    script:
+        - yarn install
+        - yarn test
+    tags:
+        - production
 
 publish:
     image: node:20
@@ -20,7 +35,6 @@ publish:
         - dist/
         - node_modules/
     script:
-        - yarn install
         - yarn build
         - echo "$PWD"
         - echo *
