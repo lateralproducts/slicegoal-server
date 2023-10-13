@@ -53,9 +53,11 @@ export const typeDefs = `
         unlistTask(taskid: String!) : Boolean
         
         scheduleTask(taskid: String!, date: String, reschedule: Boolean) : Boolean
+        scheduleTasks(date: String, taskids: [String!]): Boolean
         
         checkTask(taskid: String!, checked: Boolean) : Boolean
         setTaskGoal(taskid: String!, goalid: String!): Boolean
+        setSelectedTasksGoal(goalid: String!, taskids: [String!]): Boolean
         removeTaskGoal(taskid: String!): Boolean
         
         updateDayTaskOrder(tasks: [String]): Boolean
@@ -562,6 +564,42 @@ export const resolvers = {
             )
             return result.modifiedCount === 1   
         },
+        scheduleTasks: async(_, {date, taskids}, { req }) => {
+            
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            /* var updates = new Object()
+
+            if (args.reschedule){ //if date existing, then increment reschedule count.
+                updates.$inc = { rescheduled: 1}
+            }
+            
+            if(args.date) {
+                const date = new Date(args.date) //time set from client argument
+                activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req})
+                updates.$set = {
+                    starttime: date,
+                    daytask: true
+                }
+                updates.$unset = {schedule: null}
+            } else {
+                activityrecord({taskid: args.taskid, notes: 'Scheduled date unset.', req: req})
+                updates.$unset = { //unsetting, variables don't matter.
+                    starttime: ''
+                }
+                updates.$set = {
+                    schedule: true
+                }
+            } */
+            taskids.map(function(taskid) {
+                Tasks.updateOne(
+                    {_id: new ObjectId(taskid)},
+                    {$set:{starttime: new Date(date)}},
+                    {$inc:{rescheduled: 1}}
+                )
+            })
+            return true 
+        },
         checkTask: async(_, args, { req }) => {
             
             const response = await checkTask(args, req)
@@ -590,8 +628,21 @@ export const resolvers = {
             )
             return result.modifiedCount === 1
         },
-        newSubTask: async(_, {taskid,task}, {req}) => {
+        setSelectedTasksGoal: async(_, {goalid, taskids}, {req}) => {
             
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+
+            taskids.map(function(subtaskid) {
+                Tasks.updateOne(
+                    {_id: new ObjectId(subtaskid)},
+                    {$set: {goal: goalid}}
+                )
+            })
+            return 1
+        },
+        newSubTask: async(_, {taskid,task}, {req}) => {
+
             const db = await DbConnection.Get()
             const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session), type: 'subtask'})
             activityrecord({taskid: subtaskid, notes: 'Task created.', req: req})
@@ -617,7 +668,8 @@ export const resolvers = {
             }
             
             taskids.map(function(subtaskid) {
-                linksubtask({parenttaskid: parentid, subtaskid, req})
+                if(subtaskid !== parentid) linksubtask({parenttaskid: parentid, subtaskid, req})
+                //else ignore
             })
             return true
         },
