@@ -34,7 +34,7 @@ export const schema = `
 
 export const typeDefs = `
     extend type Query {
-        tasks(date: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String, filter: String) : [Task]
+        tasks(date: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String, filter: String): [Task]
         task(taskid: String!): Task
         searchTasks(search: String!): [Task]
         pastTasks(date: String!, filter: String): [Task]
@@ -45,17 +45,17 @@ export const typeDefs = `
     }
     
     extend type Mutation {
-        newTask(date: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, tags: [String]) : String        
-        editTask(taskid: String!, date: String, title: String, description: String, date: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean, tags: [String]) : Boolean
-        deleteTask(taskid: String!) : Boolean
+        newTask(date: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, tags: [String]): String        
+        editTask(taskid: String!, date: String, title: String, description: String, date: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean, tags: [String]): Boolean
+        deleteTask(taskid: String!): Boolean
 
-        listTask(taskid: String!) : Boolean
-        unlistTask(taskid: String!) : Boolean
+        listTask(taskid: String!): Boolean
+        unlistTask(taskid: String!): Boolean
         
-        scheduleTask(taskid: String!, date: String, reschedule: Boolean) : Boolean
+        scheduleTask(taskid: String!, date: String, reschedule: Boolean): Boolean
         scheduleTasks(date: String, taskids: [String!]): Boolean
         
-        checkTask(taskid: String!, checked: Boolean) : Boolean
+        checkTask(taskid: String!, checked: Boolean): Boolean
         setTaskGoal(taskid: String!, goalid: String!): Boolean
         setSelectedTasksGoal(goalid: String!, taskids: [String!]): Boolean
         removeTaskGoal(taskid: String!): Boolean
@@ -649,9 +649,11 @@ export const resolvers = {
             }
         },
         linkTask: async(_, {parenttaskid,subtaskid}, {req}) => {
+            
             return await linksubtask({parenttaskid, subtaskid, req})
         },
         linkSelectedTasks: async(_, {parenttaskid, newparenttask, taskids}, {req}) => {
+            
             //this is lazy.
             var parentid 
             if (newparenttask) {

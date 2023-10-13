@@ -765,7 +765,7 @@ export const resolvers = {
                 const result = await Insights.deleteOne({
                     _id: new ObjectId(args.insightid)
                 })
-                console.log(result)
+                //console.log(result)
                 return true
             }
         },

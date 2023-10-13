@@ -15,7 +15,7 @@ stages:
 
 test:
     image: node:20
-    stage: publish
+    stage: test
     artifacts:
         paths:
         - node_modules/
@@ -35,6 +35,7 @@ publish:
         - dist/
         - node_modules/
     script:
+        - yarn install
         - yarn build
         - echo "$PWD"
         - echo *
