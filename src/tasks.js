@@ -64,7 +64,8 @@ export const typeDefs = `
         
         newSubTask(taskid: String!, task: String!): Boolean
 
-        addTaskLink(parenttaskid: String!, subtaskid: String!): Boolean
+        linkTask(parenttaskid: String!, subtaskid: String!): Boolean
+        linkSelectedTasks(parenttaskid: String, newparenttask: String, taskids: [String!]): Boolean
         linkInsightToTask(taskid: String!, insightid: String!): Boolean
         linkSourceToTask(taskid: String!, sourceid: String!): Boolean
     }
@@ -603,9 +604,22 @@ export const resolvers = {
                 return triggererror('Can\'t link task to the same task')
             }
         },
-        addTaskLink: async(_, {parenttaskid,subtaskid}, {req}) => {
-            
+        linkTask: async(_, {parenttaskid,subtaskid}, {req}) => {
             return await linksubtask({parenttaskid, subtaskid, req})
+        },
+        linkSelectedTasks: async(_, {parenttaskid, newparenttask, taskids}, {req}) => {
+            //this is lazy.
+            var parentid 
+            if (newparenttask) {
+                parentid = await createNewTask({title: newparenttask, profileid: getprofileid(req.session)})
+            } else {
+                parentid = parenttaskid
+            }
+            
+            taskids.map(function(subtaskid) {
+                linksubtask({parenttaskid: parentid, subtaskid, req})
+            })
+            return true
         },
         //removeTaskLink(parenttaskid: String!, subtaskid: String!): Boolean
         /* removeTaskLink: async(_, {parenttaskid,subtaskid}, {req}) => {
@@ -805,9 +819,11 @@ export async function checkTask(args, req){
 export async function linksubtask({parenttaskid, subtaskid, req}){
     const db = await DbConnection.Get()
     const TaskLinks = db.collection('tasklinks')
+    const Tasks = db.collection('tasks')
 
     if(parenttaskid !== subtaskid){ //new linking.
-        const result = await TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid, created: new Date()})
+        TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid, created: new Date()})
+        Tasks.updateOne({_id: new ObjectId(subtaskid)}, {$set: {type: 'subtask'}, $unset: {starttime: null}})
         return true
     }else{
         return triggererror('Can\'t link task to the same task')
