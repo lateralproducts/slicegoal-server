@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb' 
 import { getprofileid, getuserid } from './users'
 import DbConnection from './database'
-import { getuiversion } from '../util/functions'
+import { date2str, dayofyear, getuiversion } from '../util/functions'
 import { checkTask, createRepeatTask } from './tasks'
 import { triggererror } from './graphqlserver';
 let pjson = require('../package.json')
@@ -181,7 +181,9 @@ export const resolvers = {
                 const checkresult = await checkTask(args, req)
                 if (checkresult === 0) return triggererror('Not all sub tasks marked as complete.') 
             }
-            activityrecord({goalid: args.goal, taskid: args.taskid, checked: args.checked, minutes: args.minutes, req: req, notes: args.notes})
+            activityrecord({taskid: args.taskid, checked: args.checked, minutes: args.minutes, req: req, notes: args.notes})
+
+            //copy the task as new if repeat task selected.
             if (args.repeat) createRepeatTask(args.taskid, req)
             return true
         }
@@ -202,7 +204,9 @@ export async function activityrecord({templateid, taskid, goalid, notes, checked
         if (Task) {
             record.goal = Task.goal //add a goal if attached.
             record.templateid = Task.templateid //add a goal if attached.
+            if (Task.tags) record.tags = Task.tags
         }
+        
     }
     if(goalid) record.goal = goalid
     if(templateid) record.templateid = templateid
@@ -218,5 +222,219 @@ export async function activityrecord({templateid, taskid, goalid, notes, checked
     if(datetime) record.date = new Date(datetime) //time set from client argument
     else record.date = new Date()
 
-    await Pomodoros.insertOne(record)
+    const pomoid = (await Pomodoros.insertOne(record)).insertedId.toString()
+
+    //save all the aggregate data and history
+    if (minutes){
+        if (record.task) taskaggregate({taskid: record.task, minutes, pomoid})
+        if (record.goal) goalaggregate({goalid: record.goal, minutes, pomoid})
+        if (record.tags) areaaggregate({tags: record.tags, minutes, pomoid})
+    }
+
+}
+
+export async function taskaggregate({taskid, minutes, pomoid}) {
+    //future development: check/aggregate parent tasks.
+    if (!taskid || !minutes || !pomoid) { //must have all fields
+        console.log('taskaggregate error - missing fields')
+        console.log('taskid: ' + taskid)
+        console.log('mins: ' + minutes)
+        console.log('pomoid: ' + pomoid)
+        return
+    }
+    const db = await DbConnection.Get()
+    const Tasks = db.collection('tasks')
+    Tasks.updateOne(
+        {_id: new ObjectId(taskid)},
+        {
+            $inc: { time: minutes },
+            $push: {history: pomoid}
+        }
+    )
+}
+
+export async function goalaggregate({goalid, minutes, pomoid}) {
+    //future development: check/aggregate parent tasks.
+    if (!goalid || !minutes || !pomoid) { //must have all fields
+        console.log('goalaggregate error - missing fields')
+        console.log('goalid: ' + goalid)
+        console.log('mins: ' + minutes)
+        console.log('pomoid: ' + pomoid)
+        return
+    }
+    const goaltree = await getgoaltree(goalid)
+
+    const db = await DbConnection.Get()
+    const Goals = db.collection('goals')
+    
+    Goals.updateMany(
+        {_id: {
+            $in: goaltree.map(function(id) {
+                return new ObjectId(id)
+            })
+        }},
+        {
+            $inc: { time: minutes },
+            $push: {history: pomoid}
+        }
+    )
+}
+
+export async function areaaggregate({tags, minutes, pomoid}) {
+    //future development: check/aggregate parent tasks.
+    if (!tags || !minutes || !pomoid) { //must have all fields
+        console.log('areaaggregate error - missing fields')
+        console.log('tags: ' + tags)
+        console.log('mins: ' + minutes)
+        console.log('pomoid: ' + pomoid)
+        return
+    }
+    const areatree = await getareatree(tags)
+
+    const db = await DbConnection.Get()
+    const Areas = db.collection('areas')
+    
+    Areas.updateMany(
+        {_id: {
+            $in: areatree.map(function(id) {
+                return new ObjectId(id)
+            })
+        }},
+        {
+            $inc: { time: minutes },
+            $push: {history: pomoid} //this might be too much info. Could remove this.
+        }
+    )
+    //Update time aggregates: Year, Month, Week, Day.
+    //Need to adjust for timezone on profile. Do this later.
+    //America/Los_Angeles, Australia/Melbourne, Pacific/Honolulu
+
+    let datetime = new Date(new Date().toLocaleString("en-US", {timeZone: "Pacific/Honolulu"}))
+    const year = datetime.getFullYear()
+    const month = datetime.getMonth() + 1
+    const yearday = dayofyear(datetime)
+    const week = ((yearday / 7) | 0) + 1 
+    const day = datetime.getDate()
+
+    const AggYear = db.collection('aggareayear')
+    const AggMonth = db.collection('aggareamonth')
+    const AggWeek = db.collection('aggareaweek')
+    const AggDay= db.collection('aggareaday')
+
+    areatree.map(function(id) {
+        const objectid = new ObjectId(id)
+        AggYear.updateOne(
+            {
+                area: objectid,
+                year: year
+            },
+            {
+                $inc: { time: minutes , count: 1 }
+            },
+            {upsert: true}
+        )
+
+        AggMonth.updateOne(
+            {
+                area: objectid,
+                year: year,
+                month: month
+            },
+            {
+                $inc: { time: minutes , count: 1 }
+            },
+            {upsert: true}
+        )
+
+        AggWeek.updateOne(
+            {
+                area: objectid,
+                year: year,
+                week: week
+            },
+            {
+                $inc: { time: minutes , count: 1 }
+            },
+            {upsert: true}
+        )
+
+        AggDay.updateOne(
+            {
+                area: objectid,
+                year: year,
+                month: month,
+                week: week,
+                dayofyear: yearday,
+                day: day
+            },
+            {
+                $inc: { time: minutes , count: 1 }
+            },
+            {upsert: true}
+        )
+    })
+}
+
+async function getgoaltree(goalid) {
+    const db = await DbConnection.Get()
+    const GoalLinks = db.collection('goallinks')
+
+    let goaltree = [goalid]
+    let newgoals = []
+    let checkgoals = [goalid]
+    
+    while (checkgoals.length > 0) {
+        //find all parent goals linked to goals
+        let addgoals = await GoalLinks.find(
+            {goal: {
+                $in: checkgoals
+            }}
+        ).toArray()
+
+        let thesegoals = addgoals.map(
+            link => link.rootgoal
+        )
+        //turn into set for more efficient processing (need to confirm)
+        let goalset = new Set(goaltree); 
+        newgoals = thesegoals.filter(item => !goalset.has(item));
+
+        //add all new parent goals to the tree.
+        goaltree = goaltree.concat(newgoals)
+        //update checkgoals to new goals and loop
+        checkgoals = newgoals
+    }
+
+    return goaltree
+}
+
+async function getareatree(tags) {
+    const db = await DbConnection.Get()
+    const AreaLinks = db.collection('arealinks')
+
+    let areatree = tags
+    let newareas = []
+    let checkareas = tags
+    
+    while (checkareas.length > 0) {
+        //find all parent goals linked to goals
+        let addareas = await AreaLinks.find(
+            {area: {
+                $in: checkareas
+            }}
+        ).toArray()
+
+        let theseareas = addareas.map(
+            link => link.rootarea
+        )
+        //turn into set for more efficient processing (need to confirm)
+        let areaset = new Set(areatree); 
+        newareas = theseareas.filter(item => !areaset.has(item));
+
+        //add all new parent areas to the tree.
+        areatree = areatree.concat(newareas)
+        //update checkgoals to new areas and loop
+        checkareas = newareas
+    }
+
+    return areatree
 }

@@ -850,7 +850,7 @@ async function createinsight(newinsight, req) {
                     }
 
                     const res = await Areas.insertOne(area)
-                    areaid = res.insertedIds[0].toString()
+                    areaid = res.insertedId
                 }
 
                 let insighttag = new Object()

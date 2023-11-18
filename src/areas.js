@@ -545,8 +545,8 @@ export const resolvers = {
             )
             return goal ? goal : null
         },
-        time: async({ _id }, args, { req }) => {
-            const db = await DbConnection.Get()
+        time: async({ time }, args, { req }) => {
+            /* const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
 
             let currentDate = new Date()
@@ -559,9 +559,9 @@ export const resolvers = {
                             $gte: currentDate
                         },
                         $or: [
-                            /*{
-                                area: _id,
-                            }, */
+                            //{
+                            //    area: _id,
+                            //}, 
                             {
                                 links: _id.toString()
                             }
@@ -592,8 +592,9 @@ export const resolvers = {
                             }
                         }
                     }
-                }])
-            return aggCursor
+                }]) */
+            //return aggCursor
+            return {count: time}
         },
         rankdue: async area => {
             let checkDate = new Date()
@@ -930,7 +931,7 @@ export const resolvers = {
             if (args.goaldate) args.goaldate = new Date(args.goaldate) //time set from client argument
             const res = await GoalTimes.insertOne(args)
             return {
-                _id: res.insertedIds[1],
+                _id: res.insertedId,
                 message: 'new goal entry created'
             }
         },

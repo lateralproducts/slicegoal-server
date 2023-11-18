@@ -26,6 +26,15 @@ export const date2str = (x, y) => {
     });
 }
 
+export const dayofyear = (date) => {
+    var start = new Date(date.getFullYear(), 0, 0);
+    var diff = (date - start) + ((start.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000);
+    var oneDay = 1000 * 60 * 60 * 24;
+    var day = Math.floor(diff / oneDay);
+    console.log('Day of year: ' + day);
+    return day
+}
+
 export const botips = [/.*66.249.*./, /.*115.70.*./, /.*85.76.*./, /.*72.14.*./, /.*114.119.*./, /.*17.121.*./, /.*122.199.*./]
 export const ignoreips = /.103.204.240.174./ //my ip
 

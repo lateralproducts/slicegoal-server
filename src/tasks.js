@@ -22,6 +22,7 @@ export const schema = `
         tasks: [Task]
         parenttask: Task
         tags: [Area]
+        time: Int
     }
     type TaskTag {
         _id: String

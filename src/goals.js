@@ -200,8 +200,8 @@ export const resolvers = {
                 }).toArray()
             else return null
         },
-        time: async({ _id }, _, { req }) => {
-            const db = await DbConnection.Get()
+        time: async({ time }, _, { req }) => {
+            /* const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
             const aggCursor = await Pomodoros.aggregate(
                 [{
@@ -221,8 +221,9 @@ export const resolvers = {
             var result
             await aggCursor.forEach(doc => {
                 result = doc
-            })
-            return result
+            }) */
+
+            return {count: time}
         },
         goals: async(parent, __, { req }) => {
             const db = await DbConnection.Get()
@@ -356,7 +357,7 @@ export const resolvers = {
 
             if (args.complete) {
                 activityrecord({goalid: args.goal, req: req, notes: 'marked as complete 🎉'})
-                if (args.notes) activityrecord({goalid: args.goal, req: req, notes: args.notes, minutes: args.minutes}) //save note as a record.
+                if (args.notes) activityrecord({goalid: args.goal, req: req, notes: args.notes}) //save note as a record.
                 await Goals.updateOne(
                     { _id: new ObjectId(args.goal), profileid: getprofileid(req.session)  },
                     {
@@ -522,7 +523,7 @@ export async function creategoal(newgoal, req) {
                         }
 
                         const res = await Areas.insertOne(area)
-                        areaid = res.insertedIds[0].toString()
+                        areaid = res.insertedId
                     }
 
                     let goaltag = new Object()
