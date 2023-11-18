@@ -26,6 +26,7 @@ export const typeDefs = `
         ranktimes(areaId: String): [RankTime]
         lastranktime(areaId: String): RankTime
         viewsOnWheel(wheelid: String!): [View]
+        areatree(areaid: String): [Area]
     }
     
     extend type Mutation {
@@ -265,6 +266,18 @@ export const resolvers = {
                 $or: [{ wheelid: getwheelid(req.session) }, { global: true }]
             })
             return area
+        },
+        areatree: async(_, { areaid }, { req }) => {
+            const areatree = await getareatree([areaid])
+            console.log(areatree.map(id => {return new ObjectId(id)}))
+            
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            
+            let areas = await Areas.find({
+                _id: {$in: areatree.map(id => {return new ObjectId(id)})}
+            }).toArray()
+            return areas
         },
         ranktimes: async(_, { areaId }, { req }) => {
             
@@ -1219,4 +1232,36 @@ async function deleteWheelAll(req, viewid) {
     Areas.deleteMany({ wheelid: view.wheel })
     AreaLinks.deleteMany({ wheelid: view.wheel })
     Wheels.deleteMany({ _id: new ObjectId(view.wheel) })
+}
+
+export async function getareatree(tags) {
+    const db = await DbConnection.Get()
+    const AreaLinks = db.collection('arealinks')
+
+    let areatree = tags
+    let newareas = []
+    let checkareas = tags
+    
+    while (checkareas.length > 0) {
+        //find all parent goals linked to goals
+        let addareas = await AreaLinks.find(
+            {area: {
+                $in: checkareas
+            }}
+        ).toArray()
+
+        let theseareas = addareas.map(
+            link => link.rootarea
+        )
+        //turn into set for more efficient processing (need to confirm)
+        let areaset = new Set(areatree); 
+        newareas = theseareas.filter(item => !areaset.has(item));
+
+        //add all new parent areas to the tree.
+        areatree = areatree.concat(newareas)
+        //update checkgoals to new areas and loop
+        checkareas = newareas
+    }
+
+    return areatree
 }

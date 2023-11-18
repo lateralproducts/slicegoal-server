@@ -4,6 +4,7 @@ import DbConnection from './database'
 import { date2str, dayofyear, getuiversion } from '../util/functions'
 import { checkTask, createRepeatTask } from './tasks'
 import { triggererror } from './graphqlserver';
+import { getareatree } from './areas'
 let pjson = require('../package.json')
 
 export const typeDefs = `
@@ -407,34 +408,3 @@ async function getgoaltree(goalid) {
     return goaltree
 }
 
-async function getareatree(tags) {
-    const db = await DbConnection.Get()
-    const AreaLinks = db.collection('arealinks')
-
-    let areatree = tags
-    let newareas = []
-    let checkareas = tags
-    
-    while (checkareas.length > 0) {
-        //find all parent goals linked to goals
-        let addareas = await AreaLinks.find(
-            {area: {
-                $in: checkareas
-            }}
-        ).toArray()
-
-        let theseareas = addareas.map(
-            link => link.rootarea
-        )
-        //turn into set for more efficient processing (need to confirm)
-        let areaset = new Set(areatree); 
-        newareas = theseareas.filter(item => !areaset.has(item));
-
-        //add all new parent areas to the tree.
-        areatree = areatree.concat(newareas)
-        //update checkgoals to new areas and loop
-        checkareas = newareas
-    }
-
-    return areatree
-}
