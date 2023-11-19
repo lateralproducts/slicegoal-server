@@ -307,10 +307,10 @@ export async function areaaggregate({tags, minutes, pomoid, req}) {
         }
     )
     //Update time aggregates: Year, Month, Week, Day.
-    //Need to adjust for timezone on profile. Do this later.
+    //Need to adjust for timezone on profile. Do this later.d
     //America/Los_Angeles, Australia/Melbourne, Pacific/Honolulu
 
-    let datetime = new Date(new Date().toLocaleString("en-US", {timeZone: "Pacific/Honolulu"}))
+    let datetime = new Date(new Date().toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
     const year = datetime.getFullYear()
     const month = datetime.getMonth() + 1
     const yearday = dayofyear(datetime)

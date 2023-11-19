@@ -2,6 +2,7 @@ import DbConnection from './database'
 import { getprofileid, getuserid, getwheelid } from './users'
 import { ObjectId } from 'mongodb' 
 import { triggererror } from './graphqlserver';
+import { startOfDay } from '../util/functions';
 
 export const schema = `
     type Prompt {
@@ -23,6 +24,8 @@ export const schema = `
         started: String
         messages: [Message]
         userid: String
+        area: Area
+        day: String
         firstmessage: Message
         lastmessage: Message
         unseen: Boolean
@@ -45,7 +48,10 @@ export const typeDefs = `
     extend type Query {
         chatprompts(search: String): [Prompt]
         getchat(chatid: String): Chat
-        getchatid(taskid: String): String
+        getchatid: String
+        gettaskchatid(taskid: String): String
+        getdaychatid(date: String): String
+        getareachatid(area: String): String
         taskchatunseen(taskid: String!): Boolean
         anychatunseen: Boolean
         getchats: [Chat]
@@ -80,7 +86,16 @@ export const resolvers = {
             const prompts = await Prompts.find({message: new RegExp('.*' + search.trim() + '.*')})
             return prompts.toArray()
         }, */
-        getchatid: async(_, {taskid}, { req }) => {
+        getchatid: async(_, __, { req }) => {
+            //if no chatid or taskid, create new chat.
+            const chatid = await startChat({
+                profileid: getprofileid(req.session), 
+                userid: getuserid(req.session), 
+                wheelid: getwheelid(req.session)
+            })
+            return chatid.toString()
+        },
+        gettaskchatid: async(_, {taskid}, { req }) => {
             //get chat id.
             
             const profileid = getprofileid(req.session)
@@ -94,12 +109,58 @@ export const resolvers = {
                 }
             }
             //if no chatid or taskid, create new chat.
-            const chatid = await startChat(
-                getprofileid(req.session), 
-                taskid,
-                getuserid(req.session), 
-                getwheelid(req.session)
-            )
+            const chatid = await startChat({
+                profileid: getprofileid(req.session), 
+                userid: getuserid(req.session), 
+                wheeldid: getwheelid(req.session),
+                taskid
+            })
+            return chatid.toString()
+        },
+        getdaychatid: async(_, {date}, { req }) => {
+            //get chat id.
+            
+            const profileid = getprofileid(req.session)
+            const db = await DbConnection.Get()
+            const Chats = db.collection('chats')
+
+            const day = startOfDay(new Date(date))
+
+            if (date){ //if taskid, check existing chat for the taskid.
+                const chat = await Chats.findOne({day: day, profileid: profileid})
+                if (chat) {
+                    return chat._id.toString()
+                }
+            }
+            //if no day, create new chat with today's date.
+            const chatid = await startChat({
+                profileid: getprofileid(req.session), 
+                userid: getuserid(req.session), 
+                wheelid: getwheelid(req.session),
+                day
+            })
+            return chatid.toString()
+        },
+        getareachatid: async(_, {area}, { req }) => {
+            //get chat id.
+            
+            const profileid = getprofileid(req.session)
+            const db = await DbConnection.Get()
+            const Chats = db.collection('chats')
+
+            if (area){ //if taskid, check existing chat for the taskid.
+                const chat = await Chats.findOne({area: area, profileid: profileid})
+                if (chat) {
+                    return chat._id.toString()
+                }
+            }
+            //if no day, create new chat with today's date.
+            const chatid = await startChat({
+                profileid: getprofileid(req.session), 
+                userid: getuserid(req.session), 
+                wheelid: getwheelid(req.session),
+                area
+            })
             return chatid.toString()
         },
         getchat: async(_, {chatid}, { req }) => {
@@ -168,6 +229,12 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             if (taskid) return await Tasks.findOne({_id: new ObjectId(taskid)})
+            else return null
+        },
+        area: async({area}, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            if (area) return await Areas.findOne({_id: new ObjectId(area)})
             else return null
         },
     },
@@ -331,7 +398,7 @@ async function sendTaskChatMessage(profileid, chatid, message, userid, wheelid) 
     }
 }
 
-async function startChat(profileid, taskid, userid, wheelid){
+async function startChat({profileid, taskid, userid, wheelid, day, area}){
     const db = await DbConnection.Get()
     const Chats = db.collection('chats')
     const Views = db.collection('views')
@@ -348,6 +415,8 @@ async function startChat(profileid, taskid, userid, wheelid){
         subscribe: subscribelist,
     })
     if (taskid) chat.taskid = taskid
+    if (day) chat.day = day
+    if (area) chat.area = area
     const chatsaved = await Chats.insertOne(chat)
     return chatsaved.insertedId
 }
