@@ -229,7 +229,7 @@ export async function activityrecord({templateid, taskid, goalid, notes, checked
     if (minutes){
         if (record.task) taskaggregate({taskid: record.task, minutes, pomoid})
         if (record.goal) goalaggregate({goalid: record.goal, minutes, pomoid})
-        if (record.tags) areaaggregate({tags: record.tags, minutes, pomoid})
+        if (record.tags) areaaggregate({tags: record.tags, minutes, pomoid, req})
     }
 
 }
@@ -281,7 +281,7 @@ export async function goalaggregate({goalid, minutes, pomoid}) {
     )
 }
 
-export async function areaaggregate({tags, minutes, pomoid}) {
+export async function areaaggregate({tags, minutes, pomoid, req}) {
     //future development: check/aggregate parent tasks.
     if (!tags || !minutes || !pomoid) { //must have all fields
         console.log('areaaggregate error - missing fields')
@@ -290,7 +290,7 @@ export async function areaaggregate({tags, minutes, pomoid}) {
         console.log('pomoid: ' + pomoid)
         return
     }
-    const areatree = await getareatree(tags)
+    const areatree = await getareatree({tags: tags, req})
 
     const db = await DbConnection.Get()
     const Areas = db.collection('areas')

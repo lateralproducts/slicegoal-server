@@ -268,7 +268,7 @@ export const resolvers = {
             return area
         },
         areatree: async(_, { areaid }, { req }) => {
-            const areatree = await getareatree([areaid])
+            const areatree = await getareatree({tags:[areaid], req})
             console.log(areatree.map(id => {return new ObjectId(id)}))
             
             const db = await DbConnection.Get()
@@ -1234,9 +1234,21 @@ async function deleteWheelAll(req, viewid) {
     Wheels.deleteMany({ _id: new ObjectId(view.wheel) })
 }
 
-export async function getareatree(tags) {
+export async function getareatree({tags, req}) {
     const db = await DbConnection.Get()
     const AreaLinks = db.collection('arealinks')
+    
+    let startareaid
+    if (req) {
+        const Wheels = db.collection('wheels')
+        const Areas = db.collection('areas')
+
+        const startarea = await Wheels.findOne({ _id: new ObjectId(getwheelid(req.session)) })
+        .then(wheel => {
+            return Areas.findOne({ _id: new ObjectId(wheel.startarea) })
+        })
+        startareaid = startarea._id.toString()
+    }
 
     let areatree = tags
     let newareas = []
@@ -1256,11 +1268,16 @@ export async function getareatree(tags) {
         //turn into set for more efficient processing (need to confirm)
         let areaset = new Set(areatree); 
         newareas = theseareas.filter(item => !areaset.has(item));
-
         //add all new parent areas to the tree.
         areatree = areatree.concat(newareas)
+
         //update checkgoals to new areas and loop
-        checkareas = newareas
+        if (newareas.includes(startareaid)) {
+            //if root area reached, stop building tree.
+            checkareas = []
+            console.log("got to start area")
+        }
+        else checkareas = newareas
     }
 
     return areatree
