@@ -192,7 +192,7 @@ export const resolvers = {
     
 }
 
-export async function activityrecord({templateid, taskid, goalid, notes, checked, minutes, req, datetime}) {
+export async function activityrecord({templateid, taskid, goalid, notes, checked, minutes, req, datetime, rescheduled}) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
     const Pomodoros = db.collection('pomodoros')
@@ -226,11 +226,9 @@ export async function activityrecord({templateid, taskid, goalid, notes, checked
     const pomoid = (await Pomodoros.insertOne(record)).insertedId.toString()
 
     //save all the aggregate data and history
-    if (minutes){
-        if (record.task) taskaggregate({taskid: record.task, minutes, pomoid})
-        if (record.goal) goalaggregate({goalid: record.goal, minutes, pomoid})
-        if (record.tags) areaaggregate({tags: record.tags, minutes, pomoid, req})
-    }
+    if (record.task) taskaggregate({taskid: record.task, minutes, pomoid})
+    if (record.goal) goalaggregate({goalid: record.goal, minutes, pomoid})
+    if (record.tags) areaaggregate({tags: record.tags, minutes, pomoid, req, completed: checked === true ? 0 : 1, rescheduled: rescheduled ? 1 : 0})
 
 }
 
@@ -302,7 +300,9 @@ export async function areaaggregate({tags, minutes, pomoid, req}) {
             })
         }},
         {
-            $inc: { time: minutes },
+            $inc: { 
+                time: minutes ? minutes : 0
+            },
             $push: {history: pomoid} //this might be too much info. Could remove this.
         }
     )
@@ -330,7 +330,13 @@ export async function areaaggregate({tags, minutes, pomoid, req}) {
                 year: year
             },
             {
-                $inc: { time: minutes , count: 1 }
+                $inc: { 
+                    time: minutes ? minutes : 0, 
+                    created: created ? 1 : 0,
+                    completed: completed ? 1 : 0,
+                    rescheduled: rescheduled ? 1 : 0,
+                    count: 1
+                }
             },
             {upsert: true}
         )
@@ -342,7 +348,13 @@ export async function areaaggregate({tags, minutes, pomoid, req}) {
                 month: month
             },
             {
-                $inc: { time: minutes , count: 1 }
+                $inc: { 
+                    time: minutes ? minutes : 0,  
+                    created: created ? 1 : 0,
+                    completed: completed ? 1 : 0,
+                    rescheduled: rescheduled ? 1 : 0,
+                    count: 1 
+                }
             },
             {upsert: true}
         )
@@ -354,7 +366,13 @@ export async function areaaggregate({tags, minutes, pomoid, req}) {
                 week: week
             },
             {
-                $inc: { time: minutes , count: 1 }
+                $inc: { 
+                    time: minutes ? minutes : 0,  
+                    created: created ? 1 : 0,
+                    completed: completed ? 1 : 0,
+                    rescheduled: rescheduled ? 1 : 0,
+                    count: 1 
+                }
             },
             {upsert: true}
         )
@@ -369,7 +387,13 @@ export async function areaaggregate({tags, minutes, pomoid, req}) {
                 day: day
             },
             {
-                $inc: { time: minutes , count: 1 }
+                $inc: { 
+                    time: minutes ? minutes : 0, 
+                    created: created ? 1 : 0,
+                    completed: completed ? 1 : 0,
+                    rescheduled: rescheduled ? 1 : 0,
+                    count: 1
+                }
             },
             {upsert: true}
         )

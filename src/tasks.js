@@ -543,7 +543,7 @@ export const resolvers = {
             
             if(args.date) {
                 const date = new Date(args.date) //time set from client argument
-                activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req})
+                activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req, rescheduled: true})
                 updates.$set = {
                     starttime: date,
                     daytask: true
@@ -587,6 +587,7 @@ export const resolvers = {
                 updates.$set = {schedule: true}
             } 
             taskids.map(function(taskid) {
+                activityrecord({taskid: taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req, rescheduled: true})
                 Tasks.updateOne(
                     {_id: new ObjectId(taskid)},
                     updates
@@ -659,6 +660,7 @@ export const resolvers = {
             var parentid 
             if (newparenttask) {
                 parentid = await createNewTask({title: newparenttask, profileid: getprofileid(req.session)})
+                activityrecord({taskid: parentid, notes: 'Task created.', req: req})
             } else {
                 parentid = parenttaskid
             }
