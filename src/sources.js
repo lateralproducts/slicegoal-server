@@ -10,7 +10,7 @@ import { shareSourceEmail } from './emails'
 export const typeDefs = `
 
     extend type Query {
-        sources: [Source]
+        sources(tags: [String]): [Source]
         insightSources(insightid: String!): [SourceTag]
         taskSources(taskid: String!): [Source]
         templateSources(templateid: String!): [Source]
@@ -19,8 +19,8 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        createSource(name: String!, url: String, type: String, notes: String): Source
-        editSource(sourceid: String!, name: String, url: String, type: String, notes: String) : Boolean
+        createSource(name: String!, url: String, type: String, notes: String, tags: [String]): Source
+        editSource(sourceid: String!, name: String, url: String, type: String, notes: String, tags: [String]) : Boolean
         deleteSource(sourceid: String!): Boolean
         shareSource(sourceid: String!, targetUser: String!, shareNote: String): ShareResponse
     }
@@ -36,6 +36,7 @@ export const schema = `
         notes: String
         type: String
         url: String
+        tags: [Area]
     }
 
     type SourceTag {
@@ -56,9 +57,7 @@ export const schema = `
 
     type SourceInsightList {
         insightlist: [SourceInsight]
-        notes: String
-        type: String
-        url: String
+        source: Source
     }
 
     type SourceInsight {
@@ -70,11 +69,15 @@ export const schema = `
 export const resolvers = {
     Query: {
         // all sources on a profile, ordered by last tagged
-        sources: async function(_, __, { req }) {
-            
+        sources: async function(_, {tags}, { req }) {
+            console.log(tags)
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
-            return await Sources.find({profileid: getprofileid(req.session)}).sort({accessedit: -1}).toArray()
+
+            let query = new Object()
+            query.profileid = getprofileid(req.session)
+            if (tags) query.tags = {$in: tags}
+            return await Sources.find(query).sort({accessedit: -1}).toArray()
         },
         searchSources: async function(_, args, { req }) {
             
@@ -141,7 +144,7 @@ export const resolvers = {
         sourceInsights: async function(_, { sourceid }, { req }) {
             
             const db = await DbConnection.Get()
-            const Sources = db.collection('sources')
+            //const Sources = db.collection('sources')
             const SourceTags = db.collection('sourcetags')
 
             const sourcetags = await SourceTags.find({
@@ -159,15 +162,25 @@ export const resolvers = {
                 }
             })
 
-            const source = await Sources.findOne({ _id: new ObjectId(sourceid)})
+            //const source = await Sources.findOne({ _id: new ObjectId(sourceid)})
 
             return {
-                notes: source.notes,
-                url: source.url,
-                type: source.type,
                 insightlist: insightlist
             }
-        }
+        },
+    },
+    Source: {
+        tags: async(source) => {
+            try {
+                const db = await DbConnection.Get()
+                const Areas = db.collection('areas')
+                if(source.tags) return await Areas.find({_id: {$in: source.tags.map(sourceid => {return new ObjectId(sourceid)})}}).toArray()
+                else return []
+            }
+             catch (error) {
+                return []
+            }
+        },
     },
     Mutation: {
         createSource: async function(_, args, { req }) {
@@ -183,7 +196,8 @@ export const resolvers = {
                     name: args.name,
                     url: args.url,
                     notes: args.notes,
-                    type: args.type
+                    type: args.type,
+                    tags: args.tags
                 }
             )
             .then(source => {
@@ -200,7 +214,7 @@ export const resolvers = {
 
             return (await Sources.updateOne(
                 {_id: new ObjectId(args.sourceid)},
-                {$set: {name: args.name, url: args.url, type: args.type, notes: args.notes}}
+                {$set: {name: args.name, url: args.url, type: args.type, notes: args.notes, tags: args.tags}}
             )).matchedCount === 1
 
         },
