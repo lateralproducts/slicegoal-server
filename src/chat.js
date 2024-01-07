@@ -64,6 +64,8 @@ export const typeDefs = `
     }
 `
 
+//tagChat(chatid: String, tags: [String]): Boolean
+
 export const resolvers = {
     Query: {
         chatprompts: async(_, {search}, { req }) => {
@@ -325,12 +327,14 @@ export const resolvers = {
             const userid = getuserid(req.session)
             
             try {
-
                 const promptmessage = {promptid: args.promptid, message: args.message, userid: userid, datetime: new Date()}
-                
                 Prompts.updateOne( //update data on prompt usage.
                     { _id: new ObjectId(args.promptid) },
-                    { $inc: { selected: 1 } }
+                    { 
+                        $inc: { selected: 1 },
+                        $push: {triggered: new Date()},
+                        $set: {lasttriggered: new Date()} 
+                    }
                 )
                 //record sent prompt to the chat.
                 await sendTaskChatMessage(profileid, args.chatid, promptmessage, userid, getwheelid(req.session))
@@ -363,6 +367,8 @@ export const resolvers = {
                             sendTaskChatMessage(profileid, args.chatid, responsemessage, 'chatbot', getwheelid(req.session))
                         )
                     }
+                } else {
+                    //no response
                 }
                 return true
             } catch(error) {

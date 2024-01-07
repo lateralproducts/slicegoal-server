@@ -6,12 +6,25 @@ import { ObjectId } from 'mongodb'
 
 export const typeDefs = `
     extend type Mutation {
-        migrateUpdateGoalLinkedReference: Boolean
+        migrateSubTasks: Boolean
     }`
 
 export const resolvers = {
     Mutation: {
-        migrateUpdateGoalLinkedReference: async() => {
+        migrateSubTasks: async() => {
+            const db = await DbConnection.Get()
+            const TaskLinks = db.collection('tasklinks')
+            const Tasks = db.collection('tasks')
+                
+            const tasklinks = await TaskLinks.find({parenttask: {$ne: null}}).toArray()
+            
+            tasklinks.map(link => {
+                    Tasks.updateOne({_id: new ObjectId(link.parenttask)},{$push: {subtasks: link.subtask}})
+                }
+            )
+            return true
+        }
+        /* migrateUpdateGoalLinkedReference: async() => {
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
             const Goals = db.collection('goals')
@@ -23,7 +36,7 @@ export const resolvers = {
 
             //GoalTimes.updateMany({}, { $rename: { userid: 'profileid' } })
             return true
-        }
+        } */
         /* migrateUpdateGoalTimesUserIDs: async() => {
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')

@@ -364,8 +364,8 @@ export const resolvers = {
 
             if (user) {
                 if (!user.password){
-                    sessiontrack(req, args, 'app', 'emaillogin', 'failed - not verified')
-                    return triggererror('Account has not been verified.')}
+                    sessiontrack(req, args, 'app', 'emaillogin', 'failed - password not set up')
+                    return triggererror('Password has not been set up.')}
 
                 if (await bcrypt.compareSync(args.pwd, user.password)) {
                     if((user.incorrecttries < 6 || user.incorrecttries === undefined) && user.state == 'verified'){

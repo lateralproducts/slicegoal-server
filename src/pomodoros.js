@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb' 
 import { getprofileid, getuserid } from './users'
 import DbConnection from './database'
-import { date2str, dayofyear, getuiversion } from '../util/functions'
+import { dayofyear, getuiversion } from '../util/functions'
 import { checkTask, createRepeatTask } from './tasks'
 import { triggererror } from './graphqlserver';
 import { getareatree } from './areas'
@@ -279,7 +279,7 @@ export async function goalaggregate({goalid, minutes, pomoid}) {
     )
 }
 
-export async function areaaggregate({tags, minutes, pomoid, req}) {
+export async function areaaggregate({tags, minutes, created, completed, rescheduled, snoozed, pomoid, req}) {
     //future development: check/aggregate parent tasks.
     if (!tags || !minutes || !pomoid) { //must have all fields
         console.log('areaaggregate error - missing fields')
@@ -290,6 +290,7 @@ export async function areaaggregate({tags, minutes, pomoid, req}) {
     }
     const areatree = await getareatree({tags: tags, req})
 
+    if (areatree){
     const db = await DbConnection.Get()
     const Areas = db.collection('areas')
     
@@ -335,7 +336,8 @@ export async function areaaggregate({tags, minutes, pomoid, req}) {
                     created: created ? 1 : 0,
                     completed: completed ? 1 : 0,
                     rescheduled: rescheduled ? 1 : 0,
-                    count: 1
+                    snoozed: snoozed ? 1 : 0,
+                    count: minutes ? 1 : 0 //only count if there is a pomodoro with minutes
                 }
             },
             {upsert: true}
@@ -353,7 +355,8 @@ export async function areaaggregate({tags, minutes, pomoid, req}) {
                     created: created ? 1 : 0,
                     completed: completed ? 1 : 0,
                     rescheduled: rescheduled ? 1 : 0,
-                    count: 1 
+                    snoozed: snoozed ? 1 : 0,
+                    count: minutes ? 1 : 0 //only count if there is a pomodoro with minutes
                 }
             },
             {upsert: true}
@@ -371,7 +374,8 @@ export async function areaaggregate({tags, minutes, pomoid, req}) {
                     created: created ? 1 : 0,
                     completed: completed ? 1 : 0,
                     rescheduled: rescheduled ? 1 : 0,
-                    count: 1 
+                    snoozed: snoozed ? 1 : 0,
+                    count: minutes ? 1 : 0 //only count if there is a pomodoro with minutes
                 }
             },
             {upsert: true}
@@ -392,12 +396,13 @@ export async function areaaggregate({tags, minutes, pomoid, req}) {
                     created: created ? 1 : 0,
                     completed: completed ? 1 : 0,
                     rescheduled: rescheduled ? 1 : 0,
-                    count: 1
+                    snoozed: snoozed ? 1 : 0,
+                    count: minutes ? 1 : 0 //only count if there is a pomodoro with minutes
                 }
             },
             {upsert: true}
         )
-    })
+    })}
 }
 
 async function getgoaltree(goalid) {

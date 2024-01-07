@@ -31,7 +31,6 @@ export const dayofyear = (date) => {
     var diff = (date - start) + ((start.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000);
     var oneDay = 1000 * 60 * 60 * 24;
     var day = Math.floor(diff / oneDay);
-    console.log('Day of year: ' + day);
     return day
 }
 

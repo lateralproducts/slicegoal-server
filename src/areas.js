@@ -269,7 +269,6 @@ export const resolvers = {
         },
         areatree: async(_, { areaid }, { req }) => {
             const areatree = await getareatree({tags:[areaid], req})
-            console.log(areatree.map(id => {return new ObjectId(id)}))
             
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -1275,7 +1274,7 @@ export async function getareatree({tags, req}) {
         if (newareas.includes(startareaid)) {
             //if root area reached, stop building tree.
             checkareas = []
-            console.log("got to start area")
+            //console.log("got to start area")
         }
         else checkareas = newareas
     }

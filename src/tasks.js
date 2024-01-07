@@ -55,6 +55,7 @@ export const typeDefs = `
         
         scheduleTask(taskid: String!, date: String, reschedule: Boolean): Boolean
         scheduleTasks(date: String, taskids: [String!]): Boolean
+        snoozeTask(taskid: String!, snooze: String!): Boolean
         
         checkTask(taskid: String!, checked: Boolean): Boolean
         setTaskGoal(taskid: String!, goalid: String!): Boolean
@@ -64,8 +65,9 @@ export const typeDefs = `
         updateDayTaskOrder(tasks: [String]): Boolean
         updateGoalTaskOrder(tasks: [String]): Boolean
         updateTaskListOrder(tasks: [String]): Boolean
-        
+
         newSubTask(taskid: String!, task: String!): Boolean
+        updateSubTaskListOrder(task: String, subtasks: [String]): Boolean
 
         linkTask(parenttaskid: String!, subtaskid: String!): Boolean
         linkSelectedTasks(parenttaskid: String, newparenttask: String, taskids: [String!]): Boolean
@@ -363,17 +365,19 @@ export const resolvers = {
             try {
                 const db = await DbConnection.Get()
                 const Tasks = db.collection('tasks')
-                const TaskLinks = db.collection('tasklinks')
-                
-                const tasklist = await TaskLinks.find({parenttask: parent._id.toString()}).toArray()
-                
-                return await Tasks.find({_id: {
-                    $in: tasklist.map(function(link) {
-                        return new ObjectId(link.subtask)
+
+                const subtasks = await Tasks.find({_id: {
+                    $in: parent.subtasks.map(function(link) {
+                        return new ObjectId(link)
                     })
                 }}).toArray()
+
+                //order the results based on the order of the array. Not sure this is the best approach, but it works.
+                const orderedResult = parent.subtasks.map(subtaskId => {return subtasks.find(doc => doc._id.equals(new ObjectId(subtaskId)))})
+                return orderedResult
             }
              catch (error) {
+                console.log(error)
                 return []
             }
         },
@@ -531,6 +535,16 @@ export const resolvers = {
             })
             return true
         },
+        updateSubTaskListOrder: async(parent, {task, subtasks}, { req }) => {
+            //update the main goal list order rank. persist in database.
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            Tasks.updateOne(
+                { _id: new ObjectId(task) },
+                { $set: { subtasks: subtasks} },
+            )
+            return true
+        },
         scheduleTask: async(_, args, { req }) => {
             
             const db = await DbConnection.Get()
@@ -580,19 +594,28 @@ export const resolvers = {
                 }
                 updates.$inc = {rescheduled: 1}
                 updates.$unset = {schedule: null}
+
+                taskids.map(function(taskid) {
+                    activityrecord({taskid: taskid, notes: 'Scheduled for ' + date2str(newdate,'dd-MM-yyyy'), req: req, rescheduled: true})
+                    Tasks.updateOne(
+                        {_id: new ObjectId(taskid)},
+                        updates
+                    )
+                })
+
             } else {
-                //activityrecord({taskid: args.taskid, notes: 'Scheduled date unset.', req: req})
-                //unsetting, variables don't matter.
                 updates.$unset = {starttime: ''}
                 updates.$set = {schedule: true}
+                taskids.map(function(taskid) {
+                    activityrecord({taskid: taskid, notes: 'Scheduled date unset.', req: req})
+                    //unsetting, variables don't matter.
+                    Tasks.updateOne(
+                        {_id: new ObjectId(taskid)},
+                        updates
+                    )
+                })
             } 
-            taskids.map(function(taskid) {
-                activityrecord({taskid: taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req, rescheduled: true})
-                Tasks.updateOne(
-                    {_id: new ObjectId(taskid)},
-                    updates
-                )
-            })
+            
             return true 
         },
         checkTask: async(_, args, { req }) => {
@@ -642,8 +665,10 @@ export const resolvers = {
             const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session), type: 'subtask'})
             activityrecord({taskid: subtaskid, notes: 'Task created.', req: req})
             const TaskLinks = db.collection('tasklinks')
+            const Tasks = db.collection('tasks')
             
             if(taskid !== subtaskid){
+                Tasks.updateOne({_id: new ObjectId(taskid)},{$push: {subtasks: subtaskid}})
                 const result = await TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: taskid, subtask: subtaskid, created: new Date()})
                 return result.acknowledged === true
             }else{
@@ -697,7 +722,23 @@ export const resolvers = {
         linkSourceToTask: async(_, {taskid,sourceid}, {req}) => {
             
             return await linkSourceTask(taskid, sourceid)
-        }
+        },
+        snoozeTask: async(root, {taskid, snooze}, { req }) => {
+            
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('goals')
+            //const profileid = getprofileid(req.session)
+            let snoozedate = new Date(snooze) //time set from client argument
+            const snoozed = snoozedate.setHours(0, 0, 0, 0) //snooze till date (not time yet.)
+            
+            await Tasks.updateOne(
+                { _id: new ObjectId(taskid) },
+                { $set: { snooze: snoozed }}
+            )
+
+            activityrecord({taskid: taskid, req: req, notes: 'Task snoozed to ' + date2str(snoozedate,'MM-dd-yyyy')})
+            return true
+        },
     }
 }
 

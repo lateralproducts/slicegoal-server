@@ -24,6 +24,7 @@ export const typeDefs = `
         snoozeGoal(goalid: String!, snooze: String!): Boolean
         updateGoalOrder(goals: [String]): Boolean
         updateGoalListOrder(goals: [String]): Boolean
+        updateSubGoalListOrder(goal: String, subgoals: [String]): Boolean
         createGoalLink(rootgoal: String, goal: String): Boolean
         deleteGoalLink(rootgoal: String, goal: String): Area
     }
@@ -412,6 +413,16 @@ export const resolvers = {
             })
             return true
         },
+        updateSubGoalListOrder: async(parent, {goal, subgoals}, { req }) => {
+            //update the main goal list order rank. persist in database.
+            const db = await DbConnection.Get()
+            const Goals = db.collection('goals')
+            Goals.updateOne(
+                { _id: new ObjectId(goal) },
+                { $set: { subgoals: subgoals} },
+            )
+            return true
+        },
         updateGoalOrder: async(parent, args, { req }) => {
             
             const db = await DbConnection.Get()
@@ -424,25 +435,24 @@ export const resolvers = {
             })
             return true
         },
-        snoozeGoal: async(root, args, { req }) => {
+        snoozeGoal: async(root, {goalid, snooze}, { req }) => {
             
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
             const GoalTags = db.collection('goaltags')
-            args.profileid = getprofileid(req.session)
-            args.snoozedate = new Date(args.snooze) //time set from client argument
-            args.snoozedate.setHours(0, 0, 0, 0)
+            const profileid = getprofileid(req.session)
+            let snoozedate = new Date(snooze) //time set from client argument
+            snoozedate.setHours(0, 0, 0, 0)
             await Goals.updateOne(
-                { _id: new ObjectId(args.goalid) },
-                { $set: { snooze: args.snoozedate }}
+                { _id: new ObjectId(goalid) },
+                { $set: { snooze: snoozedate }}
             )
             await GoalTags.updateMany(
-                { goalid: args.goalid, profileid: args.profileid },
-                { $set: { snooze: args.snoozedate }}
+                { goalid: goalid, profileid: profileid },
+                { $set: { snooze: snoozedate }}
             )
-            var pomo = new Object()
-            pomo.goal = args.goalid
-            activityrecord({goalid: args.goal, req: req, notes: 'Goal snoozed to ' + date2str(args.snoozedate,'MM-dd-yyyy')})
+
+            activityrecord({goalid: goalid, req: req, notes: 'Goal snoozed to ' + date2str(snoozedate,'MM-dd-yyyy')})
             return true
         },
         createGoalLink: async(_, args, { req }) => {
