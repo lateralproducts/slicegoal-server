@@ -1,29 +1,33 @@
 import DbConnection from '../src/database'
 import { ObjectId } from 'mongodb'
-//import { triggererror } from './graphqlserver';
+import { triggererror } from '../src/graphqlserver'
 //import { getprofileid } from '../src/users';
 //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
 
 export const typeDefs = `
     extend type Mutation {
-        migrateSubTasks: Boolean
+        migrateSubTemplates: Boolean
     }`
 
 export const resolvers = {
     Mutation: {
-        migrateSubTasks: async() => {
+        /* migrate: async() => {
+            //any migration script here.
+        } */ 
+        migrateSubTemplates: async(_, __, { req }) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){ //only allow my profile to run migration script: staging + prod.
             const db = await DbConnection.Get()
-            const TaskLinks = db.collection('tasklinks')
-            const Tasks = db.collection('tasks')
+            const TemplateLinks = db.collection('templatelinks')
+            const Templates = db.collection('templates')
                 
-            const tasklinks = await TaskLinks.find({parenttask: {$ne: null}}).toArray()
+            const templatelinks = await TemplateLinks.find({parenttemplate: {$ne: null}}).toArray()
             
-            tasklinks.map(link => {
-                    Tasks.updateOne({_id: new ObjectId(link.parenttask)},{$push: {subtasks: link.subtask}})
+            templatelinks.map(link => {
+                    Templates.updateOne({_id: new ObjectId(link.parenttemplate)},{$push: {templates: link.subtemplate}})
                 }
             )
-            return true
-        }
+            return true} else return triggererror('An error occured.')
+        } 
         /* migrateUpdateGoalLinkedReference: async() => {
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
@@ -40,7 +44,6 @@ export const resolvers = {
         /* migrateUpdateGoalTimesUserIDs: async() => {
             const db = await DbConnection.Get()
             const GoalTimes = db.collection('goaltimes')
-            //const TaskLinks = db.collection('tasklinks')
 
             GoalTimes.updateMany({}, { $rename: { userid: 'profileid' } })
             return true
@@ -49,7 +52,6 @@ export const resolvers = {
         /* updateTaskLinks: async(parent, args, { req }) => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            const TaskLinks = db.collection('tasklinks')
 
             const taskwithlinks = await Tasks.find({'tasks': {$exists: true}}).toArray();
                 taskwithlinks.map(task => {

@@ -480,7 +480,7 @@ export const resolvers = {
                     block: true,
                     reason: 'account limit at 15'
                 })
-                new Error(
+                return triggererror(
                     'An error occured.', //don't be descriptive with error in case malicious
                 )
             }

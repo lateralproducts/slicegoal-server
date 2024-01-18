@@ -268,7 +268,7 @@ export const resolvers = {
             return area
         },
         areatree: async(_, { areaid }, { req }) => {
-            const areatree = await getareatree({tags:[areaid], req})
+            const areatree = await getareatree({tags:[areaid], tasklist, req})
             
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -1016,8 +1016,9 @@ export async function createWheel(
 
         let newAreas = (await Areas.insertMany(insertAreas)).insertedIds //insert all records in one go.
 
+        const newAreasIDs = Object.values(newAreas)
         //Setting up the AreaLink records
-        let insertAreaLinks = newAreas.map(areaid => {
+        let insertAreaLinks = newAreasIDs.map(areaid => {
             return {
                 area: areaid.toString(),
                 rootarea: startArea,
@@ -1233,9 +1234,10 @@ async function deleteWheelAll(req, viewid) {
     Wheels.deleteMany({ _id: new ObjectId(view.wheel) })
 }
 
-export async function getareatree({tags, req}) {
+export async function getareatree({tags, req, tasklist}) {
     const db = await DbConnection.Get()
     const AreaLinks = db.collection('arealinks')
+    const Tasks = db.collection('tasks')
     
     let startareaid
     if (req) {
@@ -1252,6 +1254,18 @@ export async function getareatree({tags, req}) {
     let areatree = tags
     let newareas = []
     let checkareas = tags
+
+    const tasks = await Tasks.find(
+        {_id: {
+            $in: tasklist.map(taskid => new ObjectId(taskid))
+        }}
+    ).toArray()
+
+    if (tasks) {
+        let tags = tasks.flatMap(task => task.tags || [])
+        areatree = areatree.concat(tags)
+        checkareas = areatree
+    }
     
     while (checkareas.length > 0) {
         //find all parent goals linked to goals

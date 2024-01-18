@@ -2,6 +2,8 @@ import DbConnection from '../src/database';
 import { ObjectId } from 'mongodb';
 import { newtest } from './testing'; // Replace with the actual module path
 import { createNewViewProfile } from '../src/users'; // Replace with the actual module path
+import { resolvers } from '../src/recaps';
+
 
 jest.mock('../src/users', () => {
   const originalModule = jest.requireActual('../src/users');
@@ -81,7 +83,7 @@ describe('anothertest', () => {
       // Create separate collection mocks for each collection
       const collectionMocks = {
         views: {
-          insertOne: jest.fn(),
+          insertOne: jest.fn().mockResolvedValueOnce({_id: "1231231231231"}),
           findOne: jest.fn().mockResolvedValueOnce(mockUser),
         },
         profiles: {
@@ -94,7 +96,7 @@ describe('anothertest', () => {
       const dbConnectionMock = { collection: (name) => collectionMocks[name] };
       DbConnection.Get.mockResolvedValueOnce(dbConnectionMock);
 
-     //DbConnection.Get.mockResolvedValueOnce({ collection: collectionMock });
+      //DbConnection.Get.mockResolvedValueOnce({ collection: collectionMock });
   
       // Call the newtest function
       const result = await createNewViewProfile(args, userid, req);
@@ -115,4 +117,24 @@ describe('anothertest', () => {
     });
   
     // Add more test cases to cover different scenarios and error handling
+});
+
+
+describe('recap Query', () => {
+  it('returns the correct data for a given date and profile', async () => {
+
+    // Mock the database connection and collection methods
+    const findOneMock = jest.fn().mockResolvedValueOnce({recap: "This is a recap."});
+    const collectionMock = jest.fn().mockReturnValueOnce({ findOne: findOneMock });
+    DbConnection.Get.mockResolvedValueOnce({ collection: collectionMock });
+
+    const args = { date: '2024-01-18' };
+    const context = { req: { session: { /* session data */ } } };
+
+    const result = await resolvers.Query.recap(null, args, context);
+
+    // Assertion: Check if the result matches the expected output
+    expect(result).toEqual({recap: "This is a recap."});
+  });
+  // More tests for different scenarios...
 });

@@ -52,28 +52,26 @@ export const typeDefs = `
 export const resolvers = {
     Query: {
         templateslist: async(_, args, { req }) => {
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('templates')
             return await Tasks.find({profile: getprofileid(req.session), type: {$ne: 'subtask'}}).toArray()
         },
         templates: async(_, args, { req }) => {
-            
             const db = await DbConnection.Get()
-            const TemplateLinks = db.collection('templatelinks')
             const Templates = db.collection('templates')
-            const links = await TemplateLinks.find({profileid: getprofileid(req.session), parenttemplate: args.templateid}).toArray()
-            return await Templates.find({
-                profile: getprofileid(req.session), 
-                _id: {
-                    $in: links.map(function(link) {
-                        return new ObjectId(link.subtemplate)
-                    })
-                }
-            }).toArray()
+            const template = await Templates.findOne({_id: new ObjectId(args.templateid)})
+            if(template.templates){
+                const subtemplates = await Templates.find({
+                    _id: {
+                        $in: template.templates.map(function(link) {
+                            return new ObjectId(link)
+                        })
+                    }
+                }).toArray()
+                return subtemplates
+        } else return []
         },
         template: async(_, args, { req }) => {
-            
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
 
@@ -116,15 +114,17 @@ export const resolvers = {
                 try {
                     const db = await DbConnection.Get()
                     const Templates = db.collection('templates')
-                    const TemplateLinks = db.collection('templatelinks')
-                    
-                    const templatelist = await TemplateLinks.find({parenttemplate: parent._id.toString()}).toArray()
-                    
-                    return await Templates.find({_id: {
-                        $in: templatelist.map(function(link) {
-                            return new ObjectId(link.subtemplate)
-                        })
-                    }}).toArray()
+
+                    const template = await Templates.findOne({profileid: getprofileid(req.session), _id: new ObjectId(parent._id.toString())})
+                    if(template.templates){
+                    return await Templates.find({
+                        profile: getprofileid(req.session), 
+                        _id: {
+                            $in: template.templates.map(function(link) {
+                                return new ObjectId(link)
+                            })
+                        }
+                    }).toArray()} else return []
                 }
                  catch (error) {
                     return []
@@ -133,35 +133,31 @@ export const resolvers = {
         parenttemplate: async(parent, __, { req }) => {
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
-            const TemplateLinks = db.collection('templatelinks')
             
             //return a single parent template for now.
-            const templatelink = await TemplateLinks.findOne({subtemplate: parent._id.toString()})
-            if (templatelink){
-                const parenttemplate = await Templates.findOne({_id: new ObjectId(templatelink.parenttemplate)})
-                return parenttemplate
+            const template = await Templates.findOne({subtemplate: parent._id.toString()})
+            if (template){
+                return template
             } else return null
         }
     },
     Mutation: {
         newTemplate: async(_, args, { req }) => {
             //need to move business logic to server.
-            
             const db = await DbConnection.Get()
-            const TemplateLinks = db.collection('templatelinks')
+            const Templates = db.collection('templates')
 
             args.profileid = getprofileid(req.session)
             if (args.parenttemplate) args.type = 'subtask'
             const templateid = await createNewTemplate(args)
             if (args.parenttemplate) {
-                TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: args.parenttemplate, subtemplate: templateid, created: new Date()})
+                Templates.updateOne({profileid: getprofileid(req.session), _id: new ObjectId(args.parenttemplate)},{$push: {templates: templateid}})
             }
             if (args.insightid) linkInsightTemplate(templateid, args.insightid)
             return templateid
         },
         createTaskFromTemplate: async(_, {templateid}, { req }) => {
             //need to move business logic to server.
-            
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
             const Tasks = db.collection('tasks')
@@ -178,10 +174,11 @@ export const resolvers = {
             template.created = new Date()
             template.templateid = templateid
             template.schedule = true
+            delete template.subtasks
 
             //create new task from template and get id.
             const newtaskid = (await Tasks.insertOne(template)).insertedId.toString()
-            activityrecord({taskid: newtaskid, notes: 'Task created.', req: req})
+            activityrecord({taskid: newtaskid, notes: 'Task created from template.', req: req})
 
             //get all task template links
             createSubTasksFromTemplate(templateid, newtaskid, req)
@@ -222,7 +219,6 @@ export const resolvers = {
             
             const db = await DbConnection.Get()
             const Templates = db.collection('templates')
-            const TemplateLinks = db.collection('templatelinks')
 
             var updates = new Object()
             if (args.parenttemplate) updates.type = 'subtask'
@@ -237,8 +233,8 @@ export const resolvers = {
             updatetemplate.$set = updates
 
             //would be better to check links before deleting and inserting. Separate into function.
-            await TemplateLinks.deleteMany({profileid: getprofileid(req.session), subtemplate: args.templateid})
-            if (args.parenttemplate) TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: args.parenttemplate, subtemplate: args.templateid, created: new Date()})
+            await Templates.updateMany({profileid: getprofileid(req.session), templates: args.templateid}, {$pull: {templates: args.templateid}})
+            if (args.parenttemplate) Templates.updateOne({profileid: getprofileid(req.session), _id: new ObjectId(args.parenttemplate)}, {$push: {templates: args.templateid}})
 
             const result = await Templates.updateOne(
                 {_id: new ObjectId(args.templateid)},
@@ -288,10 +284,10 @@ export const resolvers = {
             
             const db = await DbConnection.Get()
             const subtemplateid = await createNewTemplate({title: template, profileid: getprofileid(req.session), type: 'subtask'})
-            const TemplateLinks = db.collection('templatelinks')
+            const Templates = db.collection('templates')
             
             if(templateid !== subtemplateid){
-                const result = await TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: templateid, subtemplate: subtemplateid, created: new Date()})
+                const result = await Templates.updateOne({profileid: getprofileid(req.session), _id: new ObjectId(templateid)}, {$push: {subtemplate: subtemplateid}})
                 return result.insertedId ? true : false
             }else{
                 return triggererror('Can\'t link template to the same template')
@@ -305,7 +301,6 @@ export const resolvers = {
         /* removeTemplateLink: async(_, {parenttemplateid,subtemplateid}, {req}) => {
             
             const db = await DbConnection.Get()
-            const TemplateLinks = db.collection('templatelinks')
             const result = await TemplateLinks.deleteMany({profileid: getprofileid(req.session), parenttemplate: parenttemplateid, subtemplate: subtemplateid})
             console.log(result)
             return true
@@ -314,7 +309,6 @@ export const resolvers = {
         /* removeTemplateParentLinks: async(_, {subtemplateid}, {req}) => {
             
             const db = await DbConnection.Get()
-            const TemplateLinks = db.collection('templatelinks')
             return (await TemplateLinks.deleteMany({profileid: getprofileid(req.session), subtemplate: subtemplateid})).result.ok === 1
         }, */
         linkInsightToTemplate: async(_, {templateid,insightid}, {req}) => {
@@ -351,19 +345,11 @@ export async function linkSourceTemplate(templateid, sourceid){
 async function deleteTemplate(templateid, req){
     const db = await DbConnection.Get()
     const Templates = db.collection('templates')
-    const TemplateLinks = db.collection('templatelinks')
-    const templatelinks = await TemplateLinks.find({parenttemplate: templateid}).toArray()
-    if (templatelinks.length > 0) await templatelinks.map(link => {
-        return deleteTemplate(link.subtemplate, req) //delete all subtemplates.
+    const template = await Templates.findOne({profileid: getprofileid(req.session), _id: new ObjectId(templateid)})
+    if (template.templates) await template.templates.map(link => {
+        return deleteTemplate(link, req) //delete all subtemplates. Self-referencing function.
     })
-    await TemplateLinks.deleteMany({
-        profileid: getprofileid(req.session),
-        $or: [
-            {parenttemplate: templateid},
-            {subtemplate: templateid}
-        ]
-    }) //delete all links.
-    const result = await Templates.deleteOne({_id: new ObjectId(templateid)})
+    const result = await Templates.deleteOne({profileid: getprofileid(req.session), _id: new ObjectId(templateid)})
     return result.deletedCount === 1
 }
 
@@ -381,19 +367,18 @@ async function createNewTemplate({title, description, goal, profileid, type}) {
 
 async function createSubTasksFromTemplate(templateid, newtaskid, req) {
     const db = await DbConnection.Get()
-    const TemplateLinks = db.collection('templatelinks')
     const Templates = db.collection('templates')
     const Tasks = db.collection('tasks')
 
     //search for links to task template.
-    let links = await TemplateLinks.find({profileid: getprofileid(req.session), parenttemplate: templateid}).toArray()
+    const template = await Templates.findOne({_id: new ObjectId(templateid)})
     //get subtask templates.
-    if (links.length > 0) {
+    if (template.templates) {
     let subtemplates = await Templates.find({
         profile: getprofileid(req.session), 
         _id: {
-            $in: links.map(function(link) {
-                return new ObjectId(link.subtemplate)
+            $in: template.templates.map(function(link) {
+                return new ObjectId(link)
             })
         }
     }).toArray()
@@ -413,8 +398,9 @@ async function createSubTasksFromTemplate(templateid, newtaskid, req) {
     })
     let newSubTasks = (await Tasks.insertMany(insertTasks)).insertedIds
     //link all subtasks to the parent task.
-    newSubTasks.map(subtaskid => {
-        activityrecord({taskid: subtaskid.toString(), notes: 'Task created.', req: req})
+    const subtaskIDs = Object.values(newSubTasks)
+    subtaskIDs.map(subtaskid => {
+        activityrecord({taskid: subtaskid.toString(), notes: 'Task created from template.', req: req})
         linksubtask({parenttaskid: newtaskid, subtaskid: subtaskid.toString(), req: req})}
     )}
 }
@@ -422,18 +408,17 @@ async function createSubTasksFromTemplate(templateid, newtaskid, req) {
 async function createSubTemplatesFromSubTasks(taskid, newtemplateid, req) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
-    const TaskLinks = db.collection('tasklinks')
     const Templates = db.collection('templates')
 
     //search for links to task template.
-    let links = await TaskLinks.find({profileid: getprofileid(req.session), parenttask: taskid}).toArray()
+    let task = await Tasks.findOne({_id: new ObjectId(taskid)})
     //get subtask templates.
-    if (links.length > 0) {
+    if (task.subtasks) {
         let subtemplates = await Tasks.find({
             profile: getprofileid(req.session), 
             _id: {
-                $in: links.map(function(link) {
-                    return new ObjectId(link.subtask)
+                $in: task.subtasks.map(function(link) {
+                    return new ObjectId(link)
                 })
             }
         }).toArray()
@@ -453,8 +438,10 @@ async function createSubTemplatesFromSubTasks(taskid, newtemplateid, req) {
         })
         let newSubTemplates = (await Templates.insertMany(insertSubTemplates)).insertedIds
         
+        const newSubTemplatesIDs = Object.values(newSubTemplates)
+
         //link all subtasks to the parent task.
-        if(newSubTemplates) newSubTemplates.map(subtemplateid => {
+        if(newSubTemplatesIDs) newSubTemplatesIDs.map(subtemplateid => {
             //no activity records or history recorded against templates yet.
             linksubtemplate({parenttemplateid: newtemplateid, subtemplateid: subtemplateid.toString(), req: req})}
         )
@@ -463,11 +450,11 @@ async function createSubTemplatesFromSubTasks(taskid, newtemplateid, req) {
 
 async function linksubtemplate({parenttemplateid, subtemplateid, req}){
     const db = await DbConnection.Get()
-    const TemplateLinks = db.collection('templatelinks')
+    const Templates = db.collection('templates')
 
     if(parenttemplateid !== subtemplateid){ //new linking.
-        const result = await TemplateLinks.insertOne({profileid: getprofileid(req.session), parenttemplate: parenttemplateid, subtemplate: subtemplateid, created: new Date()})
-        return result.insertedId ? true : false
+        Templates.updateOne({_id: new ObjectId(parenttemplateid)},{$push: {templates: subtemplateid}})
+        return true
     }else{
         return triggererror('Can\'t link template to the same template')
     }

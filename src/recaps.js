@@ -1,5 +1,5 @@
-import { ObjectId } from 'mongodb'
-import { triggererror } from './graphqlserver';
+//import { ObjectId } from 'mongodb'
+//import { triggererror } from './graphqlserver';
 import { getprofileid } from './users'
 import DbConnection from './database'
 import { getuiversion } from '../util/functions'
@@ -42,7 +42,7 @@ export const resolvers = {
             query.profileid = getprofileid(req.session) //show goals from profileid.
             query.date = new Date(args.date) //time set from client argument
 
-            return await Recaps.findOne(query)
+            return args.date ? await Recaps.findOne(query) : null
         }
     },
     Mutation: {

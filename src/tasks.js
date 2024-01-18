@@ -56,6 +56,7 @@ export const typeDefs = `
         scheduleTask(taskid: String!, date: String, reschedule: Boolean): Boolean
         scheduleTasks(date: String, taskids: [String!]): Boolean
         snoozeTask(taskid: String!, snooze: String!): Boolean
+        unlistTasks(taskids: [String!]): Boolean
         
         checkTask(taskid: String!, checked: Boolean): Boolean
         setTaskGoal(taskid: String!, goalid: String!): Boolean
@@ -365,7 +366,7 @@ export const resolvers = {
             try {
                 const db = await DbConnection.Get()
                 const Tasks = db.collection('tasks')
-
+                if(parent.subtasks){
                 const subtasks = await Tasks.find({_id: {
                     $in: parent.subtasks.map(function(link) {
                         return new ObjectId(link)
@@ -374,7 +375,8 @@ export const resolvers = {
 
                 //order the results based on the order of the array. Not sure this is the best approach, but it works.
                 const orderedResult = parent.subtasks.map(subtaskId => {return subtasks.find(doc => doc._id.equals(new ObjectId(subtaskId)))})
-                return orderedResult
+                return orderedResult}
+                else {return []}
             }
              catch (error) {
                 console.log(error)
@@ -384,13 +386,11 @@ export const resolvers = {
         parenttask: async(task, __, { req }) => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            const TaskLinks = db.collection('tasklinks')
             
             //return a single parent task for now.
             const taskid = task._id.toString()
-            const tasklink = await TaskLinks.findOne({subtask: taskid})
-            if (tasklink){
-                const parenttask = await Tasks.findOne({_id: new ObjectId(tasklink.parenttask)})
+            const parenttask = await Tasks.findOne({subtasks: taskid})
+            if (parenttask){
                 return parenttask
             } else return null
         }
@@ -412,7 +412,7 @@ export const resolvers = {
             //need to move business logic to server.
             
             const db = await DbConnection.Get()
-            const TaskLinks = db.collection('tasklinks')
+            const Tasks = db.collection('tasks')
 
             args.profileid = getprofileid(req.session)
             if (args.parenttask) args.type = 'subtask'
@@ -420,7 +420,7 @@ export const resolvers = {
 
             const taskid = await createNewTask(args)
             if (args.parenttask) {
-                TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: args.parenttask, subtask: taskid, created: new Date()})
+                Tasks.updateOne({profileid: getprofileid(req.session), _id: new ObjectId(args.parenttask)}, {$push: {subtasks: taskid}})
             }
             activityrecord({taskid: taskid, notes: 'Task created.', req: req})
             if (args.insightid) linkInsightTask(taskid, args.insightid)
@@ -430,7 +430,6 @@ export const resolvers = {
             
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            const TaskLinks = db.collection('tasklinks')
 
             var updates = new Object()
             
@@ -439,8 +438,7 @@ export const resolvers = {
             if (!args.goal && !args.date) updates.schedule = true
             else updates.schedule = false
 
-            if(args.date) 
-                {updates.starttime = new Date(args.date)} //time set from client argument
+            if(args.date) {updates.starttime = new Date(args.date)} //time set from client argument
             if(args.title) updates.title = args.title
             if(args.complete !== null) updates.complete = args.complete
             if(args.description !== null) updates.description = args.description
@@ -448,9 +446,9 @@ export const resolvers = {
             else {updates.goal = null}
             if(args.tags) {updates.tags = args.tags}
             //would be better to check links before deleting and inserting. Separate into function.
-            await TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: args.taskid})
+            await Tasks.updateMany({subtasks: args.taskid}, {$pull: {subtasks: args.taskid}})
             if (args.parenttask) {
-                TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: args.parenttask, subtask: args.taskid, created: new Date()})
+                Tasks.updateOne({profile: getprofileid(req.session), _id: new ObjectId(args.parenttask)}, {$push: {subtasks: args.taskid}})
                 updates.type = 'subtask'
             } else {
                 updates.type = 'task' //remove subtask type so task appears again.
@@ -618,6 +616,25 @@ export const resolvers = {
             
             return true 
         },
+        unlistTasks: async(_, {taskids}, { req }) => {
+            
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            var updates = new Object()
+
+            updates.$unset = { schedule: null, starttime: null }
+            updates.$inc = { rescheduled: 1}
+
+            taskids.map(function(taskid) {
+                activityrecord({taskid: taskid, notes: 'Unlisted.', req: req})
+                //unsetting, variables don't matter.
+                Tasks.updateOne(
+                    {_id: new ObjectId(taskid)},
+                    updates
+                )
+            })
+            return true
+        },
         checkTask: async(_, args, { req }) => {
             
             const response = await checkTask(args, req)
@@ -664,13 +681,11 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session), type: 'subtask'})
             activityrecord({taskid: subtaskid, notes: 'Task created.', req: req})
-            const TaskLinks = db.collection('tasklinks')
             const Tasks = db.collection('tasks')
             
             if(taskid !== subtaskid){
                 Tasks.updateOne({_id: new ObjectId(taskid)},{$push: {subtasks: subtaskid}})
-                const result = await TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: taskid, subtask: subtaskid, created: new Date()})
-                return result.acknowledged === true
+                return true
             }else{
                 return triggererror('Can\'t link task to the same task')
             }
@@ -700,7 +715,6 @@ export const resolvers = {
         /* removeTaskLink: async(_, {parenttaskid,subtaskid}, {req}) => {
             
             const db = await DbConnection.Get()
-            const TaskLinks = db.collection('tasklinks')
             const result = await TaskLinks.deleteMany({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid})
             console.log(result)
             return true
@@ -709,7 +723,6 @@ export const resolvers = {
         /* removeTaskParentLinks: async(_, {subtaskid}, {req}) => {
             
             const db = await DbConnection.Get()
-            const TaskLinks = db.collection('tasklinks')
             
             const result = await TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: subtaskid})
             console.log(result)
@@ -798,20 +811,25 @@ export async function createRepeatTask(taskid, req){
 async function copySubTasksFromTask(taskid, newtaskid, req) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
-    const TaskLinks = db.collection('tasklinks')
 
     //search for links to task template.
-    let links = await TaskLinks.find({profileid: getprofileid(req.session), parenttask: taskid}).toArray()
+    const task = await Tasks.findOne({_id: new ObjectId(taskid)}) 
+
+    console.log('task')
+    console.log(task)
     //get subtask templates.
-    if (links.length > 0) {
+    if (task.subtasks) {
         let subtasks = await Tasks.find({
             profile: getprofileid(req.session), 
             _id: {
-                $in: links.map(function(link) {
-                    return new ObjectId(link.subtask)
+                $in: task.subtasks.map(function(link) {
+                    return new ObjectId(link)
                 })
             }
         }).toArray()
+
+        console.log('subtasks')
+        console.log(subtasks)
 
         //create all subtasks.
         let insertSubTasks = subtasks.map(task => {
@@ -827,31 +845,25 @@ async function copySubTasksFromTask(taskid, newtaskid, req) {
             }
         })
         let newSubTasks = (await Tasks.insertMany(insertSubTasks)).insertedIds
-        
+        const subtaskIDs = Object.values(newSubTasks)
         //link all subtasks to the parent task.
-        newSubTasks.map(subtaskid => {
+        subtaskIDs.map(subtaskid => {
             //no activity records or history recorded against templates yet.
-            linksubtask({parenttaskid: newtaskid, subtaskid: subtaskid.toString(), req: req})}
-        )
+            linksubtask({parenttaskid: newtaskid, subtaskid: subtaskid.toString(), req: req})
+        })
     }
 }
 
 async function deleteTask(taskid, req){
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
-    const TaskLinks = db.collection('tasklinks')
-    const tasklinks = await TaskLinks.find({parenttask: taskid}).toArray()
-    if (tasklinks.length > 0) await tasklinks.map(link => {
-        return deleteTask(link.subtask, req) //delete all subtasks.
+    const task = await Tasks.find({_id: new ObjectId(taskid)})
+
+    if (task.subtasks > 0) await task.subtasks.map(link => {
+        return deleteTask(link, req) //delete all subtasks.
     })
-    await TaskLinks.deleteMany({
-        profileid: getprofileid(req.session),
-        $or: [
-            {parenttask: taskid},
-            {subtask: taskid}
-        ]
-    }) //delete all links.
-    const result = await Tasks.deleteOne({_id: new ObjectId(taskid)})
+    await Tasks.updateMany({subtasks: taskid}, {$pull: {subtasks: taskid}}) //delete all links.
+    const result = await Tasks.deleteOne({_id: new ObjectId(taskid)}) //delete task.
     return result.deletedCount === 1
 }
 
@@ -876,20 +888,22 @@ async function createNewTask({title, description, goal, complete, date, starttim
 export async function checkTask(args, req){
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
-    const TaskLinks = db.collection('tasklinks')
 
     var updatetask = new Object()
     if(args.checked) {
         //check all subtasks to see if they're complete
-        const tasklist = await TaskLinks.find({parenttask: args.taskid}).toArray()           
-        if (tasklist.length > 0){
-            const subtasks = await Tasks.find({_id: {
-                $in: tasklist.map(function(link) {
-                    return new ObjectId(link.subtask)
-                })
-            }}).toArray()
-            const incomplete = subtasks.filter(task => task.complete !== true)
-            if (incomplete.length > 0) return 0 //don't update task to complete.
+        const task = await Tasks.findOne({_id: new ObjectId(args.taskid)}) 
+        if (task.subtasks){          
+            const subtaskids = task.subtasks.map(function(link) {
+                return new ObjectId(link)
+            })
+            if (subtaskids.length > 0){
+                const subtasks = await Tasks.find({_id: {
+                    $in: subtaskids
+                }}).toArray()
+                const incomplete = subtasks.filter(task => task.complete !== true)
+                if (incomplete.length > 0) return 0 //don't update task to complete.
+            }
         }
 
         updatetask.schedule = true //listing as scheduled so it appears in the day record.
@@ -909,11 +923,10 @@ export async function checkTask(args, req){
 
 export async function linksubtask({parenttaskid, subtaskid, req}){
     const db = await DbConnection.Get()
-    const TaskLinks = db.collection('tasklinks')
     const Tasks = db.collection('tasks')
 
     if(parenttaskid !== subtaskid){ //new linking.
-        TaskLinks.insertOne({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid, created: new Date()})
+        Tasks.updateOne({_id: new ObjectId(parenttaskid)}, {$push: {subtasks: subtaskid}})
         Tasks.updateOne({_id: new ObjectId(subtaskid)}, {$set: {type: 'subtask'}, $unset: {starttime: null}})
         return true
     }else{

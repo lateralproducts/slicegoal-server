@@ -70,7 +70,6 @@ export const resolvers = {
     Query: {
         // all sources on a profile, ordered by last tagged
         sources: async function(_, {tags}, { req }) {
-            console.log(tags)
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
 

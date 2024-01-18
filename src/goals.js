@@ -140,7 +140,7 @@ export const resolvers = {
             query.rootgoal = args.goal //find all goals that this goal links to.
 
             var linklist = await GoalLinks.find(query).toArray()
-            return await Goals.find({ _id: { $in: linklist.map(function(link) {return new ObjectId(link.goal)}) }}).sort({orderrank: 1}).toArray()
+            return await Goals.find({ _id: { $in: linklist.map(function(link) {return new ObjectId(link.goal)}) }, $or: [{snooze: { $lt: new Date() }},{snooze: {$eq: null}}]}).sort({orderrank: 1}).toArray()
         },
         parentgoals: async(_, args, { req }) => {
             //show linked sub goals on a goal.
