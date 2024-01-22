@@ -188,7 +188,10 @@ export const resolvers = {
             activityrecord({taskid: args.taskid, checked: args.checked, minutes: args.minutes, req: req, notes: args.notes})
 
             //copy the task as new if repeat task selected.
-            if (args.repeat) createRepeatTask(args.taskid, req)
+            if (args.repeat){ 
+                createRepeatTask(args.taskid, req)
+                activityrecord({taskid: args.taskid, req: req, notes: 'This task copied as a repeat task.'})
+            }
             return true
         }
     },

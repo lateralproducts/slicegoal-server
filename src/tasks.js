@@ -4,7 +4,7 @@ import { triggererror } from './graphqlserver';
 import DbConnection from './database'
 import { getprofileid } from './users'
 import { activityrecord } from './pomodoros';
-import { date2str, startOfDay, daylater } from '../util/functions';
+import { date2str, startOfDay, daylater, startOfDayTZ, endOfDayTZ } from '../util/functions';
 //import { activityrecord } from './pomodoros'
 
 export const schema = `
@@ -14,15 +14,16 @@ export const schema = `
         starttime: String
         title: String
         description: String
-        goal: Goal,
-        complete: Boolean,
-        completed: String,
-        schedule: Boolean,
-        rescheduled: Int,
+        goal: Goal
+        complete: Boolean
+        completed: String
+        schedule: Boolean
+        rescheduled: Int
         tasks: [Task]
         parenttask: Task
         tags: [Area]
         time: Int
+        snooze: String
     }
     type TaskTag {
         _id: String
@@ -90,6 +91,10 @@ export const resolvers = {
             const starttime = startOfDay(daytime)
             const endtime = daylater(daytime) // can retire this later if I want to migrate old DB records.
 
+            const starttimeTZ = startOfDayTZ({daytime, timezoneOffset: 11}) //setting to Melbourne TZ +11
+            const endtimeTZ = endOfDayTZ({daytime, timezoneOffset: 11}) //setting to Melbourne TZ +11
+            
+
             if(args.filter) {
                 query.tags = args.filter
             }
@@ -111,8 +116,8 @@ export const resolvers = {
                 query.complete = true
                 if (!args.goal) query.$or = [ //only check day if day query, not goal.
                     {$and: [
-                        {'completed': {$gte: starttime}},
-                        {'completed': {$lt: endtime}}
+                        {'completed': {$gte: starttimeTZ}},
+                        {'completed': {$lt: endtimeTZ}}
                     ]},
                     {$and: [ //if no completed date, use the start time. Phase this out.
                         {'completed': {$exists: false}},
@@ -127,6 +132,12 @@ export const resolvers = {
                 query.goal = args.goal
                 return await Tasks.find(query).sort({goalorder: 1}).toArray()
             }
+
+            query.$or = [
+                {snooze: null},
+                {snooze: {$exists: false}},
+                {snooze: {$lt: new Date()}}
+            ]
 
             if (args.scheduled && args.list === 'day') { //return list of unscheduled/unfinished tasks for scheduler
                 const today = new Date(args.today) //time set from client argument
@@ -737,19 +748,18 @@ export const resolvers = {
             return await linkSourceTask(taskid, sourceid)
         },
         snoozeTask: async(root, {taskid, snooze}, { req }) => {
-            
             const db = await DbConnection.Get()
-            const Tasks = db.collection('goals')
+            const Tasks = db.collection('tasks')
             //const profileid = getprofileid(req.session)
-            let snoozedate = new Date(snooze) //time set from client argument
-            const snoozed = snoozedate.setHours(0, 0, 0, 0) //snooze till date (not time yet.)
+            let snoozedatetime = new Date(snooze) //time set from client argument
+            //const snoozed = snoozedate.setHours(0, 0, 0, 0) //snooze till date (not time yet.)
             
             await Tasks.updateOne(
                 { _id: new ObjectId(taskid) },
-                { $set: { snooze: snoozed }}
+                { $set: { snooze: snoozedatetime }}
             )
 
-            activityrecord({taskid: taskid, req: req, notes: 'Task snoozed to ' + date2str(snoozedate,'MM-dd-yyyy')})
+            activityrecord({taskid: taskid, req: req, notes: 'Task snoozed to ' + snoozedatetime})
             return true
         },
     }
@@ -797,10 +807,11 @@ export async function createRepeatTask(taskid, req){
     delete tasktorepeat.completed
     delete tasktorepeat.starttime
     delete tasktorepeat.rescheduled
+    delete tasktorepeat.subtasks
 
     //create new task from template and get id.
     const newtaskid = (await Tasks.insertOne(tasktorepeat)).insertedId.toString()
-    activityrecord({taskid: newtaskid, notes: 'Task created.', req: req})
+    activityrecord({taskid: newtaskid, notes: 'Task copied. Repeat task.', req: req})
 
     //get all task template links
     copySubTasksFromTask(taskid, newtaskid, req)
@@ -815,8 +826,6 @@ async function copySubTasksFromTask(taskid, newtaskid, req) {
     //search for links to task template.
     const task = await Tasks.findOne({_id: new ObjectId(taskid)}) 
 
-    console.log('task')
-    console.log(task)
     //get subtask templates.
     if (task.subtasks) {
         let subtasks = await Tasks.find({
@@ -827,9 +836,6 @@ async function copySubTasksFromTask(taskid, newtaskid, req) {
                 })
             }
         }).toArray()
-
-        console.log('subtasks')
-        console.log(subtasks)
 
         //create all subtasks.
         let insertSubTasks = subtasks.map(task => {

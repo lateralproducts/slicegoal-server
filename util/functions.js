@@ -47,10 +47,34 @@ export const startOfDay = datetime => {
     else return null
 }
 
-export const daylater = starttime => {
-    if (starttime)
-    {const daylater = new Date(starttime)
-    daylater.setDate(daylater.getDate() + 1)
-    return daylater}
+export const daylater = datetime => {
+    if (datetime)
+    return new Date(
+        datetime.getFullYear(),
+        datetime.getMonth(),
+        datetime.getDate() + 1
+    )
+    else return null
+}
+
+export const startOfDayTZ = ({datetime, timezoneOffset}) => {
+    if (datetime)
+    return new Date(
+            datetime.getFullYear(),
+            datetime.getMonth(),
+            datetime.getDate(),
+            timezoneOffset
+        )
+    else return null
+}
+
+export const endOfDayTZ = ({datetime, timezoneOffset}) => {
+    if (datetime)
+    return new Date(
+            datetime.getFullYear(),
+            datetime.getMonth(),
+            datetime.getDate() + 1,
+            timezoneOffset
+        )
     else return null
 }
