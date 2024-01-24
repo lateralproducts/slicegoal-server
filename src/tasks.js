@@ -87,12 +87,12 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             let query = new Object()
 
-            const daytime = new Date(args.date) //time set from client argument
-            const starttime = startOfDay(daytime)
-            const endtime = daylater(daytime) // can retire this later if I want to migrate old DB records.
+            const datetime = new Date(args.date) //time set from client argument
+            const starttime = startOfDay(datetime)
+            const endtime = daylater(datetime) // can retire this later if I want to migrate old DB records.
 
-            const starttimeTZ = startOfDayTZ({daytime, timezoneOffset: 11}) //setting to Melbourne TZ +11
-            const endtimeTZ = endOfDayTZ({daytime, timezoneOffset: 11}) //setting to Melbourne TZ +11
+            const starttimeTZ = startOfDayTZ({datetime, timezoneOffset: 11}) //setting to Melbourne TZ +11
+            const endtimeTZ = endOfDayTZ({datetime, timezoneOffset: 11}) //setting to Melbourne TZ +11
             
 
             if(args.filter) {
@@ -103,12 +103,17 @@ export const resolvers = {
                 query.$or = [ //only return if complete not equal to true (or doesn't exist)
                     {complete: null},
                     {complete: false},
-                    {complete: {$exists: false}},
+                    {complete: {$exists: false}}
                 ]
                 if(args.date){
                     query.$and = [
                             {'starttime': {$gte: starttime}},
-                            {'starttime': {$lt: endtime}}
+                            {'starttime': {$lt: endtime}},
+                            {$or: [
+                                {snooze: null},
+                                {snooze: {$exists: false}},
+                                {snooze: {$lt: new Date()}}
+                            ]}
                         ]
                 }
             }
@@ -132,12 +137,6 @@ export const resolvers = {
                 query.goal = args.goal
                 return await Tasks.find(query).sort({goalorder: 1}).toArray()
             }
-
-            query.$or = [
-                {snooze: null},
-                {snooze: {$exists: false}},
-                {snooze: {$lt: new Date()}}
-            ]
 
             if (args.scheduled && args.list === 'day') { //return list of unscheduled/unfinished tasks for scheduler
                 const today = new Date(args.today) //time set from client argument
