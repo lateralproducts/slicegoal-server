@@ -38,7 +38,7 @@ export const typeDefs = `
     extend type Query {
         tasks(date: String, scheduled: Boolean, complete: Boolean, today: String, goal: String, list: String, filter: String): [Task]
         task(taskid: String!): Task
-        searchTasks(search: String!): [Task]
+        searchTasks(search: String, past: Boolean): [Task]
         pastTasks(date: String!, filter: String): [Task]
         taskPriorityList(filter: String): [Task]
         taskInsights(taskid: String!): [Insight]
@@ -190,10 +190,11 @@ export const resolvers = {
             )
             return task
         },
-        searchTasks: async(_, {search}, { req }) => {
-            
+        searchTasks: async(_, {search, past}, { req }) => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
+            const today = startOfDay(new Date())
+            if(past) return await Tasks.find({profile: getprofileid(req.session), starttime: {$lt: today}, $or: [{complete: {$eq: null}, complete: false}]}).sort({starttime: 1}).toArray()
             return await Tasks.find({profile: getprofileid(req.session), title: new RegExp(search, 'i')}).sort({created: -1}).toArray()
         },
         taskPriorityList: async(_, {filter}, { req }) => {
@@ -213,7 +214,6 @@ export const resolvers = {
                     {$or: [
                         {starttime: null},
                         {starttime: {$exists: false}},
-                        {starttime: {$lt: today}},
                         {schedule: true}
                     ]},
                     {$or: [
