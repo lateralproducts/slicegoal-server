@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb' 
 import { getprofileid, getuserid } from './users'
 import DbConnection from './database'
-import { dayofyear, getuiversion } from '../util/functions'
+import { endOfDayTZ, dayofyear, getuiversion, startOfDayTZ } from '../util/functions'
 import { checkTask, createRepeatTask } from './tasks'
 import { triggererror } from './graphqlserver';
 import { getareatree } from './areas'
@@ -9,8 +9,9 @@ let pjson = require('../package.json')
 
 export const typeDefs = `
     extend type Query {
-        readPomoData(area: String): PomodoroData
+        readAreaPomoData(area: String): PomodoroData
         readGoalPomoData(goal: String): PomodoroData
+        readDayPomoData(day: String): PomodoroData
         goalpomodoros(goalId: String): [Pomodoro]
         taskpomodoros(taskId: String): [Pomodoro]
         daypomodoros(date: String): [Pomodoro]
@@ -41,6 +42,7 @@ export const schema = `
         records: Int
         direct: Int
         countdirect: Int
+        tasks: Int
     }
 `
 
@@ -97,7 +99,7 @@ export const resolvers = {
 
             return await Pomodoros.find(query).sort({date: -1}).toArray()
         },
-        readPomoData: async(_, { area }, { req }) => {
+        readAreaPomoData: async(_, { area }, { req }) => {
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
             const aggCursor = await Pomodoros.aggregate(
@@ -168,6 +170,46 @@ export const resolvers = {
             await aggCursor.forEach(doc => {
                 result = doc
             })
+            return result
+        },
+        readDayPomoData: async(_, { day }, { req }) => {
+            const db = await DbConnection.Get()
+            const Pomodoros = db.collection('pomodoros')
+            const datetime = new Date(day) //time set from client argument
+            const starttime = startOfDayTZ({datetime, timezoneOffset: 11})
+            const endtime = endOfDayTZ({datetime, timezoneOffset: 11}) 
+            const aggCursor = await Pomodoros.aggregate(
+                [{
+                    $match: {
+                        $and:[
+                            {'date': {$gte: starttime}},
+                            {'date': {$lt: endtime}}
+                        ],
+                        profileid: getprofileid(req.session)
+                    }
+                },
+                {
+                    $group: {
+                        _id: null ,
+                        count: { $sum: '$minutes' },
+                        records: { $sum: 1 },
+                        tasks: { $addToSet: "$task" } // Collecting distinct values of 'fieldname'
+                    }
+                },
+                {
+                    $project: {
+                        count: 1,
+                        records: 1,
+                        tasks: { $size: "$tasks" } // Counting the number of distinct values
+                    }
+                }
+            ]
+            )   
+            var result
+            await aggCursor.forEach(doc => {
+                result = doc
+            })
+            console.log(result)
             return result
         }
     },
