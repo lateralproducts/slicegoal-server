@@ -14,7 +14,7 @@ export const typeDefs = `
         insightSources(insightid: String!): [SourceTag]
         taskSources(taskid: String!): [Source]
         templateSources(templateid: String!): [Source]
-        sourceInsights(sourceid: String!): SourceInsightList
+        sourceInsights(sourceid: String!): [SourceInsight]
         searchSources(search: String!): [Source]
     }
 
@@ -55,14 +55,10 @@ export const schema = `
         _id: String!
     }
 
-    type SourceInsightList {
-        insightlist: [SourceInsight]
-        source: Source
-    }
-
     type SourceInsight {
         insight: Insight
         pinned: Boolean
+        note: String
     }
 `
 
@@ -143,29 +139,15 @@ export const resolvers = {
         sourceInsights: async function(_, { sourceid }, { req }) {
             
             const db = await DbConnection.Get()
-            //const Sources = db.collection('sources')
             const SourceTags = db.collection('sourcetags')
 
-            const sourcetags = await SourceTags.find({
+            return await SourceTags.find({
                 resourcetype: 'insight',
                 sourceid: sourceid
                 },
-                { sort: { pinned: -1, datetime: -1 } }
+                { sort: { pinned: -1, created: -1 } }
             )
             .toArray()
-
-            const insightlist = sourcetags.map(tag => {
-                return {
-                    insightid: new ObjectId(tag.resourceid),
-                    pinned: tag.pinned || false
-                }
-            })
-
-            //const source = await Sources.findOne({ _id: new ObjectId(sourceid)})
-
-            return {
-                insightlist: insightlist
-            }
         },
     },
     Source: {
@@ -329,15 +311,15 @@ export const resolvers = {
         }
     },
     SourceInsight: {
-        insight: async({ insightid }) => {
+        insight: async({ resourceid }) => {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
 
             return await Insights.findOne(
-                { _id: insightid }
+                { _id: new ObjectId(resourceid) }
             )
         }
-    }
+    } 
 }
 
 export async function attachSources(sourcelist, resourcetype, resourceid, profileid) {
@@ -390,6 +372,9 @@ export async function attachSources(sourcelist, resourcetype, resourceid, profil
                     note: sourcetag.note,
                     datetime: new Date(),
                     profileid: profileid
+                },
+                $setOnInsert: {
+                    created: new Date()
                 }},
                 {upsert: true}
             )

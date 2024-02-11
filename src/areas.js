@@ -1251,9 +1251,9 @@ export async function getareatree({tags, req, tasklist}) {
         startareaid = startarea._id.toString()
     }
 
-    let areatree = tags
+    let areatree = tags || []
     let newareas = []
-    let checkareas = tags
+    let checkareas = tags || []
 
     const tasks = await Tasks.find(
         {_id: {

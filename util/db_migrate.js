@@ -6,7 +6,7 @@ import { triggererror } from '../src/graphqlserver'
 
 export const typeDefs = `
     extend type Mutation {
-        migrateSubTemplates: Boolean
+        migrateDBSourceTags: Boolean
     }`
 
 export const resolvers = {
@@ -14,20 +14,23 @@ export const resolvers = {
         /* migrate: async() => {
             //any migration script here.
         } */ 
-        migrateSubTemplates: async(_, __, { req }) => {
+        migrateDBSourceTags: async(_, __, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){ //only allow my profile to run migration script: staging + prod.
-            const db = await DbConnection.Get()
-            const TemplateLinks = db.collection('templatelinks')
-            const Templates = db.collection('templates')
+                const db = await DbConnection.Get()
+                const SourceTags = db.collection('sourcetags')
                 
-            const templatelinks = await TemplateLinks.find({parenttemplate: {$ne: null}}).toArray()
-            
-            templatelinks.map(link => {
-                    Templates.updateOne({_id: new ObjectId(link.parenttemplate)},{$push: {templates: link.subtemplate}})
-                }
-            )
-            return true} else return triggererror('An error occured.')
-        } 
+                SourceTags.find().forEach(function(doc) {
+                    // Extract the timestamp from the ObjectId
+                    var createdDate = doc._id.getTimestamp();
+
+                    // Update the document with the new 'created' field
+                   SourceTags.updateOne(
+                        { _id: doc._id },
+                        { $set: { created: createdDate } }
+                    );
+                });
+            } 
+        }
         /* migrateUpdateGoalLinkedReference: async() => {
             const db = await DbConnection.Get()
             const GoalLinks = db.collection('goallinks')
