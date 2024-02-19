@@ -2,7 +2,7 @@ import DbConnection from './database'
 import { getprofileid, getuserid, getwheelid } from './users'
 import { ObjectId } from 'mongodb' 
 import { triggererror } from './graphqlserver';
-import { startOfDay } from '../util/functions';
+import { startOfDayTZ } from '../util/functions';
 
 export const schema = `
     type Prompt {
@@ -48,7 +48,6 @@ export const typeDefs = `
     extend type Query {
         chatprompts(search: String): [Prompt]
         getchat(chatid: String): Chat
-        getchatid: String
         gettaskchatid(taskid: String): String
         getdaychatid(date: String): String
         getareachatid(area: String): String
@@ -88,7 +87,7 @@ export const resolvers = {
             const prompts = await Prompts.find({message: new RegExp('.*' + search.trim() + '.*')})
             return prompts.toArray()
         }, */
-        getchatid: async(_, __, { req }) => {
+/*         getchatid: async(_, __, { req }) => {
             //if no chatid or taskid, create new chat.
             const chatid = await startChat({
                 profileid: getprofileid(req.session), 
@@ -96,7 +95,7 @@ export const resolvers = {
                 wheelid: getwheelid(req.session)
             })
             return chatid.toString()
-        },
+        }, */
         gettaskchatid: async(_, {taskid}, { req }) => {
             //get chat id.
             
@@ -126,7 +125,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
 
-            const day = startOfDay(new Date(date))
+            const day = startOfDayTZ({datetime: new Date(date), timezoneOffset: 11})
 
             if (date){ //if taskid, check existing chat for the taskid.
                 const chat = await Chats.findOne({day: day, profileid: profileid})
@@ -420,9 +419,13 @@ async function startChat({profileid, taskid, userid, wheelid, day, area}){
         started: new Date(),
         subscribe: subscribelist,
     })
+    //link chat to task, area, or day. Default to day.
     if (taskid) chat.taskid = taskid
-    if (day) chat.day = day
     if (area) chat.area = area
+    if (!taskid && !area) {
+        if (day) chat.day = day
+        else chat.day = startOfDayTZ(new Date())
+    }
     const chatsaved = await Chats.insertOne(chat)
     return chatsaved.insertedId
 }
