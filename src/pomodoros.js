@@ -175,9 +175,14 @@ export const resolvers = {
         readDayPomoData: async(_, { day }, { req }) => {
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
-            const datetime = new Date(day) //time set from client argument
+            /* const datetime = new Date(day) //time set from client argument
             const starttime = startOfDayTZ({datetime, timezoneOffset: 11})
-            const endtime = endOfDayTZ({datetime, timezoneOffset: 11}) 
+            const endtime = endOfDayTZ({datetime, timezoneOffset: 11})  */
+
+            var starttime = new Date(day) //time set from client argument
+            var endtime = new Date(day) //time set from client argument
+            endtime.setDate(starttime.getDate() + 1)
+
             const aggCursor = await Pomodoros.aggregate(
                 [{
                     $match: {
@@ -209,7 +214,6 @@ export const resolvers = {
             await aggCursor.forEach(doc => {
                 result = doc
             })
-            console.log(result)
             return result
         }
     },
@@ -227,7 +231,7 @@ export const resolvers = {
                 const checkresult = await checkTask(args, req)
                 if (checkresult === 0) return triggererror('Not all sub tasks marked as complete.') 
             }
-            activityrecord({taskid: args.taskid, checked: args.checked, minutes: args.minutes, req: req, notes: args.notes})
+            activityrecord({taskid: args.taskid, checked: args.checked, minutes: args.minutes, req: req, notes: args.notes, datetime: args.datetime ? args.datetime : null})
 
             //copy the task as new if repeat task selected.
             if (args.repeat){ 
