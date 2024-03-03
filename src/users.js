@@ -66,6 +66,7 @@ export const schema = `
     state: String
     offeractive: String
     hideupgrade: Boolean
+    showservice: Boolean 
   }
 
   type createClientResponse {

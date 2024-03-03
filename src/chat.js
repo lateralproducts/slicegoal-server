@@ -17,6 +17,8 @@ export const schema = `
     }
     type ChatContext {
         _id: String
+        prompt: Prompt
+        response: Response
     }
     type Chat {
         _id: String
@@ -41,6 +43,17 @@ export const schema = `
         rating: Float
         original: String
         responseid: String
+        promptid: String
+    }
+    type Feedback {
+        _id: String
+        message: String
+        time: String
+        feedback: String
+        responseid: String
+        promptid: String
+        chatid: String
+        contextid: String
     }
 `
 
@@ -54,12 +67,17 @@ export const typeDefs = `
         taskchatunseen(taskid: String!): Boolean
         anychatunseen: Boolean
         getchats: [Chat]
+        getfeedback: [Feedback]
     }
 
     extend type Mutation {
         sendChatPrompt(chatid: String, promptid: String, message: String): Boolean
         sendChatMessage(chatid: String, message: String!): Boolean
         sendRating(contextid: String, chatid: String!, rating: Int!, ratemessage: String, original: String): Boolean
+        sendFeedback(contextid: String, promptid: String, responseid: String, chatid: String!, feedback: String!, message: String!): Boolean
+        updatePrompt(promptid: String, message: String): Boolean 
+        updateResponse(responseid: String, message: String): Boolean
+        ackfeedback(feedbackid: String!): Boolean
     }
 `
 
@@ -216,6 +234,26 @@ export const resolvers = {
             const chat = await Chats.findOne({profileid: profileid, unseen: userid})
             if (chat) {return true} //check if user has seen this chat.
             else return false
+        },
+        getfeedback: async(_,args,{req}) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                const db = await DbConnection.Get()
+                const ChatFeedback = db.collection('chatfeedback')
+                const feedbacks = await ChatFeedback.find({'ack': {$ne: true}}).toArray()
+                return feedbacks
+            }
+        }
+    },
+    ChatContext: {
+        prompt: async({promptid}, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Prompts = db.collection('chatprompts')
+            return await Prompts.findOne({_id: new ObjectId(promptid)})
+        },
+        response: async({responseid}, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Responses = db.collection('chatresponses')
+            return await Responses.findOne({_id: new ObjectId(responseid)})
         }
     },
     Chat: {
@@ -256,12 +294,33 @@ export const resolvers = {
         }
     },
     Mutation: {
+        updatePrompt: async(root, args, { req }) => {
+            const db = await DbConnection.Get()
+            const ChatPrompts = db.collection('chatprompts')
+            ChatPrompts.updateOne(
+                { _id: new ObjectId(args.promptid) },
+                { 
+                    $set: { message: args.message},
+                }
+            )  
+        },
+        updateResponse: async(root, args, { req }) => {
+            const db = await DbConnection.Get()
+            const ChatResponses = db.collection('chatresponses')
+            ChatResponses.updateOne(
+                { _id: new ObjectId(args.responseid) },
+                { 
+                    $set: { message: args.message},
+                }
+            )  
+        },
         sendRating: async(root, args, { req }) => {
-            
+            const userid = getuserid(req.session)
+            const profileid = getprofileid(req.session)
+
             const db = await DbConnection.Get()
             const ChatContext = db.collection('chatcontext')
-            /* const userid = getuserid(req.session)
-            const profileid = getprofileid(req.session) */
+            const ChatFeedback = db.collection('chatfeedback')
             
             if (args.contextid) { //rate context if there is a context.
                 const context = await ChatContext.findOne({_id: new ObjectId(args.contextid)})
@@ -273,21 +332,32 @@ export const resolvers = {
                 } else {newrating = args.rating}
 
                 ChatContext.updateOne(
-                { _id: new ObjectId(args.contextid) },
-                { 
-                    $set: { match: newrating},
-                    $push: {
-                        ratings: {
-                            message: args.ratemessage,
-                            rating: args.rating,
-                            time: new Date(),
-                            taskid: args.taskid,
-                            original: args.original
-                        }
-                    },
-                    $inc: { count: 1 }
-                }
-            )}
+                    { _id: new ObjectId(args.contextid) },
+                    { 
+                        $set: { match: newrating},
+                        $push: {
+                            ratings: {
+                                message: args.ratemessage,
+                                rating: args.rating,
+                                time: new Date(),
+                                original: args.original
+                            }
+                        },
+                        $inc: { count: 1 }
+                    }
+                )
+            }
+
+            ChatFeedback.insertOne({
+                feedback: args.ratemessage,
+                rating: args.rating,
+                time: new Date(),
+                message: args.original,
+                chatid: args.chatid,
+                contextid: args.contextid,
+                userid: userid,
+                profileid: profileid
+            })
 
             //save the rating as a message.
             /* const message = {
@@ -301,6 +371,34 @@ export const resolvers = {
             } */
             //sendTaskChatMessage(profileid, args.chatid, message, userid, getwheelid(req.session))
             return true
+        },
+        sendFeedback: async(root, {contextid, responseid, promptid, chatid, feedback, message}, { req }) => {
+            
+            const db = await DbConnection.Get()
+            const ChatFeedback = db.collection('chatfeedback')
+            const userid = getuserid(req.session)
+            const profileid = getprofileid(req.session)
+
+            ChatFeedback.insertOne({
+                feedback: feedback,
+                time: new Date(),
+                message: message,
+                chatid: chatid,
+                contextid: contextid,
+                responseid: responseid,
+                promptid: promptid,
+                userid: userid,
+                profileid: profileid
+            })
+
+            return true
+        },
+        ackfeedback: async(root, {feedbackid}, { req }) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                const db = await DbConnection.Get()
+                const ChatFeedback = db.collection('chatfeedback')
+                ChatFeedback.updateOne({_id: new ObjectId(feedbackid)},{$set: {ack: true}})
+            }
         },
         sendChatMessage: async(root, args, { req }) => {
             
@@ -326,6 +424,9 @@ export const resolvers = {
             const userid = getuserid(req.session)
             
             try {
+                //find all the responses linked to the prompt.
+                const contexts = await ChatContext.find({promptid: args.promptid}).toArray()
+
                 const promptmessage = {promptid: args.promptid, message: args.message, userid: userid, datetime: new Date()}
                 Prompts.updateOne( //update data on prompt usage.
                     { _id: new ObjectId(args.promptid) },
@@ -337,8 +438,6 @@ export const resolvers = {
                 )
                 //record sent prompt to the chat.
                 await sendTaskChatMessage(profileid, args.chatid, promptmessage, userid, getwheelid(req.session))
-                //find all the responses linked to the prompt.
-                const contexts = await ChatContext.find({promptid: args.promptid}).toArray()
 
                 if (contexts) {
                     const responses = await Response.find( //find and update multiple responses
