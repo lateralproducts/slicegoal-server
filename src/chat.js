@@ -78,6 +78,7 @@ export const typeDefs = `
         updatePrompt(promptid: String, message: String): Boolean 
         updateResponse(responseid: String, message: String): Boolean
         ackfeedback(feedbackid: String!): Boolean
+        archivechat(chatid: String): Boolean
     }
 `
 
@@ -399,6 +400,12 @@ export const resolvers = {
                 const ChatFeedback = db.collection('chatfeedback')
                 ChatFeedback.updateOne({_id: new ObjectId(feedbackid)},{$set: {ack: true}})
             }
+        },
+        archivechat: async(root, {chatid}, { req }) => {
+                const db = await DbConnection.Get()
+                const Chats = db.collection('chats')
+                Chats.updateOne({_id: new ObjectId(chatid), profileid: getprofileid(req.session)},{$set: {archive: true}})
+                return true
         },
         sendChatMessage: async(root, args, { req }) => {
             
