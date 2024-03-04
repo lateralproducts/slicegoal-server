@@ -209,7 +209,7 @@ export const resolvers = {
             const profileid = getprofileid(req.session)
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
-            const chats = await Chats.find({profileid: profileid, messages: {$exists: true}}).sort({ 'lastmessage.datetime': -1 }).toArray()
+            const chats = await Chats.find({profileid: profileid, messages: {$exists: true}, archive: {$ne: true}}).sort({ 'lastmessage.datetime': -1 }).toArray()
             //const userid = getuserid(req.session)
             //next order by unread, then last message. 'unseen.' + userid
             return chats
