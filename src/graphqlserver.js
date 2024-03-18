@@ -162,7 +162,7 @@ const graphQLServer = createServer({
 });
 
 // List of query names that can be accessed by unauthenticated users
-const unauthenticatedQueries = ['isLoggedin', 'login', 'googleLogin', 'trackpage', 'resetPassword', 'setPassword'];
+const unauthenticatedQueries = ['isLoggedin', 'login', 'googleLogin', 'trackpage', 'resetPassword', 'setPassword', 'sendlateralproductsemail'];
 
 async function authMiddleWare(resolve, root, args, context, info) {
     if (!unauthenticatedQueries.includes(info.fieldName)){
