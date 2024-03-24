@@ -93,9 +93,9 @@ export const resolvers = {
 
             const starttimeTZ = startOfDayTZ({datetime, timezoneOffset: -11}) //setting to offset Melbourne TZ +11
             const endtimeTZ = endOfDayTZ({datetime, timezoneOffset: -11}) //setting to offset Melbourne TZ +11
-            console.log(datetime)
+            /* console.log(datetime)
             console.log(starttimeTZ)
-            console.log(endtimeTZ)
+            console.log(endtimeTZ) */
 
             if(args.filter) {
                 query.tags = args.filter
@@ -123,14 +123,14 @@ export const resolvers = {
                 query.complete = true
                 if (!args.goal) query.$or = [ //only check day if day query, not goal.
                     {$and: [
-                        {'completed': {$gte: starttime}},
-                        {'completed': {$lt: endtime}}
+                        {'completed': {$gte: starttimeTZ}},
+                        {'completed': {$lt: endtimeTZ}}
                     ]},
                     {$and: [ //if no completed date, use the start time. Phase this out.
                     //if I want to phase this out. Migrate the DB.
                         {'completed': {$exists: false}},
-                        {'starttime': {$gte: starttime}},
-                        {'starttime': {$lt: endtime}}
+                        {'starttime': {$gte: starttimeTZ}},
+                        {'starttime': {$lt: endtimeTZ}}
                     ]}
                 ]
             }
