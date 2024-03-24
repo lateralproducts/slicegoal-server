@@ -91,8 +91,8 @@ export const resolvers = {
             const starttime = startOfDay(datetime)
             const endtime = daylater(datetime) // can retire this later if I want to migrate old DB records.
 
-            const starttimeTZ = startOfDayTZ({datetime, timezoneOffset: 11}) //setting to Melbourne TZ +11
-            const endtimeTZ = endOfDayTZ({datetime, timezoneOffset: 11}) //setting to Melbourne TZ +11
+            //const starttimeTZ = startOfDayTZ({datetime, timezoneOffset: 11}) //setting to Melbourne TZ +11
+            //const endtimeTZ = endOfDayTZ({datetime, timezoneOffset: 11}) //setting to Melbourne TZ +11
             
 
             if(args.filter) {
@@ -121,14 +121,14 @@ export const resolvers = {
                 query.complete = true
                 if (!args.goal) query.$or = [ //only check day if day query, not goal.
                     {$and: [
-                        {'completed': {$gte: starttimeTZ}},
-                        {'completed': {$lt: endtimeTZ}}
+                        {'completed': {$gte: starttime}},
+                        {'completed': {$lt: endtime}}
                     ]},
                     {$and: [ //if no completed date, use the start time. Phase this out.
                     //if I want to phase this out. Migrate the DB.
                         {'completed': {$exists: false}},
-                        {'starttime': {$gte: starttimeTZ}},
-                        {'starttime': {$lt: endtimeTZ}}
+                        {'starttime': {$gte: starttime}},
+                        {'starttime': {$lt: endtime}}
                     ]}
                 ]
             }
