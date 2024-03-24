@@ -91,8 +91,8 @@ export const resolvers = {
             const starttime = startOfDay(datetime)
             const endtime = daylater(datetime) // can retire this later if I want to migrate old DB records.
 
-            const starttimeTZ = startOfDayTZ({datetime, timezoneOffset: 11}) //setting to Melbourne TZ +11
-            const endtimeTZ = endOfDayTZ({datetime, timezoneOffset: 11}) //setting to Melbourne TZ +11
+            const starttimeTZ = startOfDayTZ({datetime, timezoneOffset: -11}) //setting to offset Melbourne TZ +11
+            const endtimeTZ = endOfDayTZ({datetime, timezoneOffset: -11}) //setting to offset Melbourne TZ +11
             console.log(datetime)
             console.log(starttimeTZ)
             console.log(endtimeTZ)
