@@ -377,8 +377,14 @@ export const resolvers = {
             
             const db = await DbConnection.Get()
             const ChatFeedback = db.collection('chatfeedback')
+            const ChatContext = db.collection('chatcontext')
             const userid = getuserid(req.session)
             const profileid = getprofileid(req.session)
+            let findcontext
+
+            if(contextid && !promptid) {
+                findcontext = await ChatContext.findOne({_id: new ObjectId(contextid)})
+            }
 
             ChatFeedback.insertOne({
                 feedback: feedback,
@@ -387,7 +393,7 @@ export const resolvers = {
                 chatid: chatid,
                 contextid: contextid,
                 responseid: responseid,
-                promptid: promptid,
+                promptid: promptid ? promptid : findcontext.promptid,
                 userid: userid,
                 profileid: profileid
             })

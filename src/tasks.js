@@ -40,10 +40,10 @@ export const typeDefs = `
         task(taskid: String!): Task
         searchTasks(search: String, past: Boolean): [Task]
         pastTasks(date: String!, filter: String): [Task]
-        taskPriorityList(filter: String): [Task]
         taskInsights(taskid: String!): [Insight]
         taskDayListTags(day: String): [Area]
-        taskMainListTags(date: String!): [Area]
+        taskPriorityList(filter: String): [Task]
+        taskPriorityListTags(filter: String): [Area]
     }
     
     extend type Mutation {
@@ -317,30 +317,41 @@ export const resolvers = {
 
             return []
         },
-        taskMainListTags: async(_, {date}, { req }) => {
+        taskPriorityListTags: async(_, {filter}, { req }) => {
             //could replace the day task list query with this one.
             
             //return triggererror('Test Error')
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const Areas = db.collection('areas')
-            let query = new Object()
-            const today = new Date(date) //time set from client argument
+            const today = startOfDay(new Date()) //time set from client argument
             
-            query.$and = [
-                {$or: [
-                    {schedule: true},
-                    {starttime: {$lt: today}}
-                ]},
-                {$or:[ //only return if complete not equal to true (or doesn't exist)
-                    {complete: null},
-                    {complete: false},
-                    {complete: {$exists: false}},
-                ]}
-            ]
-            query.profile = getprofileid(req.session)
+            let query = {
+                profile: getprofileid(req.session),
+                type: {$ne: 'subtask'},
+                $and: [
+                    {$or: [
+                        {complete: null},
+                        {complete: false},
+                        {complete: {$exists: false}}
+                    ]},
+                    {$or: [
+                        {starttime: null},
+                        {starttime: {$exists: false}},
+                        {schedule: true}
+                    ]},
+                    {$or: [
+                        {goal: {$eq: null}}, //no goal
+                        {goal: {$exists: false}}, //no goal
+                        {goal: {$ne: null}, schedule: true}, //is a goal and scheduled = true
+                        {goal: {$ne: null}, starttime: {$lt: today}} //is a goal and scheduled in past.
+                    ]}
+                ]
+            }
 
-            query.type = {$ne: 'subtask'}
+            if(filter) {
+                query.tags = filter
+            } 
             const tasks = await Tasks.find(query).toArray()
 
             let areas = []
