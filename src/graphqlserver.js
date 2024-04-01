@@ -178,7 +178,7 @@ export const graphql = async() => {
         
         const opts = {
             port: 3001,
-            endpoint: '/server',
+            endpoint: '/graphql',
             cors: {
                 credentials: true,
                 preflightContinue: true,
@@ -186,7 +186,6 @@ export const graphql = async() => {
                     'https://www.slicegoal.com.au',
                     'https://www.cavestep.com.au',
                     'https://www.lateralproducts.com',
-                    'https://www.lateralproducts.com/graphql',
                     'https://localhost:8000',
                     'https://localhost:3000'
                 ] //your frontend url.
