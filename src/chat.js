@@ -77,8 +77,9 @@ export const typeDefs = `
         sendFeedback(contextid: String, promptid: String, responseid: String, chatid: String!, feedback: String!, message: String!): Boolean
         updatePrompt(promptid: String, message: String): Boolean 
         updateResponse(responseid: String, message: String): Boolean
+        archivechat(chatid: String!): Boolean
+
         ackfeedback(feedbackid: String!): Boolean
-        archivechat(chatid: String): Boolean
     }
 `
 
@@ -393,7 +394,7 @@ export const resolvers = {
                 chatid: chatid,
                 contextid: contextid,
                 responseid: responseid,
-                promptid: promptid ? promptid : findcontext.promptid,
+                promptid: promptid ? promptid : (findcontext ? findcontext.promptid : null),
                 userid: userid,
                 profileid: profileid
             })

@@ -268,7 +268,7 @@ export async function activityrecord({templateid, taskid, goalid, notes, checked
     record.profileid = getprofileid(req.session)
     record.serverversion = pjson.version
     record.uiversion = getuiversion(req.session)
-    record.notes = notes
+    record.notes = (notes ? (notes + ' ') : "") + (checked === true ? "Closed." : "")
     record.checked = checked
     record.minutes = minutes
 
