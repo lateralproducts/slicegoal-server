@@ -186,6 +186,7 @@ export const graphql = async() => {
                     'https://www.slicegoal.com.au',
                     'https://www.cavestep.com.au',
                     'https://www.lateralproducts.com',
+                    'https://www.lateralproducts.com/graphql',
                     'https://localhost:8000',
                     'https://localhost:3000'
                 ] //your frontend url.
