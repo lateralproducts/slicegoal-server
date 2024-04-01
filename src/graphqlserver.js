@@ -178,7 +178,7 @@ export const graphql = async() => {
         
         const opts = {
             port: 3001,
-            endpoint: '/graphql',
+            endpoint: '/server',
             cors: {
                 credentials: true,
                 preflightContinue: true,
