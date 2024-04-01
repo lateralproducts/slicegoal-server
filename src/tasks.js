@@ -926,7 +926,7 @@ export async function checkTask(args, req){
         }
 
         updatetask.schedule = true //listing as scheduled so it appears in the day record.
-        updatetask.completed = new Date()
+        updatetask.completed = args.datetime ? new Date(args.datetime) : new Date()
         //activityrecord({taskid: args.taskid, checked: args.checked, notes: 'Marked as done. 🎉', req: req})
     } else {
         activityrecord({taskid: args.taskid, notes: 'Re-opened.', req: req})
