@@ -145,7 +145,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
 
-            const day = startOfDayTZ({datetime: new Date(date), timezoneOffset: 11})
+            const day = startOfDayTZ({datetime: new Date(date), timezoneOffset: -11})
 
             if (date){ //if taskid, check existing chat for the taskid.
                 const chat = await Chats.findOne({day: day, profileid: profileid})

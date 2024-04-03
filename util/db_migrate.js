@@ -22,7 +22,7 @@ export const resolvers = {
                     //var createdDate = doc._id.getTimestamp();
                     // Update the chat with the day value
                     const started = new Date(doc.started)
-                    const daydate = startOfDayTZ({datetime: started,timezoneOffset: 11})
+                    const daydate = startOfDayTZ({datetime: started,timezoneOffset: -11})
 
                     Chats.updateOne(
                         { _id: doc._id },

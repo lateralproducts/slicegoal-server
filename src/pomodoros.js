@@ -176,8 +176,8 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Pomodoros = db.collection('pomodoros')
             /* const datetime = new Date(day) //time set from client argument
-            const starttime = startOfDayTZ({datetime, timezoneOffset: 11})
-            const endtime = endOfDayTZ({datetime, timezoneOffset: 11})  */
+            const starttime = startOfDayTZ({datetime, timezoneOffset: -11})
+            const endtime = endOfDayTZ({datetime, timezoneOffset: -11})  */
 
             var starttime = new Date(day) //time set from client argument
             var endtime = new Date(day) //time set from client argument
