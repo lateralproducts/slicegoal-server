@@ -2,7 +2,7 @@ import DbConnection from './database'
 import { getprofileid, getuserid, getwheelid } from './users'
 import { ObjectId } from 'mongodb' 
 import { triggererror } from './graphqlserver';
-import { startOfDayTZ } from '../util/functions';
+import { startOfDay } from '../util/functions';
 
 export const schema = `
     type Prompt {
@@ -145,7 +145,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Chats = db.collection('chats')
 
-            const day = startOfDay({datetime: new Date(date)}) //this doesn't need TZ shift because the day chat is "date", so the date will be stripped of TZ.
+            const day = startOfDay(new Date(date)) //this doesn't need TZ shift because the day chat is "date", so the date will be stripped of TZ.
 
             if (date){ //if taskid, check existing chat for the taskid.
                 const chat = await Chats.findOne({day: day, profileid: profileid})
@@ -537,7 +537,7 @@ async function startChat({profileid, taskid, userid, wheelid, day, area}){
     if (area) chat.area = area
     if (!taskid && !area) {
         if (day) chat.day = day
-        else chat.day = startOfDayTZ(new Date())
+        else chat.day = startOfDay(new Date())
     }
     const chatsaved = await Chats.insertOne(chat)
     return chatsaved.insertedId
