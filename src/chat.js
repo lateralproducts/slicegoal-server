@@ -68,6 +68,10 @@ export const typeDefs = `
         anychatunseen: Boolean
         getchats: [Chat]
         getfeedback: [Feedback]
+        getresponse(responseid: String!): Response
+        getprompt(promptid: String!): Prompt
+        getresponses: [Response]
+        getprompts: [Prompt]
     }
 
     extend type Mutation {
@@ -80,6 +84,10 @@ export const typeDefs = `
         archivechat(chatid: String!): Boolean
 
         ackfeedback(feedbackid: String!): Boolean
+        updatePrompt(promptid: String, message: String): Boolean 
+        updateResponse(responseid: String, message: String): Boolean
+        createPrompt(responseid: String, newprompt: String!): Boolean
+        createResponse(promptid: String, newresponse: String!): Boolean
     }
 `
 
@@ -244,6 +252,38 @@ export const resolvers = {
                 const feedbacks = await ChatFeedback.find({'ack': {$ne: true}}).toArray()
                 return feedbacks
             }
+        },
+        getprompt: async(_,args,{promptid}) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                const db = await DbConnection.Get()
+                const ChatPrompts = db.collection('chatprompts')
+                const chatprompt = await ChatPrompts.find({_id: new ObjectId(promptid)})
+                return chatprompt
+            } 
+        },
+        getresponse: async(_,args,{responseid}) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                const db = await DbConnection.Get()
+                const ChatResponses = db.collection('chatresponses')
+                const chatresponse = await ChatResponses.find({_id: new ObjectId(responseid)})
+                return chatresponse
+            } 
+        },
+        getresponses: async(_,args,{}) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                /* const db = await DbConnection.Get()
+                const ChatResponses = db.collection('chatresponses')
+                const chatresponse = await ChatResponses.find({_id: new ObjectId(responseid)})
+                return chatresponse */
+            } 
+        },
+        getprompts: async(_,args,{}) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                /* const db = await DbConnection.Get()
+                const ChatResponses = db.collection('chatresponses')
+                const chatresponse = await ChatResponses.find({_id: new ObjectId(responseid)})
+                return chatresponse */
+            } 
         }
     },
     ChatContext: {
@@ -407,6 +447,75 @@ export const resolvers = {
                 const ChatFeedback = db.collection('chatfeedback')
                 ChatFeedback.updateOne({_id: new ObjectId(feedbackid)},{$set: {ack: true}})
             }
+        },
+        createPrompt: async(root, {responseid, newprompt}, { req }) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                const db = await DbConnection.Get()
+                const ChatPrompts = db.collection('chatprompts')
+                const insertedprompt = await ChatPrompts.insertOne({message: newprompt})
+                if(responseid) {
+                    const ChatContext = db.collection('chatcontext')
+                    ChatContext.insertOne(
+                        {
+                            promptid: insertedprompt.insertedId.toString(),
+                            responseid: responseid
+                        }
+                    )
+                }
+                return true
+            }
+        },
+        createResponse: async(root, {promptid, newresponse}, { req }) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                const db = await DbConnection.Get()
+                const ChatResponses = db.collection('chatresponses')
+                const insertedresponse = await ChatResponses.insertOne({message: newresponse})
+                if(promptid) {
+                    const ChatContext = db.collection('chatcontext')
+                    ChatContext.insertOne(
+                        {
+                            promptid: promptid,
+                            responseid: insertedresponse.insertedId.toString()
+                        }
+                    )
+                }
+                return true
+            }
+        },
+        updatePrompt: async(root, {responseid, newprompt}, { req }) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                /* const db = await DbConnection.Get()
+                const ChatPrompts = db.collection('chatprompts')
+                const insertedprompt = await ChatPrompts.insertOne({message: newprompt})
+                if(responseid) {
+                    const ChatContext = db.collection('chatcontext')
+                    ChatContext.insertOne(
+                        {
+                            promptid: insertedprompt.insertedId.toString(),
+                            responseid: responseid
+                        }
+                    )
+                }
+                return true */
+                triggererror('Not built yet.')
+            } else triggererror('Not available.')
+        },
+        updateResponse: async(root, {promptid, newresponse}, { req }) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                /* const db = await DbConnection.Get()
+                const ChatResponses = db.collection('chatresponses')
+                const insertedresponse = await ChatResponses.insertOne({message: newresponse})
+                if(promptid) {
+                    const ChatContext = db.collection('chatcontext')
+                    ChatContext.insertOne(
+                        {
+                            promptid: promptid,
+                            responseid: insertedresponse.insertedId.toString()
+                        }
+                    )
+                } */
+                triggererror('Not built yet.')
+            } else triggererror('Not available.')
         },
         archivechat: async(root, {chatid}, { req }) => {
                 const db = await DbConnection.Get()
