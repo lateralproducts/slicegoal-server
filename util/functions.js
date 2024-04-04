@@ -78,3 +78,16 @@ export const endOfDayTZ = ({datetime, timezoneOffset}) => {
         )
     else return null
 }
+
+export const shiftTZ = ({datetime, timezoneOffset}) => {
+    // Convert the offset to milliseconds
+    const offsetInMilliseconds = timezoneOffset * 60 * 60 * 1000;
+  
+    // Get the UTC time in milliseconds
+    const utc = datetime.getTime();
+  
+    // Create a new Date object with the timezone offset applied
+    const newDate = new Date(utc + offsetInMilliseconds);
+  
+    return newDate;
+  }

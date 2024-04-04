@@ -255,22 +255,22 @@ export async function activityrecord({templateid, taskid, goalid, notes, checked
         record.task = taskid //this is masking the problem that I don't have a universally defined variable for "taskid"
         const Task = await Tasks.findOne({ _id: new ObjectId(taskid)})
         if (Task) {
-            record.goal = Task.goal //add a goal if attached.
-            record.templateid = Task.templateid //add a goal if attached.
+            if (Task.goal) record.goal = Task.goal //add a goal if attached.
+            if (Task.templateid) record.templateid = Task.templateid //add a goal if attached.
             if (Task.tags) record.tags = Task.tags
         }
-        
     }
     if(goalid) record.goal = goalid
     if(templateid) record.templateid = templateid
 
     record.userid = getuserid(req.session)
     record.profileid = getprofileid(req.session)
-    record.serverversion = pjson.version
-    record.uiversion = getuiversion(req.session)
+/*     record.serverversion = pjson.version
+    record.uiversion = getuiversion(req.session) */
     record.notes = (notes ? (notes + ' ') : "") + (checked === true ? "Closed." : "")
     record.checked = checked
     record.minutes = minutes
+    record.created = new Date()
 
     if(datetime) record.date = new Date(datetime) //time set from client argument
     else record.date = new Date()
