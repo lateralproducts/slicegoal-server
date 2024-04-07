@@ -1,35 +1,32 @@
 import DbConnection from '../src/database'
 //import { ObjectId } from 'mongodb'
 //import { triggererror } from '../src/graphqlserver'
-import { startOfDayTZ } from './functions'
+//import { startOfDayTZ } from './functions'
 //import { getprofileid } from '../src/users';
 //use playground http://localhost:3001/ and run mutation: "mutation{runUpdate}"
 
 export const typeDefs = `
     extend type Mutation {
-        migrateDBchatdays: Boolean
+        migrateDBchatPromptsToVariants: Boolean
     }`
 
 export const resolvers = {
     Mutation: {
-        migrateDBchatdays: async(_, __, { req }) => {
+        migrateDBchatPromptsToVariants: async(_, __, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){ //only allow my profile to run migration script: staging + prod.
                 const db = await DbConnection.Get()
-                const Chats = db.collection('chats')
+                const ChatPrompts = db.collection('chatprompts')
+                const ChatVariants = db.collection('chatvariants')
                 
-                Chats.find({day:{$eq: null}, taskid: {$eq: null}, area: {$eq:null}}).forEach(function(doc) {
-                    // Extract the timestamp from the ObjectId
-                    //var createdDate = doc._id.getTimestamp();
-                    // Update the chat with the day value
-                    const started = new Date(doc.started)
-                    const daydate = startOfDayTZ({datetime: started,timezoneOffset: -11})
-
-                    Chats.updateOne(
-                        { _id: doc._id },
-                        { $set: { day: daydate, migrated: true } }
+                ChatPrompts.find().forEach(function(doc) {
+                    ChatVariants.insertOne(
+                        {
+                            message: doc.message,
+                            promptid: doc._id.toString()
+                        }
                     );
                 });
-            } 
+            }
         }
         /* migrate: async() => {
             //any migration script here.

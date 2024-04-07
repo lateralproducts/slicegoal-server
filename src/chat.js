@@ -9,6 +9,11 @@ export const schema = `
         _id: String
         message: String
     }
+    type Variant {
+        _id: String
+        message: String
+        promptid: String
+    }
     type Response {
         _id: String
         message: String
@@ -44,6 +49,7 @@ export const schema = `
         original: String
         responseid: String
         promptid: String
+        variantid: String
     }
     type Feedback {
         _id: String
@@ -54,12 +60,16 @@ export const schema = `
         promptid: String
         chatid: String
         contextid: String
+        variantid: String
+        variant: Variant
+        response: Response
     }
 `
 
 export const typeDefs = `
     extend type Query {
         chatprompts(search: String): [Prompt]
+        chatvariants(search: String): [Variant]
         getchat(chatid: String): Chat
         gettaskchatid(taskid: String): String
         getdaychatid(date: String): String
@@ -75,19 +85,20 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        sendChatPrompt(chatid: String, promptid: String, message: String): Boolean
+        sendChatPrompt(chatid: String, wrote: String, variantid: String): Boolean
         sendChatMessage(chatid: String, message: String!): Boolean
         sendRating(contextid: String, chatid: String!, rating: Int!, ratemessage: String, original: String): Boolean
-        sendFeedback(contextid: String, promptid: String, responseid: String, chatid: String!, feedback: String!, message: String!): Boolean
-        updatePrompt(promptid: String, message: String): Boolean 
-        updateResponse(responseid: String, message: String): Boolean
+        sendFeedback(contextid: String, promptid: String, responseid: String, variantid: String, chatid: String!, feedback: String!, message: String!): Boolean
         archivechat(chatid: String!): Boolean
 
         ackfeedback(feedbackid: String!): Boolean
-        updatePrompt(promptid: String, message: String): Boolean 
-        updateResponse(responseid: String, message: String): Boolean
+        updateVariant(variantid: String!, message: String!): Boolean
+        updateResponse(responseid: String!, message: String!): Boolean
+        createVariant(promptid: String!, newvariant: String!): Boolean
         createPrompt(responseid: String, newprompt: String!): Boolean
         createResponse(promptid: String, newresponse: String!): Boolean
+        linkPromptResponse(promptid: String!, responseid: String!): Boolean
+        blockPromptResponse(promptid: String!, responseid: String!): Boolean
     }
 `
 
@@ -97,7 +108,6 @@ export const resolvers = {
     Query: {
         chatprompts: async(_, {search}, { req }) => {
             //autocomplete for chat coaching.
-            
             const db = await DbConnection.Get()
             const Prompts = db.collection('chatprompts')
             const regex = /\b[\S]+\b$/;
@@ -106,6 +116,18 @@ export const resolvers = {
             if (lastword && lastword.length > 2){
                 const prompts = await Prompts.find({message: new RegExp('.*' + lastword + '.*', 'i')})
                 return prompts.toArray()
+            } else return null
+        },
+        chatvariants: async(_, {search}, { req }) => {
+            //autocomplete for chat coaching.
+            const db = await DbConnection.Get()
+            const Variants = db.collection('chatvariants')
+            const regex = /\b[\S]+\b$/;
+            const match = search.trim().match(regex)
+            const lastword = match ? match[0] : null;
+            if (lastword && lastword.length > 2){
+                const variants = await Variants.find({message: new RegExp('.*' + lastword + '.*', 'i')})
+                return variants.toArray()
             } else return null
         },
         /* promptsuggest: async(_, {search}, { req }) => {
@@ -335,11 +357,25 @@ export const resolvers = {
             }
         }
     },
-    Mutation: {
-        updatePrompt: async(root, args, { req }) => {
+    Feedback: {
+        variant: async({variantid}, __, { req }) => {
             const db = await DbConnection.Get()
-            const ChatPrompts = db.collection('chatprompts')
-            ChatPrompts.updateOne(
+            const Variants = db.collection('chatvariants')
+            if (variantid) return await Variants.findOne({_id: new ObjectId(variantid)})
+            else return null
+        },
+        response: async({responseid}, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Responses = db.collection('chatresponses')
+            if (responseid) return await Responses.findOne({_id: new ObjectId(responseid)})
+            else return null
+        }
+    },
+    Mutation: {
+        updateVariant: async(root, args, { req }) => {
+            const db = await DbConnection.Get()
+            const ChatVariants = db.collection('chatvariants')
+            ChatVariants.updateOne(
                 { _id: new ObjectId(args.promptid) },
                 { 
                     $set: { message: args.message},
@@ -368,15 +404,16 @@ export const resolvers = {
                 const context = await ChatContext.findOne({_id: new ObjectId(args.contextid)})
             
                 let newrating = 0
-                if (context.match > -1) {
-                    const oldrating = context.match 
-                    newrating = (args.rating + (oldrating * context.count))/(context.count + 1) //average of all ratings + this rating.
+                if (context.ratingweight > -1) {
+                    const oldrating = context.ratingweight 
+                    newrating = (args.rating + (oldrating * context.ratingcount))/(context.ratingcount + 1) //average of all ratings + this rating.
                 } else {newrating = args.rating}
 
                 ChatContext.updateOne(
                     { _id: new ObjectId(args.contextid) },
                     { 
-                        $set: { match: newrating},
+                        $set: { ratingweight: newrating},
+                        $inc: { ratingcount: 1 },
                         $push: {
                             ratings: {
                                 message: args.ratemessage,
@@ -385,7 +422,6 @@ export const resolvers = {
                                 original: args.original
                             }
                         },
-                        $inc: { count: 1 }
                     }
                 )
             }
@@ -414,7 +450,7 @@ export const resolvers = {
             //sendTaskChatMessage(profileid, args.chatid, message, userid, getwheelid(req.session))
             return true
         },
-        sendFeedback: async(root, {contextid, responseid, promptid, chatid, feedback, message}, { req }) => {
+        sendFeedback: async(root, {variantid, contextid, responseid, promptid, chatid, feedback, message}, { req }) => {
             
             const db = await DbConnection.Get()
             const ChatFeedback = db.collection('chatfeedback')
@@ -434,6 +470,7 @@ export const resolvers = {
                 chatid: chatid,
                 contextid: contextid,
                 responseid: responseid,
+                variantid: variantid,
                 promptid: promptid ? promptid : (findcontext ? findcontext.promptid : null),
                 userid: userid,
                 profileid: profileid
@@ -448,11 +485,21 @@ export const resolvers = {
                 ChatFeedback.updateOne({_id: new ObjectId(feedbackid)},{$set: {ack: true}})
             }
         },
+        createVariant: async(root, {promptid, newvariant}, { req }) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                const db = await DbConnection.Get()
+                const ChatVariants = db.collection('chatvariants')
+                ChatVariants.insertOne({promptid: promptid, message: newvariant})
+                return true
+            }
+        },
         createPrompt: async(root, {responseid, newprompt}, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){
                 const db = await DbConnection.Get()
                 const ChatPrompts = db.collection('chatprompts')
                 const insertedprompt = await ChatPrompts.insertOne({message: newprompt})
+                const ChatVariants = db.collection('chatvariants')
+                ChatVariants.insertOne({promptid: insertedprompt.insertedId.toString(), message: newprompt})
                 if(responseid) {
                     const ChatContext = db.collection('chatcontext')
                     ChatContext.insertOne(
@@ -482,23 +529,26 @@ export const resolvers = {
                 return true
             }
         },
-        updatePrompt: async(root, {responseid, newprompt}, { req }) => {
+        linkPromptResponse: async(root, {promptid, responseid}, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){
-                /* const db = await DbConnection.Get()
-                const ChatPrompts = db.collection('chatprompts')
-                const insertedprompt = await ChatPrompts.insertOne({message: newprompt})
-                if(responseid) {
-                    const ChatContext = db.collection('chatcontext')
-                    ChatContext.insertOne(
-                        {
-                            promptid: insertedprompt.insertedId.toString(),
-                            responseid: responseid
-                        }
-                    )
-                }
-                return true */
-                triggererror('Not built yet.')
-            } else triggererror('Not available.')
+                const db = await DbConnection.Get()
+                const ChatContext = db.collection('chatcontext')
+                ChatContext.insertOne(
+                    {
+                        promptid: promptid,
+                        responseid: responseid
+                    }
+                )
+                return true
+            }
+        },
+        blockPromptResponse: async(root, {promptid, responseid}, { req }) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                const db = await DbConnection.Get()
+                const ChatContext = db.collection('chatcontext')
+                ChatContext.updateMany({promptid: promptid, responseid: responseid}, {$set: {block: true}})
+                return true
+            }
         },
         updateResponse: async(root, {promptid, newresponse}, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){
@@ -542,34 +592,58 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const ChatContext = db.collection('chatcontext')
             const Prompts = db.collection('chatprompts')
+            const Variants = db.collection('chatvariants')
             const Response = db.collection('chatresponses')
             const profileid = getprofileid(req.session)
             const userid = getuserid(req.session)
             
             try {
                 //find all the responses linked to the prompt.
-                const contexts = await ChatContext.find({promptid: args.promptid}).toArray()
-
-                const promptmessage = {promptid: args.promptid, message: args.message, userid: userid, datetime: new Date()}
+                const variant = await Variants.findOne({_id: new ObjectId(args.variantid)})
+                if (!variant) triggererror("Prompt not found.")
+                //const prompt = await Prompts.findOne({_id: new ObjectId(args.promptid)})
+                
                 Prompts.updateOne( //update data on prompt usage.
-                    { _id: new ObjectId(args.promptid) },
+                    { _id: new ObjectId(variant.promptid) },
                     { 
-                        $inc: { selected: 1 },
+                        $inc: {selected: 1 },
                         $push: {triggered: new Date()},
-                        $set: {lasttriggered: new Date()} 
+                        $set: {lasttriggered: new Date()},
+                        $inc: {[variant._id]: 1}
                     }
                 )
+                Variants.updateOne( //update data on prompt usage.
+                    { _id: new ObjectId(args.variantid) },
+                    { 
+                        $inc: {selected: 1 },
+                        $push: {wrote: args.wrote},
+                        $push: {triggered: new Date()},
+                        $set: {lasttriggered: new Date()},
+                    }
+                )
+
                 //record sent prompt to the chat.
+                const promptmessage = {promptid: variant.promptid, variantid: args.variantid, message: variant.message, wrote: args.wrote, userid: userid, datetime: new Date()}
                 await sendTaskChatMessage(profileid, args.chatid, promptmessage, userid, getwheelid(req.session))
 
+                const contexts = await ChatContext.find({promptid: variant.promptid, block: {$ne: true}}).sort({ ratingweight: -1 }).toArray()
+
                 if (contexts) {
+                    ChatContext.updateMany(
+                        {promptid: variant.promptid},
+                        {
+                            $inc: {matched:1},
+                            $push: {triggered: new Date()},
+                            $set: {lasttriggered: new Date()}
+                        }
+                    )
                     const responses = await Response.find( //find and update multiple responses
                         {_id: {
                             $in: contexts.map(function(context) {
                                 if (context.responseid) return new ObjectId(context.responseid)
                             })}
                         }
-                    ).sort({ match: -1 }).toArray()
+                    ).toArray()
                     if (responses) {
                         //update the increment.
                         //{ $inc: { used: 1 } } //increment used flag
@@ -577,6 +651,8 @@ export const resolvers = {
                         //create messages for the chat.
                         const responsemessages = responses.map(response => {
                             return {
+                                variantid: args.variantid,
+                                promptid: variant.promptid,
                                 responseid: response._id.toString(), 
                                 contextid: contexts.find(context => context.responseid === response._id.toString())._id.toString(), //find the context with the responseid.
                                 message: response.message, 
@@ -593,8 +669,8 @@ export const resolvers = {
                 }
                 return true
             } catch(error) {
-                //could log this if necessary.
-                return true //just return true.
+                triggererror("Prompt failed for some reason.")
+                return false //just return true.
             }
         }
     }
