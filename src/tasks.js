@@ -637,7 +637,11 @@ export const resolvers = {
                     daytask: true
                 }
                 updates.$inc = {rescheduled: 1}
-                updates.$unset = {schedule: null}
+                updates.$unset = {
+                    schedule: null,
+                    listorder: null,
+                    dayorder: null
+                }
 
                 taskids.map(function(taskid) {
                     activityrecord({taskid: taskid, notes: 'Scheduled for ' + date2str(newdate,'dd-MM-yyyy'), req: req, rescheduled: true})

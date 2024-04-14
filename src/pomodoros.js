@@ -1,11 +1,11 @@
 import { ObjectId } from 'mongodb' 
 import { getprofileid, getuserid } from './users'
 import DbConnection from './database'
-import { endOfDayTZ, dayofyear, getuiversion, startOfDayTZ } from '../util/functions'
+import { dayofyear} from '../util/functions'
 import { checkTask, createRepeatTask } from './tasks'
 import { triggererror } from './graphqlserver';
 import { getareatree } from './areas'
-let pjson = require('../package.json')
+//let pjson = require('../package.json')
 
 export const typeDefs = `
     extend type Query {
@@ -305,9 +305,35 @@ export async function activityrecord({
 
     //save all the aggregate data and history
     let tasklist = []
-    if (record.task) tasklist = await taskaggregate({taskid: record.task, minutes, pomoid})
-    goalaggregate({goalid: record.goal, minutes, pomoid, tasklist})
-    areaaggregate({tags: record.tags, minutes, pomoid, req, completed: checked === true ? 0 : 1, rescheduled: rescheduled ? 1 : 0, tasklist})
+    if (record.task) tasklist = await 
+    taskaggregate({
+        taskid: record.task, 
+        minutes, 
+        pomoid
+    })
+    
+    goalaggregate({
+        goalid: record.goal, 
+        minutes, 
+        pomoid, 
+        tasklist
+    })
+
+    areaaggregate({
+        tags: record.tags, 
+        minutes, 
+        pomoid, 
+        req, 
+        completed: checked === true ? 1 : 0, 
+        rescheduled: rescheduled ? 1 : 0, 
+        tasklist, 
+        reopened, 
+        created,
+        priorityremoved, 
+        priorityadded,
+        snoozed, 
+        copied
+    })
 
 }
 
@@ -364,7 +390,21 @@ export async function goalaggregate({goalid, minutes, pomoid, tasklist}) {
     )
 }
 
-export async function areaaggregate({tags, minutes = 0, created, completed, rescheduled, snoozed, pomoid, req, tasklist}) {
+export async function areaaggregate({
+    tags, 
+    minutes = 0, 
+    created, 
+    completed, 
+    rescheduled, 
+    snoozed, 
+    pomoid, 
+    req, 
+    tasklist,
+    reopened,
+    priorityremoved, 
+    priorityadded,
+    copied
+}) {
     //future development: check/aggregate parent tasks.
     if ((!tags && !tasklist) || !pomoid) { //must have all fields
         console.log('areaaggregate error - missing fields')
@@ -375,21 +415,34 @@ export async function areaaggregate({tags, minutes = 0, created, completed, resc
     let areatree = await getareatree({tags: tags, tasklist, req})
     const db = await DbConnection.Get()
 
+    let increment = new Object()
+
+    if(minutes) {
+        increment.time = minutes
+        increment.count = 1 //only count if there is a pomodoro with minutes
+    }
+    if(created) increment.taskcreated = 1
+    if(completed) increment.completed = 1
+    if(rescheduled) increment.rescheduled = 1
+    if(snoozed) increment.snoozed = 1
+    if(reopened) increment.reopened = 1
+    if(priorityremoved) increment.priorityremove = 1 
+    if(priorityadded) increment.priorityadded = 1
+    if(copied) increment.copied = 1
+
     if (areatree.length > 0){
-    const Areas = db.collection('areas')
-    
-    Areas.updateMany(
-        {_id: {
-            $in: areatree.map(function(id) {
-                return new ObjectId(id)
-            })
-        }},
-        {
-            $inc: { 
-                time: minutes ? minutes : 0
-            },
-            $push: {history: pomoid} //this might be too much info. Could remove this.
-        }
+        const Areas = db.collection('areas')
+        
+        Areas.updateMany(
+            {_id: {
+                $in: areatree.map(function(id) {
+                    return new ObjectId(id)
+                })
+            }},
+            {
+                $inc: increment,
+                $push: {history: pomoid} //this might be too much info. Could remove this.
+            }
     )} else {
         areatree = ['none']
     }
@@ -408,7 +461,7 @@ export async function areaaggregate({tags, minutes = 0, created, completed, resc
     const AggMonth = db.collection('aggareamonth')
     const AggWeek = db.collection('aggareaweek')
     const AggDay= db.collection('aggareaday')
-
+    
     areatree.map(function(id) {
         const objectid = (id === 'none') ? 'none' : new ObjectId(id)
         AggYear.updateOne(
@@ -417,14 +470,7 @@ export async function areaaggregate({tags, minutes = 0, created, completed, resc
                 year: year
             },
             {
-                $inc: { 
-                    time: minutes ? minutes : 0, 
-                    created: created ? 1 : 0,
-                    completed: completed ? 1 : 0,
-                    rescheduled: rescheduled ? 1 : 0,
-                    snoozed: snoozed ? 1 : 0,
-                    count: minutes ? 1 : 0 //only count if there is a pomodoro with minutes
-                }
+                $inc: increment
             },
             {upsert: true}
         )
@@ -436,14 +482,7 @@ export async function areaaggregate({tags, minutes = 0, created, completed, resc
                 month: month
             },
             {
-                $inc: { 
-                    time: minutes ? minutes : 0,  
-                    created: created ? 1 : 0,
-                    completed: completed ? 1 : 0,
-                    rescheduled: rescheduled ? 1 : 0,
-                    snoozed: snoozed ? 1 : 0,
-                    count: minutes ? 1 : 0 //only count if there is a pomodoro with minutes
-                }
+                $inc: increment
             },
             {upsert: true}
         )
@@ -455,14 +494,7 @@ export async function areaaggregate({tags, minutes = 0, created, completed, resc
                 week: week
             },
             {
-                $inc: { 
-                    time: minutes ? minutes : 0,  
-                    created: created ? 1 : 0,
-                    completed: completed ? 1 : 0,
-                    rescheduled: rescheduled ? 1 : 0,
-                    snoozed: snoozed ? 1 : 0,
-                    count: minutes ? 1 : 0 //only count if there is a pomodoro with minutes
-                }
+                $inc: increment
             },
             {upsert: true}
         )
@@ -477,14 +509,7 @@ export async function areaaggregate({tags, minutes = 0, created, completed, resc
                 day: day
             },
             {
-                $inc: { 
-                    time: minutes ? minutes : 0, 
-                    created: created ? 1 : 0,
-                    completed: completed ? 1 : 0,
-                    rescheduled: rescheduled ? 1 : 0,
-                    snoozed: snoozed ? 1 : 0,
-                    count: minutes ? 1 : 0 //only count if there is a pomodoro with minutes
-                }
+                $inc: increment
             },
             {upsert: true}
         )
