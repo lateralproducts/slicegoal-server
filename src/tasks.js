@@ -24,6 +24,9 @@ export const schema = `
         tags: [Area]
         time: Int
         snooze: String
+        listorder: Int
+        dayorder: Int
+        goalorder: Int
     }
     type TaskTag {
         _id: String
@@ -446,7 +449,7 @@ export const resolvers = {
             if (args.parenttask) {
                 Tasks.updateOne({profileid: getprofileid(req.session), _id: new ObjectId(args.parenttask)}, {$push: {subtasks: taskid}})
             }
-            activityrecord({taskid: taskid, notes: 'Task created.', req: req})
+            activityrecord({taskid: taskid, notes: 'Task created.', req: req, created: true})
             if (args.insightid) linkInsightTask(taskid, args.insightid)
             return taskid
         },
@@ -501,10 +504,17 @@ export const resolvers = {
             const result = await Tasks.updateOne(
                 {_id: new ObjectId(args.taskid)},
                 {
-                    $set: {schedule: true}, 
-                    $unset: {starttime: null}
+                    $set: {
+                        schedule: true
+                    }, 
+                    $unset: {
+                        starttime: null,
+                        listorder: null,
+                        dayorder: null
+                    }
                 }
             )
+            activityrecord({taskid: args.taskid, notes: 'Listed in priority list.', req: req, priorityadded: true})
             return result.modifiedCount === 1
         },
         unlistTask: async(_, args, { req }) => {
@@ -515,10 +525,16 @@ export const resolvers = {
             const result = await Tasks.updateOne(
                 {_id: new ObjectId(args.taskid)},
                 {
-                    $unset: { schedule: null, starttime: null },
-                    $inc: { rescheduled: 1}
+                    $unset: { 
+                        schedule: null,
+                        starttime: null,
+                        listorder: null,
+                        dayorder: null
+                    },
+                    $inc: { priorityremoved: 1}
                 }
             )
+            activityrecord({taskid: args.taskid, notes: 'Unlisted from priority list.', req: req, priorityremoved: true})
             return result.modifiedCount === 1
         },
         updateDayTaskOrder: async(parent, args, { req }) => {
@@ -584,11 +600,17 @@ export const resolvers = {
                     starttime: date,
                     daytask: true
                 }
-                updates.$unset = {schedule: null}
+                updates.$unset = {
+                    schedule: null,
+                    listorder: null,
+                    dayorder: null
+                }
             } else {
-                activityrecord({taskid: args.taskid, notes: 'Scheduled date unset.', req: req})
+                activityrecord({taskid: args.taskid, notes: 'Listed in priority list.', req: req, priorityadded: true})
                 updates.$unset = { //unsetting, variables don't matter.
-                    starttime: ''
+                    starttime: '',
+                    listorder: null,
+                    dayorder: null
                 }
                 updates.$set = {
                     schedule: true
@@ -629,7 +651,7 @@ export const resolvers = {
                 updates.$unset = {starttime: ''}
                 updates.$set = {schedule: true}
                 taskids.map(function(taskid) {
-                    activityrecord({taskid: taskid, notes: 'Scheduled date unset.', req: req})
+                    activityrecord({taskid: taskid, notes: 'Listed in priority list.', req: req, priorityadded: true})
                     //unsetting, variables don't matter.
                     Tasks.updateOne(
                         {_id: new ObjectId(taskid)},
@@ -650,7 +672,7 @@ export const resolvers = {
             updates.$inc = { rescheduled: 1}
 
             taskids.map(function(taskid) {
-                activityrecord({taskid: taskid, notes: 'Unlisted.', req: req})
+                activityrecord({taskid: taskid, notes: 'Unlisted.', req: req, priorityremoved: true})
                 //unsetting, variables don't matter.
                 Tasks.updateOne(
                     {_id: new ObjectId(taskid)},
@@ -704,7 +726,7 @@ export const resolvers = {
 
             const db = await DbConnection.Get()
             const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session), type: 'subtask'})
-            activityrecord({taskid: subtaskid, notes: 'Task created.', req: req})
+            activityrecord({taskid: subtaskid, notes: 'Task created.', req: req, created: true})
             const Tasks = db.collection('tasks')
             
             if(taskid !== subtaskid){
@@ -724,7 +746,7 @@ export const resolvers = {
             var parentid 
             if (newparenttask) {
                 parentid = await createNewTask({title: newparenttask, profileid: getprofileid(req.session)})
-                activityrecord({taskid: parentid, notes: 'Task created.', req: req})
+                activityrecord({taskid: parentid, notes: 'Task created.', req: req, created: true})
             } else {
                 parentid = parenttaskid
             }
@@ -772,7 +794,7 @@ export const resolvers = {
                 { $set: { snooze: snoozedatetime }}
             )
 
-            activityrecord({taskid: taskid, req: req, notes: 'Task snoozed to ' + snoozedatetime})
+            activityrecord({taskid: taskid, req: req, notes: 'Task snoozed to ' + snoozedatetime, snoozed: true})
             return true
         },
     }
@@ -824,7 +846,7 @@ export async function createRepeatTask(taskid, req){
 
     //create new task from template and get id.
     const newtaskid = (await Tasks.insertOne(tasktorepeat)).insertedId.toString()
-    activityrecord({taskid: newtaskid, notes: 'Task copied. Repeat task.', req: req})
+    activityrecord({taskid: newtaskid, notes: 'Task copied. Repeat task.', req: req, created: true})
 
     //get all task template links
     copySubTasksFromTask(taskid, newtaskid, req)
@@ -929,7 +951,7 @@ export async function checkTask(args, req){
         updatetask.completed = args.datetime ? new Date(args.datetime) : new Date()
         //activityrecord({taskid: args.taskid, checked: args.checked, notes: 'Marked as done. 🎉', req: req})
     } else {
-        activityrecord({taskid: args.taskid, notes: 'Re-opened.', req: req})
+        activityrecord({taskid: args.taskid, notes: 'Re-opened.', req: req, reopened: true})
     }
     updatetask.complete = args.checked
 

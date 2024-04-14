@@ -236,7 +236,7 @@ export const resolvers = {
             //copy the task as new if repeat task selected.
             if (args.repeat){ 
                 createRepeatTask(args.taskid, req)
-                activityrecord({taskid: args.taskid, req: req, notes: 'This task copied as a repeat task.'})
+                activityrecord({taskid: args.taskid, req: req, notes: 'This task copied as a repeat task.', copied: true})
             }
             return true
         }
@@ -244,7 +244,24 @@ export const resolvers = {
     
 }
 
-export async function activityrecord({templateid, taskid, goalid, notes, checked, minutes, req, datetime, rescheduled}) {
+export async function activityrecord({
+    templateid, 
+    taskid, 
+    goalid, 
+    notes, 
+    minutes, 
+    req, 
+    datetime, 
+    checked,
+    rescheduled, 
+    //unscheduled, //this is the same behaviour as adding to priority list
+    reopened, 
+    created, 
+    priorityremoved, 
+    priorityadded,
+    snoozed, 
+    copied
+}) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
     const Pomodoros = db.collection('pomodoros')
@@ -268,12 +285,21 @@ export async function activityrecord({templateid, taskid, goalid, notes, checked
 /*     record.serverversion = pjson.version
     record.uiversion = getuiversion(req.session) */
     record.notes = (notes ? (notes + ' ') : "") + (checked === true ? "Closed." : "")
-    record.checked = checked
-    record.minutes = minutes
     record.created = new Date()
-
     if(datetime) record.date = new Date(datetime) //time set from client argument
     else record.date = new Date()
+
+    if (minutes) record.minutes = minutes
+    if (checked) record.checked = checked
+    if (rescheduled) record.rescheduled = rescheduled
+    if (reopened) record.reopened = reopened
+    if (created) record.created = created
+    if (priorityremoved) record.priorityremoved = priorityremoved
+    if (priorityadded) record.priorityadded = priorityadded
+    if (snoozed) record.snoozed = snoozed
+    if (copied) record.copied = copied
+    //if (unscheduled) record.unscheduled = unscheduled //removed
+
 
     const pomoid = (await Pomodoros.insertOne(record)).insertedId.toString()
 
@@ -287,10 +313,9 @@ export async function activityrecord({templateid, taskid, goalid, notes, checked
 
 export async function taskaggregate({taskid, minutes, pomoid}) {
     //future development: check/aggregate parent tasks.
-    if (!taskid || !minutes || !pomoid) { //must have all fields
+    if (!taskid || !pomoid) { //must have all fields
         console.log('taskaggregate error - missing fields')
         console.log('taskid: ' + taskid)
-        console.log('mins: ' + minutes)
         console.log('pomoid: ' + pomoid)
         return
     }
@@ -305,7 +330,7 @@ export async function taskaggregate({taskid, minutes, pomoid}) {
             })
         }},
         {
-            $inc: { time: minutes },
+            $inc: {time: minutes ? minutes : 0},
             $push: {history: pomoid}
         }
     )
@@ -339,19 +364,18 @@ export async function goalaggregate({goalid, minutes, pomoid, tasklist}) {
     )
 }
 
-export async function areaaggregate({tags, minutes, created, completed, rescheduled, snoozed, pomoid, req, tasklist}) {
+export async function areaaggregate({tags, minutes = 0, created, completed, rescheduled, snoozed, pomoid, req, tasklist}) {
     //future development: check/aggregate parent tasks.
-    if ((!tags && !tasklist) || !minutes || !pomoid) { //must have all fields
+    if ((!tags && !tasklist) || !pomoid) { //must have all fields
         console.log('areaaggregate error - missing fields')
         console.log('tags: ' + tags)
-        console.log('mins: ' + minutes)
         console.log('pomoid: ' + pomoid)
         return
     }
-    const areatree = await getareatree({tags: tags, tasklist, req})
-
-    if (areatree){
+    let areatree = await getareatree({tags: tags, tasklist, req})
     const db = await DbConnection.Get()
+
+    if (areatree.length > 0){
     const Areas = db.collection('areas')
     
     Areas.updateMany(
@@ -366,7 +390,9 @@ export async function areaaggregate({tags, minutes, created, completed, reschedu
             },
             $push: {history: pomoid} //this might be too much info. Could remove this.
         }
-    )
+    )} else {
+        areatree = ['none']
+    }
     //Update time aggregates: Year, Month, Week, Day.
     //Need to adjust for timezone on profile. Do this later.d
     //America/Los_Angeles, Australia/Melbourne, Pacific/Honolulu
@@ -384,7 +410,7 @@ export async function areaaggregate({tags, minutes, created, completed, reschedu
     const AggDay= db.collection('aggareaday')
 
     areatree.map(function(id) {
-        const objectid = new ObjectId(id)
+        const objectid = (id === 'none') ? 'none' : new ObjectId(id)
         AggYear.updateOne(
             {
                 area: objectid,
@@ -462,7 +488,7 @@ export async function areaaggregate({tags, minutes, created, completed, reschedu
             },
             {upsert: true}
         )
-    })}
+    })
 }
 
 async function getgoaltree({goalid, tasklist}) {

@@ -178,7 +178,7 @@ export const resolvers = {
 
             //create new task from template and get id.
             const newtaskid = (await Tasks.insertOne(template)).insertedId.toString()
-            activityrecord({taskid: newtaskid, notes: 'Task created from template.', req: req})
+            activityrecord({taskid: newtaskid, notes: 'Task created from template.', req: req, created: true})
 
             //get all task template links
             createSubTasksFromTemplate(templateid, newtaskid, req)
@@ -207,7 +207,7 @@ export const resolvers = {
 
             //create new task from template and get id.
             const newtemplateid = (await Templates.insertOne(task)).insertedId.toString()
-            activityrecord({templateid: newtemplateid, notes: 'Task template created.', req: req})
+            activityrecord({templateid: newtemplateid, notes: 'Task template created.', req: req, created: true})
 
             //get all task template links
             createSubTemplatesFromSubTasks(taskid, newtemplateid, req)
@@ -400,7 +400,7 @@ async function createSubTasksFromTemplate(templateid, newtaskid, req) {
     //link all subtasks to the parent task.
     const subtaskIDs = Object.values(newSubTasks)
     subtaskIDs.map(subtaskid => {
-        activityrecord({taskid: subtaskid.toString(), notes: 'Task created from template.', req: req})
+        activityrecord({taskid: subtaskid.toString(), notes: 'Task created from template.', req: req, created: true})
         linksubtask({parenttaskid: newtaskid, subtaskid: subtaskid.toString(), req: req})}
     )}
 }
