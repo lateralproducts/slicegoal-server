@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb'
 import { triggererror } from './graphqlserver';
 
 import DbConnection from './database'
-import { dayofyear, getuiversion } from '../util/functions'
+import { dayofyear, getWeekNumber, getuiversion } from '../util/functions'
 import { getuserid, getprofileid, getwheelid, getname } from './users'
 import { sessiontrack } from './website'
 let pjson = require('../package.json')
