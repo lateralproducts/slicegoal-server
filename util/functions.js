@@ -91,3 +91,16 @@ export const shiftTZ = ({datetime, timezoneOffset}) => {
   
     return newDate;
   }
+
+export const getWeekNumber = function (datetime) {
+    var d = new Date(Date.UTC(datetime.getFullYear(), datetime.getMonth(), datetime.getDate()));
+    d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+    var yearStart = new Date(Date.UTC(d.getFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+};
+
+export const getWeekYear = function (datetime) {
+    var d = new Date(Date.UTC(datetime.getFullYear(), datetime.getMonth(), datetime.getDate()));
+    d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+    return d.getFullYear();;
+};

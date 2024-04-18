@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb'
 import { triggererror } from './graphqlserver';
 
 import DbConnection from './database'
-import { getuiversion } from '../util/functions'
+import { dayofyear, getuiversion } from '../util/functions'
 import { getuserid, getprofileid, getwheelid, getname } from './users'
 import { sessiontrack } from './website'
 let pjson = require('../package.json')
@@ -557,56 +557,18 @@ export const resolvers = {
             )
             return goal ? goal : null
         },
-        time: async({ time }, args, { req }) => {
-            /* const db = await DbConnection.Get()
-            const Pomodoros = db.collection('pomodoros')
+        time: async({ _id }, {datetime}, { req }) => {
+            const db = await DbConnection.Get()
+            const AreaWeekAggregate = db.collection('aggareaweek')
 
-            let currentDate = new Date()
-            currentDate.setDate(currentDate.getDate() - 7) //currently reading one week's trailing data.
-            const aggCursor = await Pomodoros.aggregate(
-                [{
-                    $match: {
-                        profileid: getprofileid(req.session),
-                        date: {
-                            $gte: currentDate
-                        },
-                        $or: [
-                            //{
-                            //    area: _id,
-                            //}, 
-                            {
-                                links: _id.toString()
-                            }
-                        ]
-                    }
-                },
-                {
-                    $group: {
-                        _id: { links: null }, //"$area"
-                        count: { $sum: '$minutes' },
-                        records: { $sum: 1 },
-                        direct: {
-                            $sum: {
-                                $cond: {
-                                    if: { $eq: ['$area', _id.toString()] },
-                                    then: 1,
-                                    else: 0
-                                }
-                            }
-                        },
-                        countdirect: {
-                            $sum: {
-                                $cond: {
-                                    if: { $eq: ['$area', _id.toString()] },
-                                    then: '$minutes',
-                                    else: 0
-                                }
-                            }
-                        }
-                    }
-                }]) */
-            //return aggCursor
-            return {count: time}
+            if (!datetime) datetime = new Date(new Date().toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
+            else datetime = new Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
+            const week = getWeekNumber(datetime)
+            const weekyear = getWeekYear(datetime) //different at start of year sometimes.
+
+            const weekagg = await AreaWeekAggregate.findOne({area: _id, week: week, year: weekyear})
+
+            return {count: weekagg ? weekagg.logtime : 0}
         },
         rankdue: async area => {
             let checkDate = new Date()

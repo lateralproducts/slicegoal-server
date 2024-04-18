@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb' 
 import { getprofileid, getuserid } from './users'
 import DbConnection from './database'
-import { dayofyear} from '../util/functions'
+import { dayofyear, getWeekNumber, getWeekYear} from '../util/functions'
 import { checkTask, createRepeatTask } from './tasks'
 import { triggererror } from './graphqlserver';
 import { getareatree } from './areas'
@@ -320,6 +320,7 @@ export async function activityrecord({
     })
 
     areaaggregate({
+        datetime: datetime,
         tags: record.tags, 
         minutes, 
         pomoid, 
@@ -332,7 +333,8 @@ export async function activityrecord({
         priorityremoved, 
         priorityadded,
         snoozed, 
-        copied
+        copied,
+        goalid: record.goal, 
     })
 
 }
@@ -391,6 +393,7 @@ export async function goalaggregate({goalid, minutes, pomoid, tasklist}) {
 }
 
 export async function areaaggregate({
+    datetime,
     tags, 
     minutes = 0, 
     created, 
@@ -403,7 +406,8 @@ export async function areaaggregate({
     reopened,
     priorityremoved, 
     priorityadded,
-    copied
+    copied,
+    goalid
 }) {
     //future development: check/aggregate parent tasks.
     if ((!tags && !tasklist) || !pomoid) { //must have all fields
@@ -418,17 +422,19 @@ export async function areaaggregate({
     let increment = new Object()
 
     if(minutes) {
-        increment.time = minutes
-        increment.count = 1 //only count if there is a pomodoro with minutes
+        increment.logtime = minutes
+        increment.logcount = 1 //only count if there is a pomodoro with minutes
+        if(goalid) increment.goaltime = minutes
     }
     if(created) increment.taskcreated = 1
-    if(completed) increment.completed = 1
-    if(rescheduled) increment.rescheduled = 1
-    if(snoozed) increment.snoozed = 1
-    if(reopened) increment.reopened = 1
-    if(priorityremoved) increment.priorityremove = 1 
-    if(priorityadded) increment.priorityadded = 1
-    if(copied) increment.copied = 1
+    if(completed) increment.taskcompleted = 1
+    if(rescheduled) increment.taskrescheduled = 1
+    if(snoozed) increment.tasksnoozed = 1
+    if(reopened) increment.taskreopened = 1
+    if(priorityremoved) increment.taskpriorityremove = 1 
+    if(priorityadded) increment.taskpriorityadded = 1
+    if(copied) increment.taskcopied = 1
+    if(goalid) increment.goalattached = 1
 
     if (areatree.length > 0){
         const Areas = db.collection('areas')
@@ -449,19 +455,33 @@ export async function areaaggregate({
     //Update time aggregates: Year, Month, Week, Day.
     //Need to adjust for timezone on profile. Do this later.d
     //America/Los_Angeles, Australia/Melbourne, Pacific/Honolulu
-
-    let datetime = new Date(new Date().toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
+    if (!datetime) datetime = new Date(new Date().toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
+    else datetime = new Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
     const year = datetime.getFullYear()
     const month = datetime.getMonth() + 1
     const yearday = dayofyear(datetime)
-    const week = ((yearday / 7) | 0) + 1 
+    const week = getWeekNumber(datetime)
+    const weekyear = getWeekYear(datetime) //different at start of year sometimes.
     const day = datetime.getDate()
 
+    const WeekAggregate = db.collection('aggweek')
+
+    WeekAggregate.updateOne(
+        {
+            year: weekyear,
+            week: week
+        },
+        {
+            $inc: increment
+        },
+        {upsert: true}
+    )
+    
     const AggYear = db.collection('aggareayear')
     const AggMonth = db.collection('aggareamonth')
     const AggWeek = db.collection('aggareaweek')
     const AggDay= db.collection('aggareaday')
-    
+
     areatree.map(function(id) {
         const objectid = (id === 'none') ? 'none' : new ObjectId(id)
         AggYear.updateOne(
@@ -490,7 +510,7 @@ export async function areaaggregate({
         AggWeek.updateOne(
             {
                 area: objectid,
-                year: year,
+                year: weekyear,
                 week: week
             },
             {
