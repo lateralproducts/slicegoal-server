@@ -84,7 +84,7 @@ export const resolvers = {
                 { name: new RegExp(search, 'i') },
                 { notes: new RegExp(search, 'i') }
             ]
-            if (areas.length > 0) query.tags = {$in: [...areas.map(area => {return area._id})]}
+            if (areas && areas.length > 0) query.tags = {$in: [...areas.map(area => {return area._id})]}
 
             return await Sources.find(query).limit(10).sort({accessedit: -1}).toArray()
         },

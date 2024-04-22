@@ -200,7 +200,7 @@ export const resolvers = {
 
             let insightquery = new Object()
             
-            if (areas.length > 0){
+            if (areas && areas.length > 0){
                 let querytags = new Object()
                 querytags.area = {$in: [...areas.map(area => {return area._id})]}
                 querytags.profileid = getprofileid(req.session)
