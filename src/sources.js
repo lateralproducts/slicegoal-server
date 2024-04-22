@@ -15,7 +15,7 @@ export const typeDefs = `
         taskSources(taskid: String!): [Source]
         templateSources(templateid: String!): [Source]
         sourceInsights(sourceid: String!): [SourceInsight]
-        searchSources(search: String!): [Source]
+        searchSources(search: String, areas: [AreaId]): [Source]
     }
 
     extend type Mutation {
@@ -74,21 +74,19 @@ export const resolvers = {
             if (tags) query.tags = {$in: tags}
             return await Sources.find(query).sort({accessedit: -1}).toArray()
         },
-        searchSources: async function(_, args, { req }) {
-            
+        searchSources: async function(_, {areas, search}, { req }) {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
 
+            let query = new Object()
+            query.profileid = getprofileid(req.session)
+            if (search !== '' && search !== null) query.$or = [
+                { name: new RegExp(search, 'i') },
+                { notes: new RegExp(search, 'i') }
+            ]
+            if (areas.length > 0) query.tags = {$in: [...areas.map(area => {return area._id})]}
 
-            let query = {
-                $or: [
-                    { name: new RegExp(args.search, 'i') },
-                    { notes: new RegExp(args.search, 'i') }
-                ],
-                profileid: getprofileid(req.session)
-            }
-
-            return await Sources.find(query).sort({accessedit: -1}).toArray()
+            return await Sources.find(query).limit(10).sort({accessedit: -1}).toArray()
         },
         // all sources on an insight
         insightSources: async function(_, { insightid }, { req }) {

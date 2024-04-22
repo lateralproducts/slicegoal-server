@@ -21,7 +21,7 @@ export const typeDefs = `
         sharedviews: [View]
         profiles: [Profile]
         area(_id: String!, navdirection: String, readdate: String): Area
-        areas (wheelid: String, readdate: String): [Area]
+        areas (wheelid: String, readdate: String, search: String, limit: Int): [Area]
         arealinks(areaid: String): [AreaLink]
         ranktimes(areaId: String): [RankTime]
         lastranktime(areaId: String): RankTime
@@ -218,21 +218,20 @@ export const resolvers = {
                 .sort({ templateorder: -1 })
                 .toArray()
         },
-        areas: async(_, args, { req }) => {
-            
+        areas: async(_, {wheelid, search, limit=1000}, { req }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            const wheel = !args.wheelid ? getwheelid(req.session) : args.wheelid
-            let areas = await Areas.find({
-                wheelid: wheel // , $or: [{ { global: true }, wheelid: getwheelid(req.session)] if we want to use global areas to define wheels. Needs more thought.
-            })
-                .sort({ lasttagged: -1, lastclicked: -1 })
-                .toArray()
+            const wheel = !wheelid ? getwheelid(req.session) : wheelid
 
+            let query = new Object()
+            query.wheelid = wheel
+            if (search) query.name = new RegExp(search, 'i')
+            let areas = await Areas.find(query) // , $or: [{ { global: true }, wheelid: getwheelid(req.session)] if we want to use global areas to define wheels. Needs more thought.
+            .sort({ lasttagged: -1, lastclicked: -1 })
+            .limit(limit).toArray()
             return areas
         },
         profiles: async(_, __, { req }) => {
-            
             const db = await DbConnection.Get()
             const Profiles = db.collection('profiles')
             if (req.session.view.type === 'coach') {

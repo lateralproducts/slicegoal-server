@@ -17,7 +17,7 @@ export const typeDefs = `
     insights(areas: [AreaId]): [InsightTag]
     insightList(page: Int): [Insight]
     insightTags(insightid: String): [InsightTag]
-    searchinsights(search: String!): [Insight]
+    searchinsights(areas: [AreaId], search: String): [Insight]
     spaced(areas: [AreaId]): FilteredSpaced
     newsharedinsights: Int
     getSharedInsights: SharedInsightList
@@ -98,8 +98,6 @@ export const schema = `
 export const resolvers = {
     Query: {
         insights: async(_, { areas }, { req }) => {
-            
-
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
 
@@ -195,24 +193,53 @@ export const resolvers = {
                 insights: insights
             }
         },
-        searchinsights: async(_, args, { req }) => {
-            
+        searchinsights: async(_, {areas, search}, { req }) => {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
+            const InsightTags = db.collection('insighttags')
 
-            let query = new Object()
-            query = {
-                $or: [
-                    { answer: new RegExp(args.search, 'i') },
-                    { prompt: new RegExp(args.search, 'i') }
-                ],
-                profileid: getprofileid(req.session)
+            let insightquery = new Object()
+            
+            if (areas.length > 0){
+                let querytags = new Object()
+                querytags.area = {$in: [...areas.map(area => {return area._id})]}
+                querytags.profileid = getprofileid(req.session)
+
+                let insighttags = await InsightTags.find(
+                    querytags,
+                    { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
+                )
+                .toArray()
+
+                // Get array of all UNIQUE insight ids for found tags
+                let insightids = [...new Set(insighttags.map(tag => {
+                    return tag.insightid
+                }))]
+
+                // Make sure insights are tagged to EVERY area
+                const filteredinsights = insightids.filter(insightid => {
+                    return areas.every(area => {
+                        return insighttags.some(tag => 
+                            tag.insightid === insightid && tag.area === area._id
+                        )
+                    })
+                })
+
+                const insightobjids = filteredinsights.map(insightid => {return new ObjectId(insightid)})
+                insightquery._id = {$in: insightobjids}
             }
+            if (search !== '' && search !== null){
+                insightquery.$or = [
+                    { answer: new RegExp(search, 'i') },
+                    { prompt: new RegExp(search, 'i') }
+                ]
+            }
+            insightquery.profileid = getprofileid(req.session)
 
             const insights = await Insights.find(
-                query,
+                insightquery,
                 { sort: { datecreated: -1 } }, //return reverse chron. Last note created at top of list.
-            ).toArray()
+            ).limit(10).toArray()
 
             return insights
         },
