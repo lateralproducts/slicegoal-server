@@ -200,7 +200,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const today = startOfDay(new Date())
-            if(past) return await Tasks.find({profile: getprofileid(req.session), starttime: {$lt: today}, $or: [{complete: {$eq: null}, complete: false}]}).sort({starttime: 1}).toArray()
+            if(past) return await Tasks.find({profile: getprofileid(req.session), starttime: {$lt: today}, $or: [{complete: {$exists: false}}, {complete: {$eq: null}}, {complete: false}]}).sort({starttime: 1}).toArray()
             return await Tasks.find({profile: getprofileid(req.session), title: new RegExp(search, 'i')}).sort({created: -1}).toArray()
         },
         taskPriorityList: async(_, {filter}, { req }) => {
@@ -798,7 +798,7 @@ export const resolvers = {
                 { $set: { snooze: snoozedatetime }}
             )
 
-            activityrecord({taskid: taskid, req: req, notes: 'Task snoozed to ' + snoozedatetime, snoozed: true})
+            activityrecord({taskid: taskid, req: req, notes: 'Task snoozed to ' + date2str(snoozedatetime,'MM-dd-yyyy hh:mm'), snoozed: true})
             return true
         },
     }
