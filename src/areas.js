@@ -218,7 +218,7 @@ export const resolvers = {
                 .sort({ templateorder: -1 })
                 .toArray()
         },
-        areas: async(_, {wheelid, search, limit=1000}, { req }) => {
+        areas: async(_, {wheelid, search, limit=0}, { req }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const wheel = !wheelid ? getwheelid(req.session) : wheelid
