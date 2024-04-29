@@ -1,9 +1,9 @@
 import { ObjectId } from 'mongodb' 
 import { triggererror } from './graphqlserver';
 import DbConnection from './database'
-import { emailGoalNudge, emailRerankNudge, emailFunnel, reSendEmail, emailMessageNudge } from './emails'
+import { emailGoalNudge, emailRerankNudge, emailFunnel, reSendEmail, emailMessageNudge, emailWeeklySummary } from './emails'
 import { createreport } from './reporting'
-import { date2str } from '../util/functions'
+import { date2str, getWeekNumber, getWeekYear } from '../util/functions'
 import { getunreadmessageusers } from './chat'
 
 let schedule = require('node-schedule')
@@ -33,11 +33,17 @@ schedule.scheduleJob({ minute: 10 }, async function() { //Every hour at 10 mins 
     reSendEmail()
 })  
 
-//schedule.scheduleJob({ dayOfWeek: 0, hour: 22, minute: 0 }, function() {
-    //nudging once a week
+/* schedule.scheduleJob({ dayOfWeek: 0, hour: 22, minute: 0 }, function() {
+    //summary once a week
     //set to UTC time for server 22 UTC = 8am Melbourne Time. dayOfWeek: 0, hour: 22, minute: 0 is 8am Monday in Melbourne
     //ranknudge(); //holding off sending these messages again for a little bit.
-//})
+}) */
+
+schedule.scheduleJob({ hour: 8, minute: 0}, function() {
+    //summary once a week
+    //set to UTC time for server 22 UTC = 8am Melbourne Time. dayOfWeek: 0, hour: 22, minute: 0 is 8am Monday in Melbourne
+    weeklysummaryemail(); //holding off sending these messages again for a little bit.
+})
 
 schedule.scheduleJob({ hour: 21, minute: 0 }, async function() { //21:00 = 8am Sydney time
     //sending notice of unread messages via email. Only send once? Or keep sending? Could be annoying.
@@ -116,10 +122,31 @@ async function ranknudge() {
         //state: "verified" //could add this later on to ensure that these emails are only sent to users who are verified.
     }).toArray()
 
-    sendtousers.map(async(user, count) => {
-        //needs to be async because waiting for response from email client...
-        await new Promise(resolve => setTimeout(resolve, count * 5000)) //delay 5 seconds per index, because gmail blocks using as transactional email client
-        //will need/want to update email client to AWS SES or another scaled email service.
-        let emailresponse = await emailRerankNudge(user)
+    sendtousers.map(async(user) => {
+        emailRerankNudge(user)
+    })
+}
+
+async function weeklysummaryemail() {
+    const db = await DbConnection.Get()
+    //const Profiles = db.collection('profiles')
+    //const RankTimes = db.collection('ranktimes')
+    const Users = db.collection('users')
+    const AggWeek = db.collection('aggweek')
+
+    //get last week's date
+    let twodaysago = new Date()
+    twodaysago.setDate(twodaysago.getDate() - 2)
+
+    const weeklydata = await AggWeek.find({
+        week: getWeekNumber(twodaysago),
+        year: getWeekYear(twodaysago)
+    }).toArray()
+
+    weeklydata.map(async(weekly) => {
+        if (weekly.userid === "64d6a5338fe6f205016bc8b1" || weekly.userid === "5d2adcf120f52b0d7d7faba0"){
+            const user = await Users.findOne({email: "daniel@lateralproducts.com"})
+            emailWeeklySummary(user, weekly)
+        }
     })
 }

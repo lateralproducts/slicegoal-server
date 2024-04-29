@@ -41,6 +41,10 @@ const rerank = fs
     .readFileSync(__dirname + '/emailtemplates/rerank.html')
     .toString()
 
+const weeklysummary = fs
+    .readFileSync(__dirname + '/emailtemplates/weeklysummary.html')
+    .toString()
+
 const lateralproducts = fs
     .readFileSync(__dirname + '/emailtemplates/lateralproducts.html')
     .toString()
@@ -268,6 +272,29 @@ export async function emailRerankNudge(user) {
     let email = Mustache.render(rerank, {
         name: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
         pathurl: APP_PATH_URL,  
+        logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL
+    })
+
+    return await sendEmail(to, subject, email)
+}
+
+export async function emailWeeklySummary(user, weekly) {
+    let to = user.email
+    let subject = 'Your weekly summary'
+    let email = Mustache.render(weeklysummary, {
+        name: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
+        logcount: weekly.logcount,
+        logtime: weekly.logtime,
+        taskcompleted: weekly.taskcompleted,
+        goalattached: weekly.goalattached,
+        taskrescheduled: weekly.taskrescheduled,
+        taskcreated: weekly.taskcreated,
+        goaltime: weekly.goaltime,
+        tasksnoozed: weekly.tasksnoozed,
+        taskpriorityremove: weekly.taskpriorityremove,
+        datetime: (new Date()).toString(),
+        pathurl: APP_PATH_URL,
         logopath: LOGO_PATH_URL,
         pixelpath: PIXEL_PATH_URL
     })

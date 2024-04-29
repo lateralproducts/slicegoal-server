@@ -469,7 +469,8 @@ export async function areaaggregate({
     WeekAggregate.updateOne(
         {
             year: weekyear,
-            week: week
+            week: week,
+            userid: getuserid(req.session)
         },
         {
             $inc: increment
