@@ -18,7 +18,7 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        savePomodoro(notes: String, taskid: String, datetime: String, minutes: Int, checked: Boolean, repeat: Boolean): Boolean!
+        savePomodoro(notes: String, taskid: String, datetime: String, minutes: Int, checked: Boolean, alreadydone: Boolean, repeat: Boolean): Boolean!
     }
 `
 
@@ -226,12 +226,12 @@ export const resolvers = {
     },
     Mutation: {
         savePomodoro: async(root, args, { req }) => {
-            
-            if(args.checked && args.taskid){ //Only mark as done if a taskid is sent. Not marking Goals as done.
+            if (args.alreadydone) args.checked = true //if labeled as "already done", then check the completed boolean
+            activityrecord({taskid: args.taskid, alreadydone: args.alreadydone, checked: args.checked, minutes: args.minutes, req: req, notes: args.notes, datetime: args.datetime ? args.datetime : null})
+            if((args.checked) && args.taskid){ //Only mark as done if a taskid is sent. Not marking Goals as done.
                 const checkresult = await checkTask(args, req)
                 if (checkresult === 0) return triggererror('Not all sub tasks marked as complete.') 
             }
-            activityrecord({taskid: args.taskid, checked: args.checked, minutes: args.minutes, req: req, notes: args.notes, datetime: args.datetime ? args.datetime : null})
 
             //copy the task as new if repeat task selected.
             if (args.repeat){ 
@@ -260,7 +260,8 @@ export async function activityrecord({
     priorityremoved, 
     priorityadded,
     snoozed, 
-    copied
+    copied,
+    alreadydone
 }) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
@@ -298,6 +299,7 @@ export async function activityrecord({
     if (priorityadded) record.priorityadded = priorityadded
     if (snoozed) record.snoozed = snoozed
     if (copied) record.copied = copied
+    if (alreadydone) record.alreadydone = alreadydone
     //if (unscheduled) record.unscheduled = unscheduled //removed
 
 
@@ -326,7 +328,7 @@ export async function activityrecord({
         pomoid, 
         req, 
         completed: checked === true ? 1 : 0, 
-        rescheduled: rescheduled ? 1 : 0, 
+        rescheduled, 
         tasklist, 
         reopened, 
         created,
@@ -335,6 +337,7 @@ export async function activityrecord({
         snoozed, 
         copied,
         goalid: record.goal, 
+        alreadydone
     })
 
 }
@@ -407,7 +410,8 @@ export async function areaaggregate({
     priorityremoved, 
     priorityadded,
     copied,
-    goalid
+    goalid,
+    alreadydone
 }) {
     //future development: check/aggregate parent tasks.
     if ((!tags && !tasklist) || !pomoid) { //must have all fields
@@ -435,6 +439,7 @@ export async function areaaggregate({
     if(priorityadded) increment.taskpriorityadded = 1
     if(copied) increment.taskcopied = 1
     if(goalid) increment.goalattached = 1
+    if(alreadydone) increment.alreadydone = 1
 
     if (areatree.length > 0){
         const Areas = db.collection('areas')
