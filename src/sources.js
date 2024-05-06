@@ -75,18 +75,21 @@ export const resolvers = {
             return await Sources.find(query).sort({accessedit: -1}).toArray()
         },
         searchSources: async function(_, {areas, search}, { req }) {
-            const db = await DbConnection.Get()
-            const Sources = db.collection('sources')
+            if(search === undefined && areas.length === 0) return []
+            else {
+                const db = await DbConnection.Get()
+                const Sources = db.collection('sources')
 
-            let query = new Object()
-            query.profileid = getprofileid(req.session)
-            if (search !== '' && search !== null) query.$or = [
-                { name: new RegExp(search, 'i') },
-                { notes: new RegExp(search, 'i') }
-            ]
-            if (areas && areas.length > 0) query.tags = {$in: [...areas.map(area => {return area._id})]}
+                let query = new Object()
+                query.profileid = getprofileid(req.session)
+                if (search !== '' && search !== null) query.$or = [
+                    { name: new RegExp(search, 'i') },
+                    { notes: new RegExp(search, 'i') }
+                ]
+                if (areas && areas.length > 0) query.tags = {$in: [...areas.map(area => {return area._id})]}
 
-            return await Sources.find(query).limit(10).sort({accessedit: -1}).toArray()
+                return await Sources.find(query).limit(10).sort({accessedit: -1}).toArray()
+            }
         },
         // all sources on an insight
         insightSources: async function(_, { insightid }, { req }) {

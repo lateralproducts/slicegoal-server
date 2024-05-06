@@ -27,6 +27,9 @@ export const schema = `
         listorder: Int
         dayorder: Int
         goalorder: Int
+        dayglow: Boolean
+        listglow: Boolean
+        goalglow: Boolean
     }
     type TaskTag {
         _id: String
@@ -78,6 +81,10 @@ export const typeDefs = `
         linkSelectedTasks(parenttaskid: String, newparenttask: String, taskids: [String!]): Boolean
         linkInsightToTask(taskid: String!, insightid: String!): Boolean
         linkSourceToTask(taskid: String!, sourceid: String!): Boolean
+        unlinkInsightToTask(taskid: String!, insightid: String!): Boolean
+        unlinkSourceToTask(taskid: String!, sourceid: String!): Boolean
+
+        unglowTask(taskid: String!, listtype: String!): Boolean
     }
 `
 
@@ -184,7 +191,6 @@ export const resolvers = {
             }
         },
         task: async(_, args, { req }) => {
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
@@ -462,14 +468,17 @@ export const resolvers = {
             
             updates.daytask = true
 
-            if (!args.goal && !args.date) updates.schedule = true
+            if (!args.goal && !args.date) {updates.schedule = true}
             else updates.schedule = false
 
             if(args.date) {updates.starttime = new Date(args.date)} //time set from client argument
             if(args.title) updates.title = args.title
             if(args.complete !== null) updates.complete = args.complete
             if(args.description !== null) updates.description = args.description
-            if(args.goal) {updates.goal = args.goal}
+            if(args.goal) {
+                updates.goal = args.goal
+                updates.goalglow = true
+            }
             else {updates.goal = null}
             if(args.tags) {updates.tags = args.tags}
             //would be better to check links before deleting and inserting. Separate into function.
@@ -505,7 +514,8 @@ export const resolvers = {
                 {_id: new ObjectId(args.taskid)},
                 {
                     $set: {
-                        schedule: true
+                        schedule: true,
+                        listglow: true
                     }, 
                     $unset: {
                         starttime: null,
@@ -538,7 +548,6 @@ export const resolvers = {
             return result.modifiedCount === 1
         },
         updateDayTaskOrder: async(parent, args, { req }) => {
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             args.tasks.map(function(_id, count) {
@@ -550,7 +559,6 @@ export const resolvers = {
             return true
         },
         updateGoalTaskOrder: async(parent, args, { req }) => {
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             args.tasks.map(function(_id, count) {
@@ -562,7 +570,6 @@ export const resolvers = {
             return true
         },
         updateTaskListOrder: async(parent, args, { req }) => {
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             args.tasks.map(function(_id, count) {
@@ -584,7 +591,6 @@ export const resolvers = {
             return true
         },
         scheduleTask: async(_, args, { req }) => {
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             var updates = new Object()
@@ -598,7 +604,8 @@ export const resolvers = {
                 activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req, rescheduled: true})
                 updates.$set = {
                     starttime: date,
-                    daytask: true
+                    daytask: true,
+                    dayglow: true
                 }
                 updates.$unset = {
                     schedule: null,
@@ -613,7 +620,8 @@ export const resolvers = {
                     dayorder: null
                 }
                 updates.$set = {
-                    schedule: true
+                    schedule: true,
+                    listglow: true
                 }
             }
 
@@ -624,7 +632,6 @@ export const resolvers = {
             return result.modifiedCount === 1   
         },
         scheduleTasks: async(_, {date, taskids}, { req }) => {
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             var updates = new Object()
@@ -634,7 +641,8 @@ export const resolvers = {
                 //activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req})
                 updates.$set = {
                     starttime: newdate, //new Date(date)
-                    daytask: true
+                    daytask: true,
+                    dayglow: true
                 }
                 updates.$inc = {rescheduled: 1}
                 updates.$unset = {
@@ -667,13 +675,12 @@ export const resolvers = {
             return true 
         },
         unlistTasks: async(_, {taskids}, { req }) => {
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             var updates = new Object()
 
             updates.$unset = { schedule: null, starttime: null }
-            updates.$inc = { rescheduled: 1}
+            updates.$inc = { rescheduled: 1 }
 
             taskids.map(function(taskid) {
                 activityrecord({taskid: taskid, notes: 'Unlisted.', req: req, priorityremoved: true})
@@ -686,13 +693,11 @@ export const resolvers = {
             return true
         },
         checkTask: async(_, args, { req }) => {
-            
             const response = await checkTask(args, req)
             if (response === 0) return triggererror('Not all subtasks are marked as completed.')
             else return response
         },
         removeTaskGoal: async(_, args, { req }) => {
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
@@ -703,31 +708,28 @@ export const resolvers = {
             return result.modifiedCount === 1
         },
         setTaskGoal: async(_, {taskid,goalid}, {req}) => {
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
             const result = await Tasks.updateOne(
                 {_id: new ObjectId(taskid)},
-                {$set: {goal: goalid}}
+                {$set: {goal: goalid, goalglow: true}}
             )
             return result.modifiedCount === 1
         },
         setSelectedTasksGoal: async(_, {goalid, taskids}, {req}) => {
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
 
             taskids.map(function(subtaskid) {
                 Tasks.updateOne(
                     {_id: new ObjectId(subtaskid)},
-                    {$set: {goal: goalid}}
+                    {$set: {goal: goalid, goalglow: true}}
                 )
             })
             return 1
         },
         newSubTask: async(_, {taskid,task}, {req}) => {
-
             const db = await DbConnection.Get()
             const subtaskid = await createNewTask({title: task, profileid: getprofileid(req.session), type: 'subtask'})
             activityrecord({taskid: subtaskid, notes: 'Task created.', req: req, created: true})
@@ -778,13 +780,21 @@ export const resolvers = {
             console.log(result)
             return true
         }, */
+
         linkInsightToTask: async(_, {taskid,insightid}, {req}) => {
-            
             return await linkInsightTask(taskid, insightid)
         },
+
         linkSourceToTask: async(_, {taskid,sourceid}, {req}) => {
-            
             return await linkSourceTask(taskid, sourceid)
+        },
+
+        unlinkInsightToTask: async(_, {taskid,insightid}, {req}) => {
+            return await unlinkInsightTask(taskid, insightid)
+        },
+
+        unlinkSourceToTask: async(_, {taskid,sourceid}, {req}) => {
+            return await unlinkSourceTask(taskid, sourceid)
         },
         snoozeTask: async(root, {taskid, snooze}, { req }) => {
             const db = await DbConnection.Get()
@@ -801,6 +811,19 @@ export const resolvers = {
             activityrecord({taskid: taskid, req: req, notes: 'Task snoozed to ' + date2str(snoozedatetime,'MM-dd-yyyy hh:mm'), snoozed: true})
             return true
         },
+        unglowTask: async(root, {taskid, listtype}, { req }) => {
+            const db = await DbConnection.Get()
+            const Tasks = db.collection('tasks')
+            let update = new Object()
+            if(listtype === 'day') update.dayglow = null
+            if(listtype === 'goal') update.goalglow = null
+            if(listtype === 'priority') update.listglow = null
+            await Tasks.updateOne(
+                { _id: new ObjectId(taskid), profile: getprofileid(req.session) },
+                { $unset: update}
+            )
+            return true
+        },
     }
 }
 
@@ -811,7 +834,7 @@ export async function linkInsightTask(taskid, insightid){
         {_id: new ObjectId(taskid)},
         {$push: {insights: insightid}}
     )
-    return true
+    return result.modifiedCount === 1
 }
 
 export async function linkSourceTask(taskid, sourceid){
@@ -820,6 +843,26 @@ export async function linkSourceTask(taskid, sourceid){
     const result = await Tasks.updateOne(
         {_id: new ObjectId(taskid)},
         {$push: {sources: sourceid}}
+    )
+    return result.modifiedCount === 1
+}
+
+export async function unlinkInsightTask(taskid, insightid){
+    const db = await DbConnection.Get()
+    const Tasks = db.collection('tasks')
+    const result = await Tasks.updateOne(
+        {_id: new ObjectId(taskid)},
+        {$pull: {insights: insightid}}
+    )
+    return result.modifiedCount === 1
+}
+
+export async function unlinkSourceTask(taskid, sourceid){
+    const db = await DbConnection.Get()
+    const Tasks = db.collection('tasks')
+    const result = await Tasks.updateOne(
+        {_id: new ObjectId(taskid)},
+        {$pull: {sources: sourceid}}
     )
     return result.modifiedCount === 1
 }

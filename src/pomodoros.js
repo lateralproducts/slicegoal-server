@@ -15,6 +15,7 @@ export const typeDefs = `
         goalpomodoros(goalId: String): [Pomodoro]
         taskpomodoros(taskId: String): [Pomodoro]
         daypomodoros(date: String): [Pomodoro]
+        weeklystats(week: Int, year: Int): Aggregates
     }
 
     extend type Mutation {
@@ -34,6 +35,23 @@ export const schema = `
         minutes: Int
         date: String
         checked: Boolean
+    }
+
+    type Aggregates {
+        _id: String
+        year: String
+        week: String
+        logtime: Int
+        goaltime: Int
+        goalattached: Int
+        logcount: Int
+        taskcreated: Int
+        alreadydone: Int
+        taskcopied: Int
+        taskcompleted: Int
+        taskreopened: Int
+        tasksnoozed: Int
+        taskpriorityadded: Int
     }
 
     type PomodoroData {
@@ -215,6 +233,18 @@ export const resolvers = {
                 result = doc
             })
             return result
+        },
+        weeklystats: async(_, { year, week }, { req }) => {
+            const db = await DbConnection.Get()
+            const AggWeek = db.collection('aggweek')
+            let today = new Date()
+        
+            const weeklydata = await AggWeek.findOne({
+                week: week ? week : getWeekNumber(today),
+                year: year ? year : getWeekYear(today),
+                userid: getuserid(req.session)
+            })
+            return weeklydata
         }
     },
     Pomodoro: {

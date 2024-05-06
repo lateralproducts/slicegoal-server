@@ -284,6 +284,7 @@ export async function emailWeeklySummary(user, weekly) {
     let subject = 'Your weekly summary'
     let email = Mustache.render(weeklysummary, {
         name: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
+        weeknumber: weekly.week,
         logcount: weekly.logcount,
         logtime: weekly.logtime,
         taskcompleted: weekly.taskcompleted,
