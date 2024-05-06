@@ -6,6 +6,7 @@ import { getprofileid, getuserid } from './users'
 import { createUserConnection } from './community'
 import { newIx } from './interactions'
 import { shareSourceEmail } from './emails'
+import { linkSourceTask } from './tasks';
 
 export const typeDefs = `
 
@@ -19,7 +20,7 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        createSource(name: String!, url: String, type: String, notes: String, tags: [String]): Source
+        createSource(name: String!, url: String, type: String, notes: String, tags: [String], linktotask: String): Source
         editSource(sourceid: String!, name: String, url: String, type: String, notes: String, tags: [String]) : Boolean
         deleteSource(sourceid: String!): Boolean
         shareSource(sourceid: String!, targetUser: String!, shareNote: String): ShareResponse
@@ -166,7 +167,6 @@ export const resolvers = {
     },
     Mutation: {
         createSource: async function(_, args, { req }) {
-            
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
 
@@ -183,6 +183,7 @@ export const resolvers = {
                 }
             )
             .then(source => {
+                if(args.linktotask) linkSourceTask(args.linktotask, source.insertedId)
                 return {
                     _id: source.insertedId,
                     name: args.name
