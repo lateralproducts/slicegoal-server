@@ -959,14 +959,22 @@ async function createNewTask({title, description, goal, complete, date, starttim
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
 
-    var task = new Object({title: title, description: description, goal: goal, complete: complete, tags: tags })
+    var task = new Object({title: title, description: description, complete: complete, tags: tags })
     task.starttime = starttime ? new Date(starttime) : (date ? new Date(date) : null) //time set from client argument
     task.created = new Date()
 
-    if (!goal && (!starttime || !date)) task.schedule = true
-    else task.schedule = false
+    if (!goal && (!starttime || !date)) {
+        task.schedule = true
+        task.listglow = true
+    } else task.schedule = false
+
+    if (goal) {
+        task.goal = goal
+        task.goalglow = true
+    }
     
     task.daytask = true
+    task.dayglow = true
     task.profile = profileid
     task.type = type
 
