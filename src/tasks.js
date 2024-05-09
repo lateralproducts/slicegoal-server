@@ -963,7 +963,7 @@ async function createNewTask({title, description, goal, complete, date, starttim
     task.starttime = starttime ? new Date(starttime) : (date ? new Date(date) : null) //time set from client argument
     task.created = new Date()
 
-    if (!goal && (!starttime || !date)) {
+    if (!goal && !starttime && !date) {
         task.schedule = true
         task.listglow = true
     } else task.schedule = false
