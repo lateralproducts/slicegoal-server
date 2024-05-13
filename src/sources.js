@@ -17,6 +17,7 @@ export const typeDefs = `
         templateSources(templateid: String!): [Source]
         sourceInsights(sourceid: String!): [SourceInsight]
         searchSources(search: String, areas: [AreaId]): [Source]
+        source(sourceid: String!): Source
     }
 
     extend type Mutation {
@@ -74,6 +75,15 @@ export const resolvers = {
             query.profileid = getprofileid(req.session)
             if (tags) query.tags = {$in: tags}
             return await Sources.find(query).sort({accessedit: -1}).toArray()
+        },
+        source: async function(_, {sourceid}, { req }) {
+            const db = await DbConnection.Get()
+            const Sources = db.collection('sources')
+
+            let query = new Object()
+            query.profileid = getprofileid(req.session)
+            query._id = new ObjectId(sourceid)
+            return await Sources.findOne(query)
         },
         searchSources: async function(_, {areas, search}, { req }) {
             if(search === undefined && areas.length === 0) return []
