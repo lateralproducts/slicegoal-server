@@ -13,12 +13,11 @@ const redis_db = `${process.env.REDIS_DB}`
 
 // Initialize client.
 let redisClient = createClient({
-    host: redis_db,
-    port: 6379,
-    tls: { // Enable TLS/SSL
-        checkServerIdentity: (host, cert) => { return undefined; }, // Optional: Bypass certificate validation (not recommended for production)
+    url: 'redis://' + redis_db + ':6379', //not using authentication as AWS manages authentication between devices with VPC.
+    socket: {
+        tls: true,  // Enable TLS/SSL
+        rejectUnauthorized: false // Optional: Bypass certificate validation (not recommended for production)
     }
-    //not using authentication as AWS manages authentication between devices with VPC.
 })
 redisClient.connect().catch(console.error)
 
