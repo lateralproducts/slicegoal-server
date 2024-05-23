@@ -7,15 +7,16 @@ import { applyMiddleware } from 'graphql-middleware'
 import RedisStore from "connect-redis"
 import {createClient} from "redis"
 
-process.env.TZ = 'UTC'
+process.env.TZ = 'UTC' //set server timezone to UTC
 
 const redis_db = `${process.env.REDIS_DB}`
+
 
 // Initialize client.
 let redisClient = createClient({
     url: 'redis://' + redis_db + ':6379', //not using authentication as AWS manages authentication between devices with VPC.
     socket: {
-        tls: true,  // Enable TLS/SSL
+        tls: redis_db === 'localhost' ? false : true,  // Enable TLS/SSL if any URL except localhost (dev)
         rejectUnauthorized: false // Optional: Bypass certificate validation (not recommended for production)
     }
 })
@@ -103,7 +104,7 @@ const context = req => ({
 })
 
 // server
-const schema = makeExecutableSchema({
+export const schema = makeExecutableSchema({
     typeDefs: [
         Queries,
         Mutations,
@@ -121,6 +122,7 @@ const schema = makeExecutableSchema({
         recapSchema,
         fileserverSchema,
         chatSchema,
+
         paymentQueryMutation,
         userQueryMutation,
         insightQueryMutation,
@@ -159,7 +161,7 @@ const schema = makeExecutableSchema({
     )
 })
 
-const schemaWithMiddleware = applyMiddleware(schema, authMiddleWare);
+export const schemaWithMiddleware = applyMiddleware(schema, authMiddleWare);
 
 const graphQLServer = createServer({
     schema: schemaWithMiddleware,
