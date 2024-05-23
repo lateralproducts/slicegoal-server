@@ -4,13 +4,26 @@ import { schema } from '../src/graphqlserver';
 import { graphql } from 'graphql';
 import DbConnection from '../src/database';
 
-
 jest.mock('../src/database', () => ({
     Get: jest.fn(),
 }));
 
 jest.mock('node-schedule', () => ({
     scheduleJob: jest.fn(),
+}));
+
+jest.mock('connect-redis', () => {
+    return function() {
+      return function RedisStore() {
+        // Add any methods you need to mock here.
+      };
+    };
+  });
+
+jest.mock('redis', () => ({
+    createClient: () => ({
+        connect: jest.fn().mockResolvedValue(),
+    }),
 }));
 
 describe('GraphQL Endpoint', () => {
