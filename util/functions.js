@@ -92,12 +92,13 @@ export const shiftTZ = ({datetime, timezoneOffset}) => {
     return newDate;
   }
 
-export const getWeekNumber = function (datetime) {
+  export const getWeekNumber = function (datetime) {
     //start of the week is Monday.
     var d = new Date(Date.UTC(datetime.getFullYear(), datetime.getMonth(), datetime.getDate()));
-    d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+    var day = d.getUTCDay();
+    d.setUTCDate(d.getUTCDate() + (day === 0 ? -6 : 1 - day)); // if day is 0 (Sunday), set it as 7
     var yearStart = new Date(Date.UTC(d.getFullYear(), 0, 1));
-    return Math.ceil((((d - yearStart) / 86400000) -1) / 7);
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 };
 
 export const getWeekYear = function (datetime) {
@@ -105,3 +106,73 @@ export const getWeekYear = function (datetime) {
     d.setUTCDate(d.getUTCDate() - d.getUTCDay());
     return d.getFullYear();
 };
+
+export const getStartDateFromWeek = function(week, year) {
+    var d = new Date(Date.UTC(year, 0, 1));
+    var dayNum = d.getUTCDay();
+    var requiredDate = --week * 7;
+    if (dayNum !== 1) {
+        requiredDate += dayNum > 1 ? 8 - dayNum : 1;
+    }
+    d.setUTCDate(requiredDate);
+    // Set the start date to the nearest Monday
+    while (d.getUTCDay() !== 1) {
+        d.setUTCDate(d.getUTCDate() + 1);
+    }
+    return d;
+};
+
+export const getEndDateFromWeek = function(week, year) {
+    var d = getStartDateFromWeek(week, year);
+    d.setUTCDate(d.getUTCDate() + 6);
+    // Set the end date to the nearest Sunday
+    while (d.getUTCDay() !== 0) {
+        d.setUTCDate(d.getUTCDate() + 1);
+    }
+    return d;
+};
+
+export const longdatestring = date => {
+    if (date) {
+        return getweekday(date.getDay()) + ', ' + date.getDate() + ' ' + months[(date.getMonth())] + ' ' + date.getFullYear()
+    } else {
+        return ''
+    }
+}
+
+export const getweekday = day => {
+    switch (day) {
+        case 0:
+            return 'Sunday'
+        case 1:
+            return 'Monday'
+        case 2:
+            return 'Tuesday'
+        case 3:
+            return 'Wednesday'
+        case 4:
+            return 'Thursday'
+        case 5:
+            return 'Friday'
+        case 6:
+            return 'Saturday'
+        default:
+            return ''
+    }
+}
+
+//return the month as name
+const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
+]
