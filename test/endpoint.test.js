@@ -1,4 +1,3 @@
-//import { createServer } from '@graphql-yoga/common';
 import { ObjectId } from 'mongodb';
 import { schema } from '../src/graphqlserver';
 import { graphql } from 'graphql';
@@ -14,21 +13,19 @@ jest.mock('node-schedule', () => ({
 
 jest.mock('connect-redis', () => {
     return function() {
-      return function RedisStore() {
+        return function RedisStore() { };
         // Add any methods you need to mock here.
-      };
     };
-  });
+});
 
 jest.mock('redis', () => ({
     createClient: () => ({
-        connect: jest.fn().mockResolvedValue(),
-    }),
+        connect: jest.fn().mockResolvedValue()
+    })
 }));
 
 describe('GraphQL Endpoint', () => {
     it('should return "Hello, world!" for the "hello" query', async () => {
-        
         const mockinsights = [
             {
               _id: new ObjectId("66404e584f98d3b674fd46e1"),
@@ -59,7 +56,7 @@ describe('GraphQL Endpoint', () => {
                 lastedited: '2024-05-12T23:16:14.079Z',
                 profileid: '64d6a53c8fe6f205016bc8b6',
                 file: null
-              }
+            }
         ]
 
         const insightListMock = jest.fn().mockResolvedValueOnce(mockinsights);
@@ -77,7 +74,6 @@ describe('GraphQL Endpoint', () => {
         `;
 
         const response = await graphql(schema, query, null, { req: {session: {profile: {_id: '37123123123123'}}}});
-        console.log(response.data.insightList)
         expect(response.data.insightList).toEqual([{_id: "66404e584f98d3b674fd46e1"}, {_id: "66404e584f98d3b674fd46e3"}]);
     });
 });

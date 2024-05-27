@@ -96,6 +96,7 @@ import './schedules'
 let pjson = require('../package.json')
 console.log('server version: ' + pjson.version)
 console.log('environment: ' + process.env.NODE_ENV)
+console.log(new Date())
 
 // context
 const context = req => ({

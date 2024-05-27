@@ -1,9 +1,8 @@
 import { ObjectId } from 'mongodb' 
-import { triggererror } from './graphqlserver';
 import DbConnection from './database'
 import { emailGoalNudge, emailRerankNudge, emailFunnel, reSendEmail, emailMessageNudge, emailWeeklySummary } from './emails'
-import { createreport } from './reporting'
-import { date2str, getWeekNumber, getWeekYear } from '../util/functions'
+import { createreport, weeklysummaryemail } from './reporting'
+import { date2str } from '../util/functions'
 import { getunreadmessageusers } from './chat'
 
 let schedule = require('node-schedule')
@@ -124,29 +123,5 @@ async function ranknudge() {
 
     sendtousers.map(async(user) => {
         emailRerankNudge(user)
-    })
-}
-
-async function weeklysummaryemail() {
-    const db = await DbConnection.Get()
-    //const Profiles = db.collection('profiles')
-    //const RankTimes = db.collection('ranktimes')
-    const Users = db.collection('users')
-    const AggWeek = db.collection('aggweek')
-
-    //get last week's date
-    let twodaysago = new Date()
-    twodaysago.setDate(twodaysago.getDate() - 2)
-
-    const weeklydata = await AggWeek.find({
-        week: getWeekNumber(twodaysago),
-        year: getWeekYear(twodaysago)
-    }).toArray()
-
-    weeklydata.map(async(weekly) => {
-        if (weekly.userid === "64d6a5338fe6f205016bc8b1" || weekly.userid === "5d2adcf120f52b0d7d7faba0"){
-            const user = await Users.findOne({email: "daniel@lateralproducts.com"})
-            emailWeeklySummary(user, weekly)
-        }
     })
 }

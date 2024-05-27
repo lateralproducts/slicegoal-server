@@ -4,7 +4,7 @@ const nodemailer = require('nodemailer')
 
 import DbConnection from './database'
 import { newIx } from './interactions'
-import { date2str } from '../util/functions'
+import { date2str, longdatestring } from '../util/functions'
 import { sendSESEmail } from './awsemail';
 //not 100% sure why it works loading in emails.js for environment variables.
 //environment variables not accessible here when it's loaded in start.js, but loaded here, they're available in start.js.
@@ -279,21 +279,14 @@ export async function emailRerankNudge(user) {
     return await sendEmail(to, subject, email)
 }
 
-export async function emailWeeklySummary(user, weekly) {
+export async function emailWeeklySummary(user, weekdatacomparison, weekdata) {
     let to = user.email
-    let subject = 'Your weekly summary'
+    let subject = 'Your weekly summary - Week ' + weekdata.week + ' ending ' + longdatestring(weekdata.endday)
     let email = Mustache.render(weeklysummary, {
         name: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
-        weeknumber: weekly.week,
-        logcount: weekly.logcount,
-        logtime: weekly.logtime,
-        taskcompleted: weekly.taskcompleted,
-        goalattached: weekly.goalattached,
-        taskrescheduled: weekly.taskrescheduled,
-        taskcreated: weekly.taskcreated,
-        goaltime: weekly.goaltime,
-        tasksnoozed: weekly.tasksnoozed,
-        taskpriorityremove: weekly.taskpriorityremove,
+        weekdata: weekdata,
+        enddate: longdatestring(weekdata.endday),
+        weekcomparison: weekdatacomparison,
         datetime: (new Date()).toString(),
         pathurl: APP_PATH_URL,
         logopath: LOGO_PATH_URL,

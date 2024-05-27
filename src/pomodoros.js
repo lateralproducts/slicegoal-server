@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb' 
 import { getprofileid, getuserid } from './users'
 import DbConnection from './database'
-import { dayofyear, getWeekNumber, getWeekYear} from '../util/functions'
+import { dayofyear, getEndDateFromWeek, getStartDateFromWeek, getWeekNumber, getWeekYear} from '../util/functions'
 import { checkTask, createRepeatTask } from './tasks'
 import { triggererror } from './graphqlserver';
 import { getareatree } from './areas'
@@ -41,6 +41,8 @@ export const schema = `
         _id: String
         year: String
         week: String
+        startday: String
+        endday: String 
         logtime: Int
         goaltime: Int
         goalattached: Int
@@ -52,6 +54,7 @@ export const schema = `
         taskreopened: Int
         tasksnoozed: Int
         taskpriorityadded: Int
+        messagetotal: Int
     }
 
     type PomodoroData {
@@ -238,12 +241,23 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const AggWeek = db.collection('aggweek')
             let today = new Date()
+
+            week = week ? week : getWeekNumber(today) //if no year and week supplied, use today's date as reference.
+            year = year ? year : getWeekYear(today)
         
-            const weeklydata = await AggWeek.findOne({
-                week: week ? week : getWeekNumber(today),
-                year: year ? year : getWeekYear(today),
+            let weeklydata = new Object()           
+            weeklydata = (await AggWeek.findOne({
+                week: week,
+                year: year,
                 userid: getuserid(req.session)
-            })
+            })) || {
+                year: year,   
+                week: week
+            }
+
+            weeklydata.startday = getStartDateFromWeek(week, year)
+            weeklydata.endday = getEndDateFromWeek(week, year)
+
             return weeklydata
         }
     },
@@ -461,7 +475,10 @@ export async function areaaggregate({
         if(goalid) increment.goaltime = minutes
     }
     if(created) increment.taskcreated = 1
-    if(completed) increment.taskcompleted = 1
+    if(completed) {
+        increment.taskcompleted = 1
+        if(goalid) increment.taskcompletedgoal = 1
+    }
     if(rescheduled) increment.taskrescheduled = 1
     if(snoozed) increment.tasksnoozed = 1
     if(reopened) increment.taskreopened = 1

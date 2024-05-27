@@ -1,17 +1,53 @@
 <head>
-    <style>a {cursor: help;}</style>
+    <style>
+        a {cursor: help;}
+        .negative {
+            color: red !important;
+            padding-left: 5px;
+        }
+        .positive {
+            color: green;
+            padding-left: 5px;
+        }
+        .flex {
+            display: flex;
+        }
+    </style>
 </head> 
 <br/>
-<div><b>Weekly Summary</b></div>
-<div>Week {{weeknumber}}</div>
+<div><b>Week {{weekdata.week}} Summary</b></div>
+<div>{{enddate}}</div>
 <br/>
-<div>{{taskcompleted}} tasks completed</div>
-<div>{{taskcreated}} new tasks created</div>
-<div>{{taskrescheduled}} task reschedules</div>
-<div>{{tasksnoozed}} task snoozes</div>
+<div class="flex">
+    <div>{{weekcomparison.taskcompleted.value}} tasks completed</div> 
+    <div class="positive {{#weekcomparison.taskcompleted.isNegative}}negative{{/weekcomparison.taskcompleted.isNegative}}">{{weekcomparison.taskcompleted.delta}}</div>
+</div>
+<div class="flex">
+    <div>{{weekcomparison.taskcompletedgoal.value}} tasks completed with goal</div> 
+    <div class="positive {{#weekcomparison.taskcompletedgoal.isNegative}}negative{{/weekcomparison.taskcompletedgoal.isNegative}}">{{weekcomparison.taskcompletedgoal.delta}}</div>
+</div>
 <br/>
-<div>{{logtime}} minutes logged</div>
-<div>{{goaltime}} minutes linked to a goal</div>
+<div class="flex">
+    <div>{{weekcomparison.logtime.value}} minutes logged </div>
+    <div class="positive {{#weekcomparison.logtime.isNegative}}negative{{/weekcomparison.logtime.isNegative}}"> {{weekcomparison.logtime.delta}}</div>
+</div>
+<div class="flex">
+    <div>{{weekcomparison.goaltime.value}} minutes linked to a goal</div> 
+    <div class="positive {{#weekcomparison.goaltime.isNegative}}negative{{/weekcomparison.goaltime.isNegative}}">{{weekcomparison.goaltime.delta}}</div>
+</div>
+<br/>
+<div class="flex">
+    <div>{{weekcomparison.taskcreated.value}} new tasks created</div> 
+    <div class="positive {{#weekcomparison.taskcreated.isNegative}}negative{{/weekcomparison.taskcreated.isNegative}}">{{weekcomparison.taskcreated.delta}}</div>
+</div>
+<div class="flex">
+    <div>{{weekcomparison.taskrescheduled.value}} tasks rescheduled</div> 
+    <div class="positive {{#weekcomparison.taskrescheduled.isNegative}}negative{{/weekcomparison.taskrescheduled.isNegative}}">{{weekcomparison.taskrescheduled.delta}}</div>
+</div>
+<div class="flex">
+    <div>{{weekcomparison.tasksnoozed.value}} tasks snoozed</div> 
+    <div class="positive {{#weekcomparison.tasksnoozed.isNegative}}negative{{/weekcomparison.tasksnoozed.isNegative}}">{{weekcomparison.tasksnoozed.delta}}</div>
+</div>
 <br/>
 <a>
     <img width='100' src='{{logopath}}'/>
