@@ -16,7 +16,7 @@ const redis_db = `${process.env.REDIS_DB}`
 let redisClient = createClient({
     url: 'redis://' + redis_db + ':6379', //not using authentication as AWS manages authentication between devices with VPC.
     socket: {
-        tls: redis_db === 'localhost' ? false : true,  // Enable TLS/SSL if any URL except localhost (dev)
+        tls: false,  // Enable TLS/SSL if any URL except localhost (dev)
         rejectUnauthorized: false // Optional: Bypass certificate validation (not recommended for production)
     }
 })
