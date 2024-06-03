@@ -771,12 +771,8 @@ export function getname(firstname, lastname, email) {
 }
 
 export function getprofileid(session) {
-    if (session.profile) { return session.profile._id.toString() }
-    else {
-        setLastAccessedView(req)
-        if (session.profile) return session.profile._id.toString()
-        return null
-    }
+    if (session.profile) return session.profile._id.toString() 
+    else return null
 }
 
 export function getuserid(session) {
@@ -786,11 +782,7 @@ export function getuserid(session) {
 
 export function getwheelid(session) {
     if (session.view) { return session.view.wheel }
-    else {
-        setLastAccessedView(req)
-        if (session.view) return session.view.wheel
-        return null
-    }
+    else return null
 }
 
 export const getipaddress = request => {
