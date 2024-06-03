@@ -472,7 +472,10 @@ export async function areaaggregate({
     if(minutes) {
         increment.logtime = minutes
         increment.logcount = 1 //only count if there is a pomodoro with minutes
-        if(goalid) increment.goaltime = minutes
+        if(goalid) {
+            increment.goaltime = minutes
+            increment.goalattached = 1
+        }
     }
     if(created) increment.taskcreated = 1
     if(completed) {
@@ -485,7 +488,6 @@ export async function areaaggregate({
     if(priorityremoved) increment.taskpriorityremove = 1 
     if(priorityadded) increment.taskpriorityadded = 1
     if(copied) increment.taskcopied = 1
-    if(goalid) increment.goalattached = 1
     if(alreadydone) increment.alreadydone = 1
 
     if (areatree.length > 0){
