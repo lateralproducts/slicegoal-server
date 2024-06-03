@@ -583,37 +583,8 @@ export const resolvers = {
     },
     Mutation: {
         setView: async(_, { viewid }, { req }) => {
-            
-            const db = await DbConnection.Get()
-            const Views = db.collection('views')
-            const Users = db.collection('users')
-            const Profiles = db.collection('profiles')
-
-            const user = await Users.findOne({_id: new ObjectId(req.session.user._id)})
-
-            //set wheel, view, and profile to the context.
-            let query = new Object()
-            query._id = new ObjectId(viewid)
-            query.user = getuserid(req.session)
-            const view = await Views.findOne(query)
-            if(view.type === "shared" && user.activeofferid !== 2){
-                //block access if not upgraded.
-                return triggererror('Plan needs to be upgraded to access wheel.')
-            }else{
-                let query = new Object()
-                query.wheel = view.wheel
-                if (view.type === 'shared')
-                    query.$or = [{ user: getuserid(req.session) }, { type: 'shared' }] //access allowed to all profiles for coach.
-
-                const profile = await Profiles.findOne(query)
-
-                if (!profile) return triggererror('View Profile combination not found')
-
-                req.session.view = view
-                req.session.profile = profile
-
-                return view //need to return the view, area.
-            }
+            if (viewid) return await setView(viewid, req)
+            else return setLastAccessedView(req)
         },
         deleteView: async(_, { viewid }, { req }) => {
             
@@ -1255,4 +1226,72 @@ export async function getareatree({tags, req, tasklist}) {
     }
 
     return areatree
+}
+
+export async function setView(viewid, req) {
+    const db = await DbConnection.Get()
+    const Views = db.collection('views')
+    const Users = db.collection('users')
+    const Profiles = db.collection('profiles')
+
+    const user = await Users.findOne({ _id: new ObjectId(req.session.user._id) })
+
+    //set wheel, view, and profile to the context.
+    let query = new Object()
+    query._id = new ObjectId(viewid)
+    query.user = getuserid(req.session)
+    const view = await Views.findOne(query)
+    if (!view) return triggererror('View not found')
+
+    if (view.type === "shared" && user.activeofferid !== 2) {
+        //block access if not upgraded.
+        return triggererror('Plan needs to be upgraded to access wheel.')
+    } else {
+        let query = new Object()
+        query.wheel = view.wheel
+        if (view.type === 'shared')
+            query.$or = [{ user: getuserid(req.session) }, { type: 'shared' }] //access allowed to all profiles for coach.
+
+        const profile = await Profiles.findOne(query)
+
+        if (!profile) return triggererror('View Profile combination not found')
+
+        req.session.view = view
+        req.session.profile = profile
+
+        // Update the lastaccessed field of the selected view
+        await Views.updateOne({ _id: new ObjectId(viewid) }, { $set: { lastaccessed: new Date() } })
+
+        return view //need to return the view, area.
+    }
+}
+
+export async function setLastAccessedView(req) {
+    const db = await DbConnection.Get()
+    const Views = db.collection('views')
+
+    const view = await Views.findOne({}, { sort: { lastaccessed: -1 } })
+    if (!view) return triggererror('View not found')
+
+    if (view.type === "shared" && user.activeofferid !== 2) {
+        //block access if not upgraded.
+        return triggererror('Plan needs to be upgraded to access wheel.')
+    } else {
+        let query = new Object()
+        query.wheel = view.wheel
+        if (view.type === 'shared')
+            query.$or = [{ user: getuserid(req.session) }, { type: 'shared' }] //access allowed to all profiles for coach.
+
+        const profile = await Profiles.findOne(query)
+
+        if (!profile) return triggererror('View Profile combination not found')
+
+        req.session.view = view
+        req.session.profile = profile
+
+        // Update the lastaccessed field of the selected view
+        await Views.updateOne({ _id: new ObjectId(viewid) }, { $set: { lastaccessed: new Date() } })
+
+        return view //need to return the view, area.
+    }
 }

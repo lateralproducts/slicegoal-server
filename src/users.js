@@ -13,6 +13,7 @@ import { sessiontrack } from './website'
 
 let pjson = require('../package.json')
 import DbConnection from './database'
+import { setLastAccessedView } from './areas';
 
 //import { verifier } from "google-id-token-verifier";
 const { OAuth2Client } = require('google-auth-library')
@@ -770,8 +771,12 @@ export function getname(firstname, lastname, email) {
 }
 
 export function getprofileid(session) {
-    if (session.profile) return session.profile._id.toString()
-    else return null
+    if (session.profile) { return session.profile._id.toString() }
+    else {
+        setLastAccessedView(req)
+        if (session.profile) return session.profile._id.toString()
+        return null
+    }
 }
 
 export function getuserid(session) {
@@ -780,8 +785,12 @@ export function getuserid(session) {
 }
 
 export function getwheelid(session) {
-    if (session.view) return session.view.wheel
-    else return null
+    if (session.view) { return session.view.wheel }
+    else {
+        setLastAccessedView(req)
+        if (session.view) return session.view.wheel
+        return null
+    }
 }
 
 export const getipaddress = request => {
@@ -807,7 +816,7 @@ async function login(user, args, req) {
     query.user = getuserid(req.session)
     if(args.setView) query._id = new ObjectId(args.setView)
     if(user.activeofferid !== 2) query.type = 'owner'
-    view = await Views.findOne(query)
+    view = await Views.findOne({}, { sort: { lastaccessed: -1 } })
 
     if (view) {
         req.session.view = view
