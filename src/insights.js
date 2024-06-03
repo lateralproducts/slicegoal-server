@@ -627,11 +627,10 @@ export const resolvers = {
             return res.insertedIds[1] ? true : false
         }, */
         createInsight: async(_, args, { req }) => {
-            
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
-            args.datecreated = new Date(args.datetime) //time set from client argument
-            args.lastedited = new Date(args.datetime) //time set from client argument
+            args.datecreated = args.datetime ? new Date(args.datetime) : new Date() //time set from client argument
+            args.lastedited = args.datetime ? new Date(args.datetime) : new Date() //time set from client argument
 
             return await createinsight(args, req)
                 .then(insertedId => {
