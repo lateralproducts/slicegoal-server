@@ -48,6 +48,7 @@ export const schema = `
         goalattached: Int
         logcount: Int
         taskcreated: Int
+        taskrescheduled: Int
         alreadydone: Int
         taskcopied: Int
         taskcompleted: Int
@@ -297,7 +298,7 @@ export async function activityrecord({
     req, 
     datetime, 
     checked,
-    rescheduled, 
+    reschedule, 
     //unscheduled, //this is the same behaviour as adding to priority list
     reopened, 
     created, 
@@ -336,7 +337,7 @@ export async function activityrecord({
 
     if (minutes) record.minutes = minutes
     if (checked) record.checked = checked
-    if (rescheduled) record.rescheduled = rescheduled
+    if (reschedule) record.rescheduled = reschedule
     if (reopened) record.reopened = reopened
     if (created) record.created = created
     if (priorityremoved) record.priorityremoved = priorityremoved
@@ -372,7 +373,7 @@ export async function activityrecord({
         pomoid, 
         req, 
         completed: checked === true ? 1 : 0, 
-        rescheduled, 
+        reschedule, 
         tasklist, 
         reopened, 
         created,
@@ -445,7 +446,7 @@ export async function areaaggregate({
     minutes = 0, 
     created, 
     completed, 
-    rescheduled, 
+    reschedule, 
     snoozed, 
     pomoid, 
     req, 
@@ -482,7 +483,7 @@ export async function areaaggregate({
         increment.taskcompleted = 1
         if(goalid) increment.taskcompletedgoal = 1
     }
-    if(rescheduled) increment.taskrescheduled = 1
+    if(reschedule) increment.taskrescheduled = 1
     if(snoozed) increment.tasksnoozed = 1
     if(reopened) increment.taskreopened = 1
     if(priorityremoved) increment.taskpriorityremove = 1 

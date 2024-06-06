@@ -10,6 +10,7 @@ import { attachSources } from './sources'
 import { newIx } from './interactions'
 import { shareInsightEmail } from './emails'
 import { linkInsightTask } from './tasks'
+import { getfileid } from './fileserver';
 
 export const typeDefs = `
 
@@ -49,6 +50,7 @@ export const schema = `
         sharedfrom: String
         datetimeshared: String
         file: String
+        filedetails: FilePreview
     }
     type SharedInsightList {
         numberOfInsights: Int
@@ -316,6 +318,9 @@ export const resolvers = {
                 profileid: getprofileid(req.session)
             })
             return spaced
+        },
+        filedetails: async(parent, __, { req }) => {
+            return parent.file ? await getfileid(req, parent.file) : null //if there is a file, get the file url.
         }
     },
     InsightTag: {

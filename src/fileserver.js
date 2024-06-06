@@ -34,30 +34,7 @@ export const typeDefs = `
 export const resolvers = {
     Query: {
         filePreview: async(_, {fileid}, { req }) => {
-            
-            const db = await DbConnection.Get()
-            const Files = db.collection('files')
-            var file = await Files.findOne({_id: new ObjectId(fileid), profileid: getprofileid(req.session)})
-            if (!file) throw Error('File not found.')
-            
-            var awsfile = new Object()
-            awsfile.folder = getprofileid(req.session) //set folder as profileid
-            awsfile.name = fileid
-
-            var preview = new Object()
-            preview.type = file.type
-            preview.name = file.name
-            preview._id = fileid
-
-            const image_test = /^image/ //check if the file type is an image. If so, send the link.
-            if(image_test.test(file.type)){
-                preview.fileurl = await getReadLinkfromAWS(awsfile)
-                preview.show = 'image'
-            } else {
-                preview.show = 'fileicon'
-            }
-            
-            return preview
+            return await getfileid(req, fileid)
         },
         fileDownloadUrl: async(_, {fileid}, { req }) => {
             
@@ -127,4 +104,30 @@ export const resolvers = {
             )
         }
     }
+}
+
+export async function getfileid(req, fileid) {
+    const db = await DbConnection.Get()
+    const Files = db.collection('files')
+    var file = await Files.findOne({_id: new ObjectId(fileid), profileid: getprofileid(req.session)})
+    if (!file) throw Error('File not found.')
+    
+    var awsfile = new Object()
+    awsfile.folder = getprofileid(req.session) //set folder as profileid
+    awsfile.name = fileid
+
+    var preview = new Object()
+    preview.type = file.type
+    preview.name = file.name
+    preview._id = fileid
+
+    const image_test = /^image/ //check if the file type is an image. If so, send the link.
+    if(image_test.test(file.type)){
+        preview.fileurl = await getReadLinkfromAWS(awsfile)
+        preview.show = 'image'
+    } else {
+        preview.show = 'fileicon'
+    }
+    
+    return preview
 }

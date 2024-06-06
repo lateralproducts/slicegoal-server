@@ -595,13 +595,14 @@ export const resolvers = {
             const Tasks = db.collection('tasks')
             var updates = new Object()
 
-            if (args.reschedule){ //if date existing, then increment reschedule count.
-                updates.$inc = { rescheduled: 1}
+            const task = await Tasks.findOne({ _id: new ObjectId(args.taskid) });
+            if (task.date) {
+                updates.$inc = { rescheduled: 1 };
             }
             
             if(args.date) {
                 const date = new Date(args.date) //time set from client argument
-                activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req, rescheduled: true})
+                activityrecord({taskid: args.taskid, notes: 'Scheduled for ' + date2str(date,'dd-MM-yyyy'), req: req, reschedule: true})
                 updates.$set = {
                     starttime: date,
                     daytask: true,
@@ -652,7 +653,7 @@ export const resolvers = {
                 }
 
                 taskids.map(function(taskid) {
-                    activityrecord({taskid: taskid, notes: 'Scheduled for ' + date2str(newdate,'dd-MM-yyyy'), req: req, rescheduled: true})
+                    activityrecord({taskid: taskid, notes: 'Scheduled for ' + date2str(newdate,'dd-MM-yyyy'), req: req, reschedule: true})
                     Tasks.updateOne(
                         {_id: new ObjectId(taskid)},
                         updates
