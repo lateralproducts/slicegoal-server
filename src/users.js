@@ -34,7 +34,7 @@ export const typeDefs = `
   }
 
   extend type Mutation {
-    googleLogin(firstname: String, lastname: String, email: String, token: String, googleid: String, uiversion: String, urlparams: String): User
+    googleLogin(token: String, googleid: String, uiversion: String, urlparams: String): User
     login(email: String!, pwd: String!, setView: String, uiversion: String): User
     setSignUpContext(account: String): Boolean
     signup(email: String, firstname: String, uiversion: String, account: String, queryStringParams: String): Boolean!
@@ -615,14 +615,12 @@ export const resolvers = {
             const Users = db.collection('users')
             const client = await oAuth2Client
 
-            //generated 27.03 at 9:30
-            //const token = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ijk4NmVlOWEzYjc1MjBiNDk0ZGY1NGZlMzJlM2U1YzRjYTY4NWM4OWQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJuYmYiOjE2Nzk4Njk3MzMsImF1ZCI6IjIwMDQ0Mjg2NDU3MC1yMnJvN3JoM2FwcDU1ZzgzZzJicXRmZGt0N28zOThjai5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsInN1YiI6IjEwNzM5NzYxOTU3NTA2NDY1OTUwOSIsImhkIjoibGF0ZXJhbHByb2R1Y3RzLmNvbSIsImVtYWlsIjoiZGFuaWVsQGxhdGVyYWxwcm9kdWN0cy5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXpwIjoiMjAwNDQyODY0NTcwLXIycm83cmgzYXBwNTVnODNnMmJxdGZka3Q3bzM5OGNqLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwibmFtZSI6IkRhbmllbCBTY2hyYWRlciIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BR05teXhhdHhweGFhVDVZcUpGNld6RWhZUzJBOHo1SEdJUTNVRHdQa2R3RD1zOTYtYyIsImdpdmVuX25hbWUiOiJEYW5pZWwiLCJmYW1pbHlfbmFtZSI6IlNjaHJhZGVyIiwiaWF0IjoxNjc5ODcwMDMzLCJleHAiOjE2Nzk4NzM2MzMsImp0aSI6ImNiMjVhZWMxNTkwOTA1NjllZWUwMzYwYTUyNTUyMTc4MTU2Mzg3NWIifQ.TeuZ8q0I4If_PkGUTKsJXbULSixryi-rZ3Tp8w5SxVz3O8qvjqL5DjXES9Z_J6C2NQIR7PXTQbXnQbH5_4-o_RnAeBtvpm9m5r0XxZUD4a9gO9pNaOPT0hTGd1OtXNFwmAj_KRsVMh7f6rR-6jXdpPBZ8kqbK0stmV_6WYvKOPqXZKp0vLJxydgINXbyLHt9wHjLRHB_98UlqDaQ_rwaXAh8LMzm5m4n0yzpZk3W2dhbkGxegrnNZAAna6Yb6UeUtWmIZp1tD917fK3q9OXqindgC5pivhDKKi1ECvML9rSgGAjIi2eaVtVGhzaalAKMbvdcVMCESYB_9zM2TWqEwQ"
             //Google certificates queried here: https://www.googleapis.com/oauth2/v3/certs
 
             try {
                 const ticket = await client.verifyIdToken({
                     idToken: args.token,
-                    audience: googleclientId,
+                    audience: args.googleid,
                 });
                 if (ticket.payload) {
                     const payload = ticket.payload
