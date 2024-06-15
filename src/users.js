@@ -144,9 +144,9 @@ export const resolvers = {
                 const user = await Users.findOne({_id: new ObjectId(req.session.user._id)})
                 let query = new Object()
                 query.user = getuserid(req.session)
-                if(user.activeofferid !== 2) query.type = 'owner' //block shared views if not upgraded.
-                return await Views.findOne(query) //could improve to find 'default' once ready to do that.
                 
+                if(user.activeofferid !== 2) query.type = 'owner' //block shared views if not upgraded.
+                return await Views.findOne(query, { sort: { lastaccessed: -1 } }) //could improve to find 'default' once ready to do that.
             }
         }
     },
@@ -620,7 +620,7 @@ export const resolvers = {
             try {
                 const ticket = await client.verifyIdToken({
                     idToken: args.token,
-                    audience: args.googleid,
+                    audience: args.googleid, //clientid
                 });
                 if (ticket.payload) {
                     const payload = ticket.payload
