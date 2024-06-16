@@ -145,7 +145,10 @@ export const resolvers = {
             } else {
                 return null
             }
-            return await Views.findOne(query, { sort: { lastaccessed: -1 } }) //could improve to find 'default' once ready to do that.
+
+            const view = await Views.findOne(query, { sort: { lastaccessed: -1 } })
+            req.session.view = view //set the session view as well, especially for mobile and watch.
+            return  view
         }
     },
     Mutation: {
@@ -803,7 +806,7 @@ async function login(user, args, req) {
     let query = new Object()
     query.user = user._id ? user._id.toString() : "noid" //set id no matter what so it's not possible to attach a random user/view/profile is attached.
     //if(args.setView) query._id = new ObjectId(args.setView)
-    if(user.activeofferid !== 2) query.type = 'owner'
+    //if(user.activeofferid !== 2) query.type = 'owner'
     view = await Views.findOne(query, { sort: { lastaccessed: -1 } })
 
     if (view) {
@@ -813,9 +816,7 @@ async function login(user, args, req) {
         //if (view.type !== 'coach') query.user = user._id.toString() //deciding which profile to pull. Needs more thought.
         
         query.wheel = view.wheel
-        const profile = await Profiles.findOne(query, {
-            sort: { type: -1 }
-        })
+        const profile = await Profiles.findOne(query, {sort: { type: -1 }})
 
         if (profile) req.session.profile = profile
     }
