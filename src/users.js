@@ -135,19 +135,21 @@ export const resolvers = {
             return await Views.find(query).toArray()
         },
         currentview: async(parent, __, { req }) => {
-            //if (parent.newView) return parent.newView
-            if (req.session.view) return req.session.view
-            else {
-                const db = await DbConnection.Get()
-                const Views = db.collection('views')
-                //const Users = db.collection('users')
-                //const user = await Users.findOne({_id: new ObjectId(req.session.user._id)})
-                let query = new Object()
-                query.user = getuserid(req.session)
-                
-                //if(user.activeofferid !== 2) query.type = 'owner' //block shared views if not upgraded.
-                return await Views.findOne(query, { sort: { lastaccessed: -1 } }) //could improve to find 'default' once ready to do that.
+            const db = await DbConnection.Get()
+            const Views = db.collection('views')
+            //const Users = db.collection('users')
+            //const user = await Users.findOne({_id: new ObjectId(req.session.user._id)})
+            let query = new Object()
+            let userid = getuserid(req.session)
+            console.log("userid - " + userid)
+            if (userid) {
+                query.user = userid
+            } else {
+                return null
             }
+            
+            //if(user.activeofferid !== 2) query.type = 'owner' //block shared views if not upgraded.
+            return await Views.findOne(query, { sort: { lastaccessed: -1 } }) //could improve to find 'default' once ready to do that.
         }
     },
     Mutation: {
