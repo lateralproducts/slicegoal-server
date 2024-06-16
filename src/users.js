@@ -85,8 +85,8 @@ export const resolvers = {
     Query: {
         isLoggedin: async(_, args, { req }) => {
             //this is publicly accessible
-            const db = await DbConnection.Get()
-            const Users = db.collection('users')
+            //const db = await DbConnection.Get()
+            //const Users = db.collection('users')
 
             req.session.timezone = args.timezoneoffset
             req.session.ipaddress = getipaddress(req) //add ip address to session.
@@ -134,21 +134,17 @@ export const resolvers = {
             query.user = getuserid(req.session)
             return await Views.find(query).toArray()
         },
-        currentview: async(parent, __, { req }) => {
+        currentview: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Views = db.collection('views')
-            //const Users = db.collection('users')
-            //const user = await Users.findOne({_id: new ObjectId(req.session.user._id)})
             let query = new Object()
             let userid = getuserid(req.session)
-            console.log("userid - " + userid)
+
             if (userid) {
                 query.user = userid
             } else {
                 return null
             }
-            
-            //if(user.activeofferid !== 2) query.type = 'owner' //block shared views if not upgraded.
             return await Views.findOne(query, { sort: { lastaccessed: -1 } }) //could improve to find 'default' once ready to do that.
         }
     },
@@ -806,9 +802,9 @@ async function login(user, args, req) {
     let view
     let query = new Object()
     query.user = getuserid(req.session)
-    if(args.setView) query._id = new ObjectId(args.setView)
+    //if(args.setView) query._id = new ObjectId(args.setView)
     if(user.activeofferid !== 2) query.type = 'owner'
-    view = await Views.findOne({}, { sort: { lastaccessed: -1 } })
+    view = await Views.findOne(query, { sort: { lastaccessed: -1 } })
 
     if (view) {
         req.session.view = view
