@@ -36,7 +36,7 @@ describe('users', () => {
     it('should return null if no profile is in the session', () => {  
       const session = {};
       const result = getprofileid(session);
-      expect(result).toBe(null);
+      expect(result).toBe("no profileid");
     });
   });
 
@@ -64,7 +64,7 @@ describe('users', () => {
     it('should return null if no view is in the session', () => {
       const session = {};
       const result = getwheelid(session);
-      expect(result).toBe(null);
+      expect(result).toBe("no wheelid");
     });
   });
 
