@@ -801,7 +801,7 @@ async function login(user, args, req) {
 
     let view
     let query = new Object()
-    query.user = getuserid(req.session)
+    query.user = user._id ? user._id.toString() : "noid" //set id no matter what so it's not possible to attach a random user/view/profile is attached.
     //if(args.setView) query._id = new ObjectId(args.setView)
     if(user.activeofferid !== 2) query.type = 'owner'
     view = await Views.findOne(query, { sort: { lastaccessed: -1 } })
@@ -882,6 +882,7 @@ async function signup(newuser, __, req) {
 
     if (userid) {
         newUserNotificationEmail(newuser)
+        newuser._id = userid
         return newuser
     } else {
         return triggererror(
