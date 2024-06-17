@@ -111,7 +111,7 @@ export const resolvers = {
                 query.tags = args.filter
             }
 
-            if(!args.complete) {
+            if(args.complete === false) {
                 query.$or = [ //only return if complete not equal to true (or doesn't exist)
                     {complete: null},
                     {complete: false},
@@ -129,7 +129,7 @@ export const resolvers = {
                         ]
                 }
             }
-            else {
+            else if(args.complete === true) { 
                 query.complete = true
                 if (!args.goal) query.$or = [ //only check day if day query, not goal.
                     {$and: [
@@ -143,6 +143,19 @@ export const resolvers = {
                         {'starttime': {$lt: endtimeTZ}}
                     ]}
                 ]
+            }
+            else {
+                if(args.date){
+                    query.$and = [
+                            {'starttime': {$gte: starttime}},
+                            {'starttime': {$lt: endtime}},
+                            {$or: [
+                                {snooze: null},
+                                {snooze: {$exists: false}},
+                                {snooze: {$lt: new Date()}}
+                            ]}
+                        ]
+                }
             }
 
             if (args.goal) { //return list of unscheduled/unfinished tasks
