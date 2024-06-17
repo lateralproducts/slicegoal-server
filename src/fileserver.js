@@ -11,6 +11,7 @@ export const schema = `
     }
 
     type FilePreview {
+        _id: String
         type: String
         show: String
         fileurl: String
@@ -109,6 +110,8 @@ export const resolvers = {
 export async function getfileid(req, fileid) {
     const db = await DbConnection.Get()
     const Files = db.collection('files')
+
+
     var file = await Files.findOne({_id: new ObjectId(fileid), profileid: getprofileid(req.session)})
     if (!file) throw Error('File not found.')
     
@@ -130,4 +133,39 @@ export async function getfileid(req, fileid) {
     }
     
     return preview
+}
+
+export async function getPreviews(req, fileids) {
+    const db = await DbConnection.Get()
+    const Files = db.collection('files')
+
+    const previews = []
+
+    for (const fileid of fileids) {
+        const file = await Files.findOne({_id: new ObjectId(fileid), profileid: getprofileid(req.session)})
+        if (file){
+            const awsfile = {
+                folder: getprofileid(req.session),
+                name: fileid
+            }
+
+            const preview = {
+                type: file.type,
+                name: file.name,
+                _id: fileid
+            }
+
+            const image_test = /^image/ //check if the file type is an image. If so, send the link.
+            if (image_test.test(file.type)) {
+                preview.fileurl = await getReadLinkfromAWS(awsfile)
+                preview.show = 'image'
+            } else {
+                preview.show = 'fileicon'
+            }
+
+            previews.push(preview)
+        }
+    }
+
+    return previews
 }

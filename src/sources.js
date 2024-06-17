@@ -7,6 +7,7 @@ import { createUserConnection } from './community'
 import { newIx } from './interactions'
 import { shareSourceEmail } from './emails'
 import { linkSourceTask } from './tasks';
+import { getPreviews } from './fileserver';
 
 export const typeDefs = `
 
@@ -21,8 +22,8 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        createSource(name: String!, url: String, type: String, notes: String, tags: [String], linktotask: String): Source
-        editSource(sourceid: String!, name: String, url: String, type: String, notes: String, tags: [String]) : Boolean
+        createSource(name: String!, url: String, type: String, notes: String, tags: [String], linktotask: String, fileids: [String]): Source
+        editSource(sourceid: String!, name: String, url: String, type: String, notes: String, tags: [String], fileids: [String]) : Boolean
         deleteSource(sourceid: String!): Boolean
         shareSource(sourceid: String!, targetUser: String!, shareNote: String): ShareResponse
     }
@@ -39,6 +40,7 @@ export const schema = `
         type: String
         url: String
         tags: [Area]
+        filedetails: [FilePreview]
     }
 
     type SourceTag {
@@ -174,6 +176,9 @@ export const resolvers = {
                 return []
             }
         },
+        filedetails:async function(source, _, { req }) {
+            return source.fileids ? await getPreviews(req, source.fileids) : null
+        }
     },
     Mutation: {
         createSource: async function(_, args, { req }) {
@@ -189,7 +194,8 @@ export const resolvers = {
                     url: args.url,
                     notes: args.notes,
                     type: args.type,
-                    tags: args.tags
+                    tags: args.tags,
+                    fileids: args.fileids
                 }
             )
             .then(source => {
@@ -207,7 +213,7 @@ export const resolvers = {
 
             return (await Sources.updateOne(
                 {_id: new ObjectId(args.sourceid)},
-                {$set: {name: args.name, url: args.url, type: args.type, notes: args.notes, tags: args.tags}}
+                {$set: {name: args.name, url: args.url, type: args.type, notes: args.notes, tags: args.tags, fileids: args.fileids}}
             )).matchedCount === 1
 
         },

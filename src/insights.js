@@ -10,7 +10,7 @@ import { attachSources } from './sources'
 import { newIx } from './interactions'
 import { shareInsightEmail } from './emails'
 import { linkInsightTask } from './tasks'
-import { getfileid } from './fileserver';
+import { getPreviews, getfileid } from './fileserver';
 
 export const typeDefs = `
 
@@ -25,8 +25,8 @@ export const typeDefs = `
   }
 
   extend type Mutation {
-    createInsight(datetime: String, profileid: String, prompt: String, file: String, answer: String, areatags: [AreaTagIn], sources: [SourceTagIn], taskid: String): Spaced
-    updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, file: String, sources: [SourceTagIn]): Spaced 
+    createInsight(datetime: String, profileid: String, prompt: String, fileids: [String], answer: String, areatags: [AreaTagIn], sources: [SourceTagIn], taskid: String): Spaced
+    updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, fileids: [String], sources: [SourceTagIn]): Spaced 
     createInsightTag(insightid: String!, profileid: String, area: String, areaname: String): Tag
     updateInsightTag(tagid: String!, notes: String): Boolean
     removeInsightTag(tagid: String): Boolean
@@ -50,7 +50,8 @@ export const schema = `
         sharedfrom: String
         datetimeshared: String
         file: String
-        filedetails: FilePreview
+        filedetails: [FilePreview]
+        files: [FilePreview]
     }
     type SharedInsightList {
         numberOfInsights: Int
@@ -319,11 +320,15 @@ export const resolvers = {
             })
             return spaced
         },
-        filedetails: async(parent, __, { req }) => {
-            return parent.file ? await getfileid(req, parent.file) : null //if there is a file, get the file url.
+        file: async(parent, __, { req }) => {
+            return parent.file ? await getfileid(req, parent.file) : null
+        },
+        filedetails: async(insight, __, { req }) => {
+            if (insight.fileids) return  await getPreviews(req, insight.fileids) || null
+            else if (insight.file) return [await getfileid(req, insight.file)] || null
         }
-    },
-    InsightTag: {
+        },
+        InsightTag: {
         area: async parent => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
