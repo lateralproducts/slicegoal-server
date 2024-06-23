@@ -38,7 +38,7 @@ schedule.scheduleJob({ minute: 10 }, async function() { //Every hour at 10 mins 
     //ranknudge(); //holding off sending these messages again for a little bit.
 }) */
 
-schedule.scheduleJob({ day: 0, hour: 14, minute: 0}, function() {
+schedule.scheduleJob({ dayOfWeek: 0, hour: 14, minute: 0}, function() {
     //summary once a week
     //set to UTC time for server 22 UTC = 8am Melbourne Time. dayOfWeek: 0, hour: 22, minute: 0 is 8am Monday in Melbourne
     weeklysummaryemail(); //holding off sending these messages again for a little bit.
