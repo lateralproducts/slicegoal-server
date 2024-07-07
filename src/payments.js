@@ -101,7 +101,7 @@ const offers = [
     {
         offerid: 1,
         offer: 'Productivity Pack',
-        disabled: true,
+        disabled: false,
         inclusions: [
             'Memory tools',
             'Pomodoros',
@@ -424,7 +424,7 @@ export async function getoffers(req){
     returnoffers.activeid = activeofferid 
     returnoffers.highlightid = 2 //(activeofferid === 1 ? 2 : 1)
     returnoffers.offers = offers.filter(offer => {
-        return (offer.disabled !== true && offer.offerid !== activeofferid) //don't return the active offer. Only return the offer changes available.
+        return (offer.disabled !== true ) // && offer.offerid !== activeofferid //don't return the active offer. Only return the offer changes available.
         //will need to think about how offers are returned based on the active offer. Ie. free plan is a downgrade if a paid option is active.
     })
     return returnoffers

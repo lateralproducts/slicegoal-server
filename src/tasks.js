@@ -147,8 +147,8 @@ export const resolvers = {
             else {
                 if(args.date){
                     query.$and = [
-                            {'starttime': {$gte: starttime}},
-                            {'starttime': {$lt: endtime}},
+                            {'starttime': {$gte: starttimeTZ}},
+                            {'starttime': {$lt: endtimeTZ}},
                             {$or: [
                                 {snooze: null},
                                 {snooze: {$exists: false}},
@@ -822,7 +822,7 @@ export const resolvers = {
                 { $set: { snooze: snoozedatetime }}
             )
 
-            activityrecord({taskid: taskid, req: req, notes: 'Task snoozed to ' + date2str(snoozedatetime,'MM-dd-yyyy hh:mm'), snoozed: true})
+            activityrecord({taskid: taskid, req: req, notes: 'Task snoozed.', snoozed: true}) // date2str(snoozedatetime,'MM-dd-yyyy hh:mm') + ' UTC'
             return true
         },
         unglowTask: async(root, {taskid, listtype}, { req }) => {

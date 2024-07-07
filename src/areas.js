@@ -470,7 +470,7 @@ export const resolvers = {
             }
             const arealinks = await AreaLinks.distinct('area', query)
 
-            return await Areas.find({
+            const areas = await Areas.find({
                 _id: {
                     $in: arealinks.map(function(id) {
                         return new ObjectId(id)
@@ -478,13 +478,15 @@ export const resolvers = {
                 },
                 $or: [
                     {
+                        //needs more security. Need to check if user has a view with access to the wheel.
                         wheelid: req.session.view
-                            ? getwheelid(req.session)
+                            ? parent.wheelid
                             : 'public' //placeholder, to stop error calling.
                     },
                     { global: true }
                 ] //need to return areas where global: true.
             }).toArray()
+            return areas
         },
         rank: async({ _id }, __, { req }) => {
             const db = await DbConnection.Get()
@@ -624,7 +626,6 @@ export const resolvers = {
             return true
         },
         createNewWheel: async(_, args, { req }) => {
-            
             //set wheel, view, and profile to the context.
             let { newview, newprofile } = await createWheel(
                 req.session.user,
@@ -1028,12 +1029,16 @@ async function copywheel(wheelid, userid) {
             return area
         })
 
-        let insertedareas = (await Areas.insertMany(newareas)).insertedIds
+        let insertedareaids = (await Areas.insertMany(newareas)).insertedIds
 
-        let newstartareaid = insertedareas[0]
+        let newstartareaid = insertedareaids[0]
         /* insertedareas
             .find(o => o.copyarea === newwheel.startarea)
             ._id.toString() */
+
+        const insertedareas = await Areas.find(
+            {_id: {$in: Object.values(insertedareaids)}}
+        ).toArray()
 
         Wheels.updateOne(
             { _id: new ObjectId(newwheelid) },

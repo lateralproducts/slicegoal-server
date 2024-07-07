@@ -31,6 +31,7 @@ export const typeDefs = `
   extend type Query {
       isLoggedin (url: String, timezoneoffset: Int): User
       getConnectedUsers: [User]
+      onboarding: Onboarding
   }
 
   extend type Mutation {
@@ -38,7 +39,7 @@ export const typeDefs = `
     login(email: String!, pwd: String!, setView: String, uiversion: String): User
     setSignUpContext(account: String): Boolean
     signup(email: String, firstname: String, uiversion: String, account: String, queryStringParams: String): Boolean!
-    verifyAccount(userid: String, code: String, setView: String, password: String, firstname: String, lastname: String): User
+    verifyAccount(code: String, setView: String, password: String, firstname: String, lastname: String): User
     logout: Boolean!
 
     updateProfile(firstname: String, lastname: String, email: String, startarea: String): User
@@ -48,7 +49,6 @@ export const typeDefs = `
     setPassword(userid: String, code: String, password: String): User
     updatePassword(userid: String, oldpassword: String, newpassword: String): User
   }
-
 `
 
 export const schema = `
@@ -67,12 +67,20 @@ export const schema = `
     state: String
     offeractive: String
     hideupgrade: Boolean
-    showservice: Boolean 
+    showservice: Boolean
+    onboarding: Onboarding
   }
 
   type createClientResponse {
     success: Boolean
     message: String
+  }
+
+  type Onboarding {
+    show: Boolean
+    wheel: String
+    rank: String
+    goal: String
   }
 
   type ChatUser {
@@ -83,6 +91,11 @@ export const schema = `
 
 export const resolvers = {
     Query: {
+        onboarding: async(_, args, { req }) => {
+            if (req.session.user) {
+                return req.session.user.onboarding
+            }
+        },
         isLoggedin: async(_, args, { req }) => {
             //this is publicly accessible
             //const db = await DbConnection.Get()
@@ -166,8 +179,6 @@ export const resolvers = {
         },
 
         createClient: async(_, args, { req }) => {
-            
-
             const db = await DbConnection.Get()
             const Users = db.collection('users')
             const Views = db.collection('views')
@@ -244,6 +255,7 @@ export const resolvers = {
                         args.code = bcrypt.hashSync('verifythisyo', 7)
                         args.created = new Date()
                         args.email = args.email.toLowerCase()
+                        args.onboarding = { wheel: 'done', rank: 'active', goal: 'inactive' }
                         let newuser = await Users.insertOne(args) //create record to return id
                         args._id = newuser.insertedId.toString() //use args to pass new user id for email link
                         userid = newuser.insertedId.toString() //pass id for creating view and profiles
@@ -280,7 +292,7 @@ export const resolvers = {
             const Users = db.collection('users')
 
             let user = await Users.findOne({
-                $and: [{ _id: new ObjectId(args.userid) }, { code: args.code }]
+                code: args.code
             })
             if(!user) return triggererror('Verify details not found. You can try and reset password again.')
 
@@ -300,7 +312,7 @@ export const resolvers = {
             checkPasswordFormat(args.password)
 
             user = await Users.findOneAndUpdate(
-                { _id: new ObjectId(args.userid), code: args.code },
+                { code: args.code },
                 {
                     $set: {
                         state: 'verified',
@@ -310,8 +322,9 @@ export const resolvers = {
                         //keep the code so that someone can't hack it.
                     }
                 },
+                {returnDocument: 'after'} // return the updated document.
             )
-            user.value.state = 'verified'
+
             //overriding state to verified as it doesn't update in returned value.
             sessiontrack(req, args, 'app', 'verify', 'success')
             return await login(user.value, args, req)
@@ -325,9 +338,7 @@ export const resolvers = {
             //don't allow someone to try and reset without a code.
             if(!args.code) return triggererror('Reset details not found. Please try and reset your password again.')
 
-            let user = await Users.findOne({
-                $and: [{ _id: new ObjectId(args.userid) }, { code: args.code }]
-            })
+            let user = await Users.findOne({ code: args.code })
             if(!user) return triggererror('Reset details not found. Please try and reset your password again.')
 
             if(user.lastreset){
@@ -530,9 +541,11 @@ export const resolvers = {
                     email: args.email.toLowerCase(),
                     firstname: args.firstname,
                     code: bcrypt.hashSync(date.toString(), 7),
+                    codecreated: Date(),
                     uiversion: args.uiversion,
                     serverversion: pjson.version,
                     state: 'new',
+                    onboarding: { wheel: 'active', rank: 'inactive', goal: 'inactive' },
                     profile: args.account,
                     created: date,
                     createdip: getipaddress(req)
@@ -580,6 +593,7 @@ export const resolvers = {
                 { email: args.email.toLowerCase() },
                 { $set: {
                     code: newcode,
+                    codecreated: Date(),
                     lastreset: new Date()
                 }}
             )
@@ -594,9 +608,11 @@ export const resolvers = {
                     email: args.email.toLowerCase(),
                     firstname: args.firstname,
                     code: newcode,
+                    codecreated: Date(),
                     uiversion: args.uiversion,
                     serverversion: pjson.version,
                     state: 'new',
+                    onboarding: { wheel: 'active', rank: 'inactive', goal: 'inactive' },
                     profile: args.account,
                     created: date,
                     createdip: getipaddress(req)
@@ -604,10 +620,14 @@ export const resolvers = {
                 emailuser = await signup(newuser, args, req)
             }
 
-            const queryStringParams = args.queryStringParams ? args.queryStringParams : '' 
-            emailResetPassword(emailuser, newcode, queryStringParams)
-            sessiontrack(req, args, 'app', 'password-reset', 'success','email')
-            return true
+            if (emailuser.state === "verified"){
+                const queryStringParams = args.queryStringParams ? args.queryStringParams : '' 
+                emailResetPassword(emailuser, newcode, queryStringParams)
+                sessiontrack(req, args, 'app', 'password-reset', 'success','email')
+                return true
+            } else return triggererror(
+                'Email is not verified.', //don't be descriptive with error in case malicious
+            )
         },
 
         googleLogin: async(_, args, { req }) => {
@@ -662,6 +682,7 @@ export const resolvers = {
                     args.serverversion = pjson.version
                     args.lastip = getipaddress(req)
                     args.type = 'personal'
+                    args.onboarding = { wheel: 'active', rank: 'inactive', goal: 'inactive' },
                     //googleid, firstname and lastname should already be on args.
                     args.created = new Date()
                     user = args

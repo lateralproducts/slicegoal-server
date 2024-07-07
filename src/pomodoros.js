@@ -250,7 +250,8 @@ export const resolvers = {
             weeklydata = (await AggWeek.findOne({
                 week: week,
                 year: year,
-                userid: getuserid(req.session)
+                userid: getuserid(req.session),
+                profileid: getprofileid(req.session)
             })) || {
                 year: year,   
                 week: week
@@ -525,7 +526,8 @@ export async function areaaggregate({
         {
             year: weekyear,
             week: week,
-            userid: getuserid(req.session)
+            userid: getuserid(req.session),
+            profileid: getprofileid(req.session)
         },
         {
             $inc: increment
@@ -543,7 +545,9 @@ export async function areaaggregate({
         AggYear.updateOne(
             {
                 area: objectid,
-                year: year
+                year: year,
+                userid: getuserid(req.session),
+                profileid: getprofileid(req.session)
             },
             {
                 $inc: increment
@@ -555,7 +559,9 @@ export async function areaaggregate({
             {
                 area: objectid,
                 year: year,
-                month: month
+                month: month,
+                userid: getuserid(req.session),
+                profileid: getprofileid(req.session)
             },
             {
                 $inc: increment
@@ -567,7 +573,9 @@ export async function areaaggregate({
             {
                 area: objectid,
                 year: weekyear,
-                week: week
+                week: week,
+                userid: getuserid(req.session),
+                profileid: getprofileid(req.session)
             },
             {
                 $inc: increment
@@ -582,7 +590,9 @@ export async function areaaggregate({
                 month: month,
                 week: week,
                 dayofyear: yearday,
-                day: day
+                day: day,
+                userid: getuserid(req.session),
+                profileid: getprofileid(req.session)
             },
             {
                 $inc: increment

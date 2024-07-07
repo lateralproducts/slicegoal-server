@@ -34,10 +34,6 @@ import { Mutations } from './schema/mutations'
 import { merge } from 'lodash'
 import { updateIx } from './interactions'
 import { getipaddress } from './users'
- 
-const app = express()
-
-//import schemas
 import { schema as userSchema } from './users'
 import { schema as areaSchema } from './areas'
 import { schema as insightSchema } from './insights'
@@ -52,8 +48,7 @@ import { schema as pomodoroSchema } from './pomodoros'
 import { schema as recapSchema } from './recaps'
 import { schema as fileserverSchema } from './fileserver'
 import { schema as chatSchema } from './chat'
-
-//import queries and mutations
+import { schema as peopleSchema } from './people'
 import { typeDefs as userQueryMutation } from './users'
 import { typeDefs as areaQueryMutation } from './areas'
 import { typeDefs as insightQueryMutation } from './insights'
@@ -70,8 +65,7 @@ import { typeDefs as dbUpdateQueryMutation } from '../util/db_migrate'
 import { typeDefs as recapQueryMutation } from './recaps'
 import { typeDefs as fileserverQueryMutation } from './fileserver'
 import { typeDefs as chatQueryMutation } from './chat'
-
-//import resolvers
+import { typeDefs as peopleQueryMutation } from './people'
 import { resolvers as userResolvers } from './users'
 import { resolvers as areaResolvers } from './areas'
 import { resolvers as insightResolvers } from './insights'
@@ -88,12 +82,22 @@ import { resolvers as dbUpdateResolvers } from '../util/db_migrate'
 import { resolvers as recapResolvers } from './recaps'
 import { resolvers as fileserverResolvers } from './fileserver'
 import { resolvers as chatResolvers } from './chat'
-
-//upload()
+import { resolvers as peopleResolvers } from './people'
 import { getfile } from './storage'
 import './schedules'
-
 let pjson = require('../package.json')
+var path = require('path')
+ 
+const app = express()
+
+//import schemas
+
+//import queries and mutations
+
+//import resolvers
+
+//upload()
+
 console.log('server version: ' + pjson.version)
 console.log('environment: ' + process.env.NODE_ENV)
 console.log(new Date())
@@ -123,6 +127,7 @@ export const schema = makeExecutableSchema({
         recapSchema,
         fileserverSchema,
         chatSchema,
+        peopleSchema,
 
         paymentQueryMutation,
         userQueryMutation,
@@ -139,7 +144,8 @@ export const schema = makeExecutableSchema({
         dbUpdateQueryMutation,
         recapQueryMutation,
         fileserverQueryMutation,
-        chatQueryMutation
+        chatQueryMutation,
+        peopleQueryMutation
         //could combine the Schema and QueryMutation defs.
     ],
     resolvers: merge(
@@ -158,7 +164,8 @@ export const schema = makeExecutableSchema({
         dbUpdateResolvers,
         recapResolvers,
         fileserverResolvers,
-        chatResolvers
+        chatResolvers,
+        peopleResolvers
     )
 })
 
@@ -170,7 +177,7 @@ const graphQLServer = createServer({
 });
 
 // List of query names that can be accessed by unauthenticated users
-const unauthenticatedQueries = ['isLoggedin', 'login', 'googleLogin', 'trackpage', 'resetPassword', 'setPassword', 'sendlateralproductsemail'];
+const unauthenticatedQueries = ['isLoggedin', 'login', 'googleLogin', 'trackpage', 'sendlateralproductsemail', 'signup', 'verifyAccount', 'resetPassword', 'setPassword'];
 
 async function authMiddleWare(resolve, root, args, context, info) {
     if (!unauthenticatedQueries.includes(info.fieldName)){
@@ -182,7 +189,6 @@ async function authMiddleWare(resolve, root, args, context, info) {
 
 export const graphql = async() => {
     try {
-        var path = require('path')
         
         const opts = {
             port: 3001,
