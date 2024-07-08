@@ -267,7 +267,7 @@ export const resolvers = {
             return area
         },
         areatree: async(_, { areaid }, { req }) => {
-            const areatree = await getareatree({tags:[areaid], tasklist, req})
+            const areatree = await getareatree({tags:[areaid], req})
             
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -500,7 +500,7 @@ export const resolvers = {
                     }).toArray()
 
                     //returning the average of the area for coaching
-                    const rank = await RankTimes.aggregate(
+                    const aggCursor = await RankTimes.aggregate(
                         [{
                             $match: {
                                 area: _id.toString(),
@@ -516,7 +516,7 @@ export const resolvers = {
                             $group: {
                                 _id: {
                                     area: '$area',
-                                    profileid: '$userid'
+                                    profileid: '$profileid'
                                 },
                                 date: {
                                     $last: '$date'
@@ -531,10 +531,16 @@ export const resolvers = {
                             }
                         }]
                     )
+
+                    var rank
+                    await aggCursor.forEach(doc => {
+                        rank = doc
+                    })
                      
-                    if (rank[0]) return {
-                        rank: parseInt(data[0].rank),
-                        note: 'team average'
+                    if (rank) {
+                        rank.note = 'team average'
+                        rank.rank = Math.round(rank.rank, 0)
+                        return rank
                     }
                     else return null
                     
@@ -1171,10 +1177,9 @@ async function deleteWheelAll(req, viewid) {
     Wheels.deleteMany({ _id: new ObjectId(view.wheel) })
 }
 
-export async function getareatree({tags, req, tasklist}) {
+export async function getareatree({tags, req}) {
     const db = await DbConnection.Get()
     const AreaLinks = db.collection('arealinks')
-    const Tasks = db.collection('tasks')
     
     let startareaid
     if (req) {
@@ -1191,18 +1196,6 @@ export async function getareatree({tags, req, tasklist}) {
     let areatree = tags || []
     let newareas = []
     let checkareas = tags || []
-
-    const tasks = await Tasks.find(
-        {_id: {
-            $in: tasklist.map(taskid => new ObjectId(taskid))
-        }}
-    ).toArray()
-
-    if (tasks) {
-        let tags = tasks.flatMap(task => task.tags || [])
-        areatree = areatree.concat(tags)
-        checkareas = areatree
-    }
     
     while (checkareas.length > 0) {
         //find all parent goals linked to goals

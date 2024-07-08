@@ -351,52 +351,50 @@ export async function activityrecord({
 
     const pomoid = (await Pomodoros.insertOne(record)).insertedId.toString()
 
-    //save all the aggregate data and history
-    let tasklist = []
-    if (record.task) tasklist = await 
+    //save all the aggregate data and history for the task, goal, and areas for the whole tree.
+    const {tasktree, treegoals, treetags} = await gettasktree({taskid, goalid: record.goal, tags: record.tags})
+    
     taskaggregate({
-        taskid: record.task, 
+        tasktree,
         minutes, 
         pomoid
     })
     
     goalaggregate({
-        goalid: record.goal, 
+        treegoals,
         minutes, 
-        pomoid, 
-        tasklist
+        pomoid
     })
 
     areaaggregate({
+        treetags, 
         datetime: datetime,
-        tags: record.tags, 
         minutes, 
         pomoid, 
         req, 
         completed: checked === true ? 1 : 0, 
         reschedule, 
-        tasklist, 
         reopened, 
         created,
         priorityremoved, 
         priorityadded,
         snoozed, 
         copied,
-        goalid: record.goal, 
+        goal: record.goal || treegoals.length > 0, 
         alreadydone
     })
 
 }
 
-export async function taskaggregate({taskid, minutes, pomoid}) {
+export async function taskaggregate({minutes, pomoid, tasktree}) {
     //future development: check/aggregate parent tasks.
-    if (!taskid || !pomoid) { //must have all fields
+    if (!pomoid || !tasktree) { //must have all fields
         console.log('taskaggregate error - missing fields')
-        console.log('taskid: ' + taskid)
+        console.log('tasktree: ' + tasktree)
         console.log('pomoid: ' + pomoid)
         return
     }
-    const tasktree = await gettasktree(taskid)
+    
 
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
@@ -414,16 +412,15 @@ export async function taskaggregate({taskid, minutes, pomoid}) {
     return tasktree
 }
 
-export async function goalaggregate({goalid, minutes, pomoid, tasklist}) {
+export async function goalaggregate({treegoals, minutes, pomoid}) {
     //future development: check/aggregate parent tasks.
-    if ( !minutes || !pomoid || (!goalid && !tasklist)) { //must have all fields
+    if ( !minutes || !pomoid) { //must have all fields
         console.log('goalaggregate error - missing fields')
-        console.log('goalid: ' + goalid)
         console.log('mins: ' + minutes)
         console.log('pomoid: ' + pomoid)
         return
     }
-    const goaltree = await getgoaltree({goalid, tasklist})
+    const goaltree = await getgoaltree({treegoals})
 
     const db = await DbConnection.Get()
     const Goals = db.collection('goals')
@@ -443,7 +440,6 @@ export async function goalaggregate({goalid, minutes, pomoid, tasklist}) {
 
 export async function areaaggregate({
     datetime,
-    tags, 
     minutes = 0, 
     created, 
     completed, 
@@ -451,22 +447,22 @@ export async function areaaggregate({
     snoozed, 
     pomoid, 
     req, 
-    tasklist,
+    treetags,
     reopened,
     priorityremoved, 
     priorityadded,
     copied,
-    goalid,
+    goal,
     alreadydone
 }) {
     //future development: check/aggregate parent tasks.
-    if ((!tags && !tasklist) || !pomoid) { //must have all fields
+    if ((!treetags) || !pomoid) { //must have all fields
         console.log('areaaggregate error - missing fields')
-        console.log('tags: ' + tags)
+        console.log('tags: ' + treetags)
         console.log('pomoid: ' + pomoid)
         return
     }
-    let areatree = await getareatree({tags: tags, tasklist, req})
+    let areatree = await getareatree({tags: treetags, req})
     const db = await DbConnection.Get()
 
     let increment = new Object()
@@ -474,7 +470,7 @@ export async function areaaggregate({
     if(minutes) {
         increment.logtime = minutes
         increment.logcount = 1 //only count if there is a pomodoro with minutes
-        if(goalid) {
+        if(goal) {
             increment.goaltime = minutes
             increment.goalattached = 1
         }
@@ -482,7 +478,7 @@ export async function areaaggregate({
     if(created) increment.taskcreated = 1
     if(completed) {
         increment.taskcompleted = 1
-        if(goalid) increment.taskcompletedgoal = 1
+        if(goal) increment.taskcompletedgoal = 1
     }
     if(reschedule) increment.taskrescheduled = 1
     if(snoozed) increment.tasksnoozed = 1
@@ -602,25 +598,13 @@ export async function areaaggregate({
     })
 }
 
-async function getgoaltree({goalid, tasklist}) {
+async function getgoaltree({treegoals}) {
     const db = await DbConnection.Get()
     const GoalLinks = db.collection('goallinks')
-    const Tasks = db.collection('tasks')
 
-    let goaltree = [goalid]
+    let goaltree = treegoals
     let newgoals = []
-    let checkgoals = [goalid]
-
-    const tasks = await Tasks.find(
-        {_id: {
-            $in: tasklist.map(taskid => new ObjectId(taskid))
-        }}
-    ).toArray()
-
-    if (tasks) {
-        goaltree = tasks.map(task => {if (task.goal) return task.goal})
-        checkgoals = goaltree
-    }
+    let checkgoals = treegoals
     
     while (checkgoals.length > 0) {
         //find all parent goals linked to goals
@@ -646,13 +630,15 @@ async function getgoaltree({goalid, tasklist}) {
     return goaltree
 }
 
-async function gettasktree(taskid) {
+async function gettasktree({taskid, tags, goalid}) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
 
     let tasktree = [taskid]
-    let newtasks = []
+    let treegoals = goalid ? [goalid] : []
+    let treetags = tags ? tags : []
     let checktasks = [taskid]
+    let newtasks = []
     
     while (checktasks.length > 0) {
         //find all parent tasks linked to tasks
@@ -663,7 +649,11 @@ async function gettasktree(taskid) {
         ).toArray()
 
         let thesetasks = addtasks.map(
-            link => link._id.toString()
+            link => {
+                if (link.goal) treegoals = treegoals.concat(link.goal)
+                if (link.tags) treetags = treetags.concat(link.tags)
+                return link._id.toString()
+            }
         )
         //turn into set for more efficient processing (need to confirm)
         let taskset = new Set(tasktree); 
@@ -674,7 +664,6 @@ async function gettasktree(taskid) {
         //update checktasks to new tasks and loop
         checktasks = newtasks
     }
-
-    return tasktree
+    return {tasktree, treegoals, treetags}
 }
 
