@@ -383,14 +383,16 @@ export const resolvers = {
             )  
         },
         updateResponse: async(root, args, { req }) => {
-            const db = await DbConnection.Get()
-            const ChatResponses = db.collection('chatresponses')
-            ChatResponses.updateOne(
-                { _id: new ObjectId(args.responseid) },
-                { 
-                    $set: { message: args.message},
-                }
-            )  
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                const db = await DbConnection.Get()
+                const ChatResponses = db.collection('chatresponses')
+                ChatResponses.updateOne(
+                    { _id: new ObjectId(args.responseid) },
+                    { 
+                        $set: { message: args.message },
+                    }
+                )  
+            } else triggererror('Not available.')
         },
         sendRating: async(root, args, { req }) => {
             const userid = getuserid(req.session)
@@ -549,23 +551,6 @@ export const resolvers = {
                 ChatContext.updateMany({promptid: promptid, responseid: responseid}, {$set: {block: true}})
                 return true
             }
-        },
-        updateResponse: async(root, {promptid, newresponse}, { req }) => {
-            if (req.session.user.email === "daniel@lateralproducts.com"){
-                /* const db = await DbConnection.Get()
-                const ChatResponses = db.collection('chatresponses')
-                const insertedresponse = await ChatResponses.insertOne({message: newresponse})
-                if(promptid) {
-                    const ChatContext = db.collection('chatcontext')
-                    ChatContext.insertOne(
-                        {
-                            promptid: promptid,
-                            responseid: insertedresponse.insertedId.toString()
-                        }
-                    )
-                } */
-                triggererror('Not built yet.')
-            } else triggererror('Not available.')
         },
         archivechat: async(root, {chatid}, { req }) => {
                 const db = await DbConnection.Get()
