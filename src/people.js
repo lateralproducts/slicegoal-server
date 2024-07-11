@@ -7,7 +7,7 @@ export const schema = `
         _id: String
         name: String
         dob: Int
-        profileid: String
+        tags: [Area]
     }
 
     input PersonInput {
@@ -22,7 +22,7 @@ export const typeDefs = `
     extend type Query {
         getPersonById(id: String!): Person
         getAllPeople: [Person]
-        personInsights(personid: String!): [Insight]
+        personInsights(personid: String!): [InsightTag]
     }
 
     extend type Mutation {
@@ -35,23 +35,24 @@ export const typeDefs = `
 export const resolvers = {
     Query: {        
         personInsights: async(_, args, { req }) => {
-            try {
-                const db = await DbConnection.Get()
-                const profileid = await getprofileid(req.session)
-                const id = args.id
-                const result = await db.collection('people').findOne({ _id: ObjectId(id), profileid })
-                return result
-            } catch (error) {
-                throw new Error(`Failed to get person by ID: ${error}`)
-            }
+            const db = await DbConnection.Get()
+            const Tags = db.collection('insighttags')
+
+            return await Tags.find({
+                insightid: {$ne: null},
+                personid: args.personid
+                },
+                { sort: { pinned: -1, created: -1 } }
+            )
+            .toArray()
         },
 
-        getPersonById: async(_, args, { req }) => {
+        getPersonById: async(_, { id }, { req }) => {
             try {
                 const db = await DbConnection.Get()
                 const profileid = await getprofileid(req.session)
-                const id = args.id
-                const result = await db.collection('people').findOne({ _id: ObjectId(id), profileid })
+                const result = await db.collection('people').findOne({ _id: new ObjectId(id), profileid })
+                console.log(result)
                 return result
             } catch (error) {
                 throw new Error(`Failed to get person by ID: ${error}`)
@@ -70,6 +71,19 @@ export const resolvers = {
             }
         }
     },
+    Person: {
+        tags: async(person) => {
+            try {
+                const db = await DbConnection.Get()
+                const Areas = db.collection('areas')
+                if(person.tags) return await Areas.find({_id: {$in: person.tags.map(areaid => {return new ObjectId(areaid)})}}).toArray()
+                else return []
+            }
+             catch (error) {
+                return []
+            }
+        }
+    },
     Mutation: {
         createPerson: async(_, {person}, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){
@@ -77,48 +91,7 @@ export const resolvers = {
                 const db = await DbConnection.Get()
                 const profileid = await getprofileid(req.session)
                 person.profileid = profileid
-                const result = await db.collection('people').insertOne(person)
-                console.log(result)
-
-                /* if (args.areatags)
-                    //if there are area tags, save the area tags
-                    args.areatags.map(async link => {
-                        let areaid = link.area._id
-                        if (!areaid) {
-                            //if area doesn't exist, create it.
-                            let area = {
-                                name: link.name,
-                                wheelid: newinsight.wheelid
-                                    ? newinsight.wheelid
-                                    : getwheelid(req.session),
-                                serverversion: pjson.version,
-                                uiversion: getuiversion(req.session),
-                                created: new Date()
-                            }
-        
-                            const res = await Areas.insertOne(area)
-                            areaid = res.insertedId
-                        }
-        
-                        let insighttag = new Object()
-                        insighttag.insightid = result.insertedId.toString()
-                        insighttag.profileid = newinsight.profileid
-                        insighttag.area = areaid
-                        insighttag.notes = link.notes
-                        insighttag.datecreated = new Date()
-                        insightTags.insertOne(insighttag)
-        
-                        Areas.updateOne(
-                            {
-                                wheelid: newinsight.wheelid
-                                    ? newinsight.wheelid
-                                    : getwheelid(req.session),
-                                _id: new ObjectId(areaid)
-                            },
-                            { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
-                        )
-                    }) */
-
+                await db.collection('people').insertOne(person)
                 return true
             } catch (error) {
                 console.log(error)
@@ -134,8 +107,8 @@ export const resolvers = {
                 const id = args.personid
                 const updates = args.updates
                 updates.profileid = profileid
-                const result = await db.collection('people').findOneAndUpdate(
-                    { _id: ObjectId(id) },
+                await db.collection('people').findOneAndUpdate(
+                    { _id: new ObjectId(id) },
                     { $set: updates },
                     { returnOriginal: false }
                 )
@@ -150,7 +123,7 @@ export const resolvers = {
                 const db = await DbConnection.Get()
                 const profileid = await getprofileid(req.session)
                 const id = args.personid
-                const result = await db.collection('people').findOneAndDelete({ _id: ObjectId(id), profileid })
+                await db.collection('people').findOneAndDelete({ _id: new ObjectId(id), profileid })
                 return true
             } catch (error) {
                 throw new Error(`Failed to delete person: ${error}`)

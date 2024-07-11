@@ -21,8 +21,6 @@ export const resolvers = {
     Query: {
         tags: async(_, args, { req }) => {
             const db = await DbConnection.Get()
-
-            const GoalTags = db.collection('goaltags')
             const Insights = db.collection('insights')
             const InsightTags = db.collection('insighttags')
             const Spaced = db.collection('spaced')
@@ -33,15 +31,18 @@ export const resolvers = {
 
             const inputareas = args.areas
 
-            if(args.type === 'insights') {
-                alltags = await InsightTags.find({ profileid: getprofileid(req.session) })
+            if(args.type === 'insights' || args.type === 'goals') {
+                let query = new Object()
+                query.profileid = getprofileid(req.session)
+                if(args.type === 'insights') {
+                    query.insightid = { $ne: null }
+                } else {
+                    query.goalid = { $ne: null }
+                }
+
+                alltags = await Tags.find(query)
                     .toArray()
-                tagsonarea = await InsightTags.find({ area: inputareas[0]._id })
-                    .toArray()
-            }else if(args.type === 'goals') {
-                alltags = await GoalTags.find({ profileid: getprofileid(req.session) })
-                    .toArray()
-                tagsonarea = await GoalTags.find({ area: inputareas[0]._id })
+                tagsonarea = await Tags.find({ area: inputareas[0]._id })
                     .toArray()
             }
 
@@ -78,7 +79,7 @@ export const resolvers = {
                     return spaced.insightid.toString()
                 })
 
-                alltags = await InsightTags.find({ 
+                alltags = await Tags.find({ 
                     $and: [
                         { profileid: getprofileid(req.session)},
                         { insightid: {$in: insightspromptset }},

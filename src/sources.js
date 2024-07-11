@@ -142,7 +142,7 @@ export const resolvers = {
                 insightid: {$ne: null},
                 sourceid: sourceid
                 },
-                { sort: { pinned: -1, created: -1 } }
+                { sort: { pinned: -1, datecreated: -1 } }
             )
             .toArray()
         },
@@ -152,7 +152,7 @@ export const resolvers = {
             try {
                 const db = await DbConnection.Get()
                 const Areas = db.collection('areas')
-                if(source.tags) return await Areas.find({_id: {$in: source.tags.map(sourceid => {return new ObjectId(sourceid)})}}).toArray()
+                if(source.tags) return await Areas.find({_id: {$in: source.tags.map(areaid => {return new ObjectId(areaid)})}}).toArray()
                 else return []
             }
              catch (error) {
@@ -348,7 +348,7 @@ export async function attachSources({sources, insightid, profileid}) {
                     updated: new Date()
                 },
                 $setOnInsert: {
-                    created: new Date()
+                    datecreated: new Date()
                 }},
                 {upsert: true}
             )

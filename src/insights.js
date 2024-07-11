@@ -71,13 +71,15 @@ export const schema = `
         _id: String
         insightid: String
         areaid: String
+        goalid: String
         area: Area
         insight: Insight
         source: Source
         person: Person
         notes: String
         pinned: Boolean
-        spaced: Spaced 
+        spaced: Spaced
+        goal: Goal
     }
     type Spaced {
         _id: String
@@ -380,6 +382,11 @@ export const resolvers = {
                 profileid: getprofileid(req.session)
             })
             return spaced
+        },
+        goal: async({ goalid }) => {
+            const db = await DbConnection.Get()
+            const Goals = db.collection('goals')
+            return await Goals.findOne({ _id: new ObjectId(goalid) })
         }
     },
     SharedInsightList: {

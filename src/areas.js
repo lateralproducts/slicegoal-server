@@ -715,8 +715,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const AreaLinks = db.collection('arealinks')
-            const InsightTags = db.collection('insighttags')
-            const GoalTags = db.collection('goaltags')
+            const Tags = db.collection('insighttags')
             const Pomodoros = db.collection('pomodoros')
             const Wheels = db.collection('wheels')
 
@@ -730,11 +729,8 @@ export const resolvers = {
                 const areaLinksDel = AreaLinks.deleteMany({
                     area: areaid
                 })
-                const insightTagsDel = InsightTags.deleteMany({
+                const insightTagsDel = Tags.deleteMany({
                     area: areaid
-                })
-                const goalTagsDel = GoalTags.deleteMany({
-                    areaid: areaid
                 })
                 const pomodorosDel = Pomodoros.deleteMany({
                     araed: areaid
@@ -1145,9 +1141,8 @@ async function deleteWheelAll(req, viewid) {
     const Areas = db.collection('areas')
     const AreaLinks = db.collection('arealinks')
     const Goals = db.collection('goals')
-    const GoalTags = db.collection('goaltags')
     const Insights = db.collection('insights')
-    const InsightTags = db.collection('insighttags')
+    const Tags = db.collection('insighttags')
     const Wheels = db.collection('wheels')
     const Views = db.collection('views')
     const Profiles = db.collection('profiles')
@@ -1165,9 +1160,8 @@ async function deleteWheelAll(req, viewid) {
 
     deleteprofiles.map(function({ _id }) {
         Goals.deleteMany({ profileid: _id })
-        GoalTags.deleteMany({ profileid: _id })
         Insights.deleteMany({ profileid: _id })
-        InsightTags.deleteMany({ profileid: _id })
+        Tags.deleteMany({ profileid: _id })
         Profiles.deleteOne({ _id: _id }) //delete profile last
     })
 

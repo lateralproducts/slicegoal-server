@@ -13,7 +13,7 @@ export const typeDefs = `
         goalstolink: [Goal]
         linkedgoals(goal: String): [Goal]
         parentgoals(goal: String, filterid: String): [Goal]
-        goalTags(area: String, goal: String): [GoalTag]
+        goalTags(area: String, goal: String): [InsightTag]
     }
 
     extend type Mutation {
@@ -64,15 +64,6 @@ export const schema = `
     type Key {
         title: String
         checked: Boolean
-    }
-
-    type GoalTag {
-        _id: String
-        goalid: String
-        areaid: String
-        notes: String
-        area: Area
-        goal: Goal
     }
 `
 
@@ -162,16 +153,16 @@ export const resolvers = {
         goalTags: async(_, args, { req }) => {
             
             const db = await DbConnection.Get()
-            const GoalTags = db.collection('goaltags')
+            const Tags = db.collection('insighttags')
             
             let query = Object()
-            if(args.area) query.areaid = args.area
+            if(args.area) query.area = args.area
             if(args.goal) query.goalid = args.goal
             query.profileid = getprofileid(req.session)
             query.complete = { $eq: null }
             query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }]
             
-            return await GoalTags.find(query, {
+            return await Tags.find(query, {
                 sort: { orderrank: 1 }
             }).toArray()
             
@@ -271,18 +262,6 @@ export const resolvers = {
             else return false
         },
     },
-    GoalTag: {
-        area: async({ areaid }) => {
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            return await Areas.findOne({ _id: new ObjectId(areaid) })
-        },
-        goal: async({ goalid }) => {
-            const db = await DbConnection.Get()
-            const Goals = db.collection('goals')
-            return await Goals.findOne({ _id: new ObjectId(goalid) })
-        }
-    },
     Mutation: {
         createGoal: async(root, args, { req }) => {
             
@@ -298,10 +277,9 @@ export const resolvers = {
         updateGoalTag: async(root, args, { req }) => {
             
             const db = await DbConnection.Get()
-            const GoalTags = db.collection('goaltags')
-            args.profileid = getprofileid(req.session)
-            GoalTags.updateOne(
-                { _id: new ObjectId(args.tagid) },
+            const Tags = db.collection('insighttags')
+            Tags.updateOne(
+                { _id: new ObjectId(args.tagid), profileid: getprofileid(req.session)},
                 { $set: { notes: args.notes } },
                 function(err) {
                     if (err) throw err
@@ -313,7 +291,7 @@ export const resolvers = {
             
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
-            const GoalTags = db.collection('goaltags')
+            const Tags = db.collection('insighttags')
             let areaid
             if (!args.areaid) {
                 let newarea = new Object() //create new area.
@@ -325,11 +303,11 @@ export const resolvers = {
                 areaid = args.areaid
             }
 
-            const link = await GoalTags.insertOne({
+            const link = await Tags.insertOne({
                 //insert the link to connect note and new area.
                 goalid: args.goalid,
                 profileid: getprofileid(req.session),
-                areaid: areaid,
+                area: areaid,
                 datecreated: new Date()
             })
             return {
@@ -338,14 +316,12 @@ export const resolvers = {
             }
         },
         removeGoalTag: async(root, args, { req }) => {
-            
             const db = await DbConnection.Get()
-            const GoalTags = db.collection('goaltags')
-            args.profileid = getprofileid(req.session)
-            GoalTags.deleteOne(
+            const Tags = db.collection('insighttags')
+            Tags.deleteOne(
                 {
                     _id: new ObjectId(args.tagid),
-                    profileid: args.profileid
+                    profileid: getprofileid(req.session)
                 },
                 function(err) {
                     if (err) throw err
@@ -392,10 +368,10 @@ export const resolvers = {
         removeGoal: async(root, { goalid }, { req }) => {
             
             const db = await DbConnection.Get()
-            const GoalTags = db.collection('goaltags')
+            const Tags = db.collection('insighttags')
             const Goals = db.collection('goals')
             const GoalLinks = db.collection('goallinks')
-            await GoalTags.deleteMany({ goalid: goalid, profileid: getprofileid(req.session) })
+            await Tags.deleteMany({ goalid: goalid, profileid: getprofileid(req.session) })
             await GoalLinks.deleteMany({ $or: [{rootgoal: goalid},{goal: goalid}], profileid: getprofileid(req.session) })
             Goals.deleteMany({ _id: new ObjectId(goalid), profileid: getprofileid(req.session) }).then(result => {
                 if (result.result.n > 0) return true
@@ -426,11 +402,10 @@ export const resolvers = {
             return true
         },
         updateGoalOrder: async(parent, args, { req }) => {
-            
             const db = await DbConnection.Get()
-            const GoalTags = db.collection('goaltags')
+            const Tags = db.collection('insighttags')
             args.goals.map(function(_id, count) {
-                GoalTags.updateOne(
+                Tags.updateOne(
                     { _id: new ObjectId(_id) },
                     { $set: { orderrank: count } },
                 )
@@ -441,7 +416,7 @@ export const resolvers = {
             
             const db = await DbConnection.Get()
             const Goals = db.collection('goals')
-            const GoalTags = db.collection('goaltags')
+            const Tags = db.collection('insighttags')
             const profileid = getprofileid(req.session)
             let snoozedate = new Date(snooze) //time set from client argument
             snoozedate.setHours(0, 0, 0, 0)
@@ -449,7 +424,7 @@ export const resolvers = {
                 { _id: new ObjectId(goalid) },
                 { $set: { snooze: snoozedate }}
             )
-            await GoalTags.updateMany(
+            await Tags.updateMany(
                 { goalid: goalid, profileid: profileid },
                 { $set: { snooze: snoozedate }}
             )
@@ -504,7 +479,7 @@ export const resolvers = {
 export async function creategoal(newgoal, req) {
     const db = await DbConnection.Get()
     const Goals = db.collection('goals')
-    const GoalTags = db.collection('goaltags')
+    const Tags = db.collection('insighttags')
     const Areas = db.collection('areas')
     const Tasks = db.collection('tasks')
     try {
@@ -541,11 +516,9 @@ export async function creategoal(newgoal, req) {
                     let goaltag = new Object()
                     goaltag.goalid = result.insertedId.toString()
                     goaltag.profileid = newgoal.profileid
-                    goaltag.areaid = areaid
-                    goaltag.datetime = newgoal.datetime
-                    goaltag.date = new Date(newgoal.datetime) //time set from client argument
+                    goaltag.area = areaid
                     goaltag.datecreated = new Date()
-                    GoalTags.insertOne(goaltag)
+                    Tags.insertOne(goaltag)
                 })
             return result.insertedId
         })

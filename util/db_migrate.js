@@ -7,18 +7,19 @@ import DbConnection from '../src/database'
 
 export const typeDefs = `
     extend type Mutation {
-        migrateDBSourceTagstoTags: Boolean
+        migrateDBAllTags: Boolean
     }`
 
 export const resolvers = {
     Mutation: {
-        migrateDBSourceTagstoTags: async(_, __, { req }) => {
+        migrateDBAllTags: async(_, __, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){ //only allow my profile to run migration script: staging + prod.
                 const db = await DbConnection.Get()
                 const SourceTags = db.collection('sourcetags')
+                const GoalTags = db.collection('goaltags')
                 const InsightTags = db.collection('insighttags')
                 
-                SourceTags.find().forEach(function(doc) {
+                /* SourceTags.find().forEach(function(doc) {
                     let newtag = new Object()
                     //mapping sourcetags to insighttags
                     newtag = {
@@ -30,6 +31,24 @@ export const resolvers = {
                     if (doc.datetime)  newtag.updated = doc.datetime
                     if (doc.note) newtag.notes = doc.note
                     if (doc.pinned) newtag.pinned = doc.pinned
+
+                    InsightTags.insertOne(newtag);
+                }); */
+
+                GoalTags.find().forEach(function(doc) {
+                    let newtag = new Object()
+                    //mapping sourcetags to insighttags
+                    newtag = {
+                        profileid: doc.profileid, 
+                        goalid: doc.goalid,
+                        area: doc.areaid,
+                        datecreated: doc.datecreated,
+                    }
+                    if (doc.complete)  newtag.complete = doc.complete
+                    if (doc.notes) newtag.notes = doc.notes
+                    if (doc.lastupdated) newtag.updated = doc.lastupdated   
+                    if (doc.orderrank) newtag.orderrank = doc.orderrank   
+                    if (doc.snooze) newtag.snooze = doc.snooze   
 
                     InsightTags.insertOne(newtag);
                 });
