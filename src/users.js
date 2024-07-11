@@ -14,6 +14,7 @@ import { sessiontrack } from './website'
 let pjson = require('../package.json')
 import DbConnection from './database'
 import { setLastAccessedView } from './areas';
+import { longdatestring } from '../util/functions';
 
 //import { verifier } from "google-id-token-verifier";
 const { OAuth2Client } = require('google-auth-library')
@@ -46,7 +47,7 @@ export const typeDefs = `
     createClient(email: String!): createClientResponse
     
     resetPassword(email: String): Boolean
-    setPassword(userid: String, code: String, password: String): User
+    setPassword(codedate: String, code: String, password: String): User
     updatePassword(userid: String, oldpassword: String, newpassword: String): User
   }
 `
@@ -337,8 +338,8 @@ export const resolvers = {
 
             //don't allow someone to try and reset without a code.
             if(!args.code) return triggererror('Reset details not found. Please try and reset your password again.')
-
-            let user = await Users.findOne({ code: args.code })
+            
+            let user = await Users.findOne({ codecreated: args.codedate, code: args.code })
             if(!user) return triggererror('Reset details not found. Please try and reset your password again.')
 
             if(user.lastreset){
@@ -348,11 +349,11 @@ export const resolvers = {
                     return triggererror('Reset details not found. Please try and reset your password again.')
                 }
             }
-
+            
             checkPasswordFormat(args.password)
 
             user = await Users.findOneAndUpdate(
-                { _id: new ObjectId(args.userid), code: args.code },
+                { codecreated: args.codedate, code: args.code },
                 {
                     $set: {
                         password: bcrypt.hashSync(args.password, 10),
@@ -540,8 +541,8 @@ export const resolvers = {
                 let newuser = {
                     email: args.email.toLowerCase(),
                     firstname: args.firstname,
-                    code: bcrypt.hashSync(date.toString(), 7),
-                    codecreated: Date(),
+                    code: bcrypt.hashSync(date.toString() + args.email.toLowerCase(), 7),
+                    codecreated: longdatestring(date),
                     uiversion: args.uiversion,
                     serverversion: pjson.version,
                     state: 'new',
@@ -586,14 +587,15 @@ export const resolvers = {
                 }
             }
 
+            const codedate = longdatestring(new Date())
             //Get user profile.
             const date = new Date()
-            const newcode = bcrypt.hashSync(date.toString(), 7)
+            const newcode = bcrypt.hashSync(date.toString() + args.email.toLowerCase(), 7)
             const user = await Users.findOneAndUpdate(
                 { email: args.email.toLowerCase() },
                 { $set: {
                     code: newcode,
-                    codecreated: Date(),
+                    codecreated: codedate,
                     lastreset: new Date()
                 }}
             )
@@ -603,12 +605,11 @@ export const resolvers = {
                 emailuser = user.value
             }
             else {
-                //const date = new Date()
                 let newuser = {
                     email: args.email.toLowerCase(),
                     firstname: args.firstname,
                     code: newcode,
-                    codecreated: Date(),
+                    codecreated: codedate,
                     uiversion: args.uiversion,
                     serverversion: pjson.version,
                     state: 'new',
@@ -622,7 +623,7 @@ export const resolvers = {
 
             if (emailuser.state === "verified"){
                 const queryStringParams = args.queryStringParams ? args.queryStringParams : '' 
-                emailResetPassword(emailuser, newcode, queryStringParams)
+                emailResetPassword(emailuser, codedate, newcode, queryStringParams)
                 sessiontrack(req, args, 'app', 'password-reset', 'success','email')
                 return true
             } else return triggererror(

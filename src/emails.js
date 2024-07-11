@@ -251,12 +251,12 @@ export async function emailNewPersonal(personal, queryStringParams) {
     sendEmail(to, subject, email)
 }
 
-export async function emailResetPassword(personal, newcode, queryStringParams) {
-    let to = personal.email
+export async function emailResetPassword(user, codedate, newcode, queryStringParams) {
+    let to = user.email
     let subject = "Looks like you asked for a password reset"
     let email = Mustache.render(resetpassword, {
         pathurl: APP_PATH_URL,
-        personalid: personal._id,
+        codedate: codedate,
         personalcode: newcode,
         logopath: LOGO_PATH_URL,
         pixelpath: PIXEL_PATH_URL,

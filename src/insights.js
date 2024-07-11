@@ -17,7 +17,8 @@ export const typeDefs = `
   extend type Query {
     insights(areas: [AreaId]): [InsightTag]
     insightList(page: Int): [Insight]
-    insightTags(insightid: String): [InsightTag]
+    insightAreaTags(insightid: String): [InsightTag]
+    insightPersonTags(insightid: String): [InsightTag]
     searchinsights(areas: [AreaId], search: String): [Insight]
     spaced(areas: [AreaId]): FilteredSpaced
     newsharedinsights: Int
@@ -25,16 +26,21 @@ export const typeDefs = `
   }
 
   extend type Mutation {
-    createInsight(datetime: String, profileid: String, prompt: String, fileids: [String], answer: String, areatags: [AreaTagIn], sources: [SourceTagIn], taskid: String): Spaced
+    createInsight(datetime: String, profileid: String, prompt: String, fileids: [String], answer: String, areatags: [AreaTagIn], sources: [SourceTagIn], people: [PersonInput], taskid: String): Spaced
     updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, fileids: [String], sources: [SourceTagIn]): Spaced 
+    removeInsight(insightid: String!): Boolean
+
+    pinInsight(insightid: String!, areaid: String, sourceid: String, setpinned: Boolean, resourcetype: String): Boolean
+    shareInsight(insightid: String!, targetUser: String!, shareNote: String): ShareResponse
+    popSharedInsight(insightid: String!): Boolean
+
     createInsightTag(insightid: String!, profileid: String, area: String, areaname: String): Tag
     updateInsightTag(tagid: String!, notes: String): Boolean
     removeInsightTag(tagid: String): Boolean
+    
     markSpaced(insightid: String, datetime: String, check: String, marked: String): Boolean
-    removeInsight(insightid: String!): Boolean
-    shareInsight(insightid: String!, targetUser: String!, shareNote: String): ShareResponse
-    popSharedInsight(insightid: String!): Boolean
-    pinInsight(insightid: String!, areaid: String, sourceid: String, setpinned: Boolean, resourcetype: String): Boolean
+    
+    createInsightPersonTag(insightid: String!, person: PersonInput): Tag
   }
 `
 
@@ -67,6 +73,8 @@ export const schema = `
         areaid: String
         area: Area
         insight: Insight
+        source: Source
+        person: Person
         notes: String
         pinned: Boolean
         spaced: Spaced 
@@ -299,11 +307,23 @@ export const resolvers = {
                 distinctSharers: distinctSharers
             }
         },
-        insightTags: async(_, args, { req }) => {
+        insightAreaTags: async(_, args, { req }) => {
             
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
             const insighttags = await InsightTags.find({
+                area: {$ne: null},
+                insightid: args.insightid,
+                profileid: getprofileid(req.session)
+            }).toArray()
+            return insighttags
+        },
+        insightPersonTags: async(_, args, { req }) => {
+            
+            const db = await DbConnection.Get()
+            const InsightTags = db.collection('insighttags')
+            const insighttags = await InsightTags.find({
+                personid: {$ne: null},
                 insightid: args.insightid,
                 profileid: getprofileid(req.session)
             }).toArray()
@@ -327,17 +347,30 @@ export const resolvers = {
             if (insight.fileids) return  await getPreviews(req, insight.fileids) || null
             else if (insight.file) return [await getfileid(req, insight.file)] || null
         }
-        },
-        InsightTag: {
+    },
+    InsightTag: {
         area: async parent => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             return await Areas.findOne({ _id: new ObjectId(parent.area) })
         },
+        person: async parent => {
+            const db = await DbConnection.Get()
+            const People = db.collection('people')
+            return await People.findOne({ _id: new ObjectId(parent.personid) })
+        },
         insight: async parent => {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             return await Insights.findOne({ _id: new ObjectId(parent.insightid) })
+        },
+        source: async function(parent) {
+            const db = await DbConnection.Get()
+            const Sources = db.collection('sources')
+
+            return await Sources.findOne(
+                {_id: new ObjectId(parent.sourceid)}
+            )
         },
         spaced: async parent => {
             const db = await DbConnection.Get()
@@ -505,12 +538,11 @@ export const resolvers = {
             )
 
             if(args.sources) {
-                attachSources(
-                    args.sources, 
-                    'insight', 
+                attachSources({
+                    sources: args.sources, 
                     insightid,
-                    getprofileid(req.session)
-                )
+                    profileid: getprofileid(req.session)
+                })
             }
 
             if (args.prompt){              
@@ -618,6 +650,10 @@ export const resolvers = {
             )
             return true
         },
+        createInsightPersonTag: async(_, {insightid, person}, { req }) => {
+            await createInsightPersonTag(insightid, person, req)
+            return true
+        },
         /* createNewInsightTag: async (root, args, { req }) => {
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -645,12 +681,11 @@ export const resolvers = {
             return await createinsight(args, req)
                 .then(insertedId => {
                     if (args.sources) {
-                        attachSources(
-                            args.sources, 
-                            'insight', 
-                            insertedId, 
-                            getprofileid(req.session)
-                        )
+                        attachSources({
+                            sources: args.sources, 
+                            insightid: insertedId, 
+                            profileid: getprofileid(req.session)
+                        })
                         .then(() => {
                             return {_id: insertedId}
                         })
@@ -664,10 +699,9 @@ export const resolvers = {
         removeInsight: async(_, { insightid }, { req }) => {
             
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insighttags')
+            const Tags = db.collection('insighttags')
             const Insights = db.collection('insights')
             const Profiles = db.collection('profiles')
-            const SourceTags = db.collection('sourcetags')
 
             //Check ownership
             const insight = await Insights.findOne({ _id: new ObjectId(insightid) })
@@ -676,17 +710,11 @@ export const resolvers = {
                 if (profile.user !== getuserid(req.session)) {
                     return triggererror('Unauthorised Insight Delete')
                 } else {
-                    await InsightTags.deleteMany(
+                    await Tags.deleteMany(
                         { insightid: insightid },
                         function(err) {
                             if (err) throw err
                         },
-                    )
-                    await SourceTags.deleteMany(
-                        { 
-                            resourcetype: 'insight',
-                            resourceid: insightid
-                        }
                     )
                     await Insights.deleteOne(
                         { _id: new ObjectId(insightid) },
@@ -809,31 +837,56 @@ export const resolvers = {
         },
         pinInsight: async(_, args) => {
             const db = await DbConnection.Get()
-            const InsightTags = db.collection('insighttags')
-            const SourceTags = db.collection('sourcetags')
+            const Tags = db.collection('insighttags')
 
-            if(args.resourcetype === 'source') {
-                const resultsourcetags = await SourceTags.updateOne(
-                    {
-                        sourceid: args.sourceid,
-                        resourceid: args.insightid
-                    },
-                    {$set: {pinned: args.setpinned}}
-                )
-                return (resultsourcetags !== null)
-            }
-            else if(args.resourcetype === 'insight') {
-                const resultinsighttags = await InsightTags.updateOne(
-                    {
-                        area: args.areaid,
-                        insightid: args.insightid
-                    },
-                    {$set: {pinned: args.setpinned}}
-                )
-                return (resultinsighttags !== null)
-            }
+            let pintag = new Object()
+            pintag.insightid = args.insightid
+            if (args.sourceid) pintag.sourceid = args.sourceid //if pinned for source.
+            if (args.areaid) pintag.area = args.areaid //if pinned for area.
+
+            const resultsourcetags = await Tags.updateOne(
+                pintag,
+                {$set: {pinned: args.setpinned}}
+            )
+            return (resultsourcetags !== null)
         }
     }
+}
+
+async function createInsightPersonTag(insightid, person, req) {
+    const db = await DbConnection.Get()
+    const InsightTags = db.collection('insighttags')
+    const People = db.collection('people')
+
+    let personid = person._id
+    let newperson = new Object()
+    if (personid) newperson._id = ObjectId(personid) //search for ID only.
+    else {
+        newperson = {
+            name: person.name,
+            profileid: getprofileid(req.session)
+        }
+    }
+
+    const returnperson = await People.findOneAndUpdate(
+        newperson,
+        { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } }, 
+        { returnOriginal: false, upsert: true }
+    )
+    if (returnperson.value) personid = returnperson.value._id.toString() //if person already exists, get the ID.
+    if (returnperson.lastErrorObject) personid = returnperson.lastErrorObject.upserted.toString() //if person is new, get the ID.
+
+    await InsightTags.updateOne(
+        {
+            insightid: insightid,
+            profileid: getprofileid(req.session),
+            personid: personid
+        },
+        { $set: { datecreated: new Date() } }, 
+        {upsert: true}
+    )
+
+    return true
 }
 
 async function createinsight(newinsight, req) {
@@ -842,7 +895,8 @@ async function createinsight(newinsight, req) {
     const Insights = db.collection('insights')
     const Spaced = db.collection('spaced')
     const Areas = db.collection('areas')
-    const insightTags = db.collection('insighttags')
+    const People = db.collection('people')
+    const InsightTags = db.collection('insighttags')
 
     const Profiles = db.collection('profiles')
 
@@ -873,42 +927,69 @@ async function createinsight(newinsight, req) {
 
         if (newinsight.areatags)
             //if there are area tags, save the area tags
-            newinsight.areatags.map(async link => {
-                let areaid = link.area._id
-                if (!areaid) {
-                    //if area doesn't exist, create it.
-                    let area = {
-                        name: link.name,
-                        wheelid: newinsight.wheelid
-                            ? newinsight.wheelid
-                            : getwheelid(req.session),
-                        serverversion: pjson.version,
-                        uiversion: getuiversion(req.session),
-                        created: new Date()
-                    }
-
-                    const res = await Areas.insertOne(area)
-                    areaid = res.insertedId
+        newinsight.areatags.map(async link => {
+            let areaid = link.area._id
+            if (!areaid) {
+                //if area doesn't exist, create it.
+                let area = {
+                    name: link.name,
+                    wheelid: newinsight.wheelid
+                        ? newinsight.wheelid
+                        : getwheelid(req.session),
+                    serverversion: pjson.version,
+                    uiversion: getuiversion(req.session),
+                    created: new Date()
                 }
 
-                let insighttag = new Object()
-                insighttag.insightid = result.insertedId.toString()
-                insighttag.profileid = newinsight.profileid
-                insighttag.area = areaid
-                insighttag.notes = link.notes
-                insighttag.datecreated = new Date()
-                insightTags.insertOne(insighttag)
+                const res = await Areas.insertOne(area)
+                areaid = res.insertedId
+            }
 
-                Areas.updateOne(
-                    {
-                        wheelid: newinsight.wheelid
-                            ? newinsight.wheelid
-                            : getwheelid(req.session),
-                        _id: new ObjectId(areaid)
-                    },
-                    { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
-                )
-            })
+            let insighttag = new Object()
+            insighttag.insightid = result.insertedId.toString()
+            insighttag.profileid = newinsight.profileid
+            insighttag.area = areaid
+            insighttag.notes = link.notes
+            insighttag.datecreated = new Date()
+            InsightTags.insertOne(insighttag)
+
+            Areas.updateOne(
+                {
+                    wheelid: newinsight.wheelid
+                        ? newinsight.wheelid
+                        : getwheelid(req.session),
+                    _id: new ObjectId(areaid)
+                },
+                { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
+            )
+        })
+
+        if (newinsight.people) //if there are people tags, save the people tags
+        newinsight.people.map(async link => {
+            let personid = link._id
+            if (!personid) {
+                //if person doesn't exist, create it.
+                link.profileid = newinsight.profileid
+                const res = await People.insertOne(link)
+                personid = res.insertedId.toString()
+            }
+
+            let persontag = new Object()
+            persontag.insightid = result.insertedId.toString()
+            persontag.profileid = newinsight.profileid
+            persontag.personid = personid
+            persontag.notes = link.notes
+            persontag.datecreated = new Date()
+            InsightTags.insertOne(persontag)
+
+            People.updateOne(
+                {
+                    profileid: newinsight.profileid,
+                    _id: new ObjectId(personid)
+                },
+                { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
+            )
+        })
         return result.insertedId.toString()
     } catch (error) {
         console.log(error)

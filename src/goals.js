@@ -22,9 +22,11 @@ export const typeDefs = `
         finishGoal(goal: String!, notes: String, complete: String): Boolean
         removeGoal(goalid: String!): Boolean
         snoozeGoal(goalid: String!, snooze: String!): Boolean
+        
         updateGoalOrder(goals: [String]): Boolean
         updateGoalListOrder(goals: [String]): Boolean
         updateSubGoalListOrder(goal: String, subgoals: [String]): Boolean
+        
         createGoalLink(rootgoal: String, goal: String): Boolean
         deleteGoalLink(rootgoal: String, goal: String): Area
     }

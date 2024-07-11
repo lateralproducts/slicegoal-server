@@ -13,10 +13,10 @@ export const typeDefs = `
 
     extend type Query {
         sources(tags: [String]): [Source]
-        insightSources(insightid: String!): [SourceTag]
+        insightSources(insightid: String!): [InsightTag]
         taskSources(taskid: String!): [Source]
         templateSources(templateid: String!): [Source]
-        sourceInsights(sourceid: String!): [SourceInsight]
+        sourceInsights(sourceid: String!): [InsightTag]
         searchSources(search: String, areas: [AreaId]): [Source]
         source(sourceid: String!): Source
     }
@@ -43,26 +43,10 @@ export const schema = `
         filedetails: [FilePreview]
     }
 
-    type SourceTag {
-        _id: String
-        resourceid: String
-        resourcetype: String
-        profileid: String
-        source: Source
-        note: String
-        pinned: Boolean
-    }
-
     input SourceTagIn {
-        note: String
+        notes: String
         name: String
         _id: String!
-    }
-
-    type SourceInsight {
-        insight: Insight
-        pinned: Boolean
-        note: String
     }
 `
 
@@ -106,14 +90,13 @@ export const resolvers = {
         },
         // all sources on an insight
         insightSources: async function(_, { insightid }, { req }) {
-            
             const db = await DbConnection.Get()
-            const SourceTags = db.collection('sourcetags')
+            const Tags = db.collection('insighttags')
 
-            return await SourceTags.find(
+            return await Tags.find(
                 {
-                    resourcetype: 'insight',
-                    resourceid: insightid
+                    sourceid: {$ne: null},
+                    insightid: insightid
                 }
             ).toArray()
         },
@@ -153,10 +136,10 @@ export const resolvers = {
         sourceInsights: async function(_, { sourceid }, { req }) {
             
             const db = await DbConnection.Get()
-            const SourceTags = db.collection('sourcetags')
+            const Tags = db.collection('insighttags')
 
-            return await SourceTags.find({
-                resourcetype: 'insight',
+            return await Tags.find({
+                insightid: {$ne: null},
                 sourceid: sourceid
                 },
                 { sort: { pinned: -1, created: -1 } }
@@ -207,7 +190,6 @@ export const resolvers = {
             })
         },
         editSource: async function(_, args, { req }) {
-            
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
 
@@ -218,19 +200,17 @@ export const resolvers = {
 
         },
         deleteSource: async function(_, { sourceid }, { req }) {
-            
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
-            const SourceTags = db.collection('sourcetags')
+            const Tags = db.collection('insighttags')
 
             // Remove tags to source and then tag itself 
-            return (await SourceTags.deleteOne({ sourceid: sourceid })
+            return (await Tags.deleteMany({ sourceid: sourceid })
                 .then(() => {
                     return Sources.deleteOne({ _id: new ObjectId(sourceid) })
                 })).deleteCount === 1
         },
         shareSource: async(_, args, { req }) => {
-            
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             const Users = db.collection('users')
@@ -317,41 +297,20 @@ export const resolvers = {
                 })
             }
         }
-    },
-    SourceTag: {
-        source: async function(parent) {
-            const db = await DbConnection.Get()
-            const Sources = db.collection('sources')
-
-            return await Sources.findOne(
-                {_id: new ObjectId(parent.sourceid)}
-            )
-        }
-    },
-    SourceInsight: {
-        insight: async({ resourceid }) => {
-            const db = await DbConnection.Get()
-            const Insights = db.collection('insights')
-
-            return await Insights.findOne(
-                { _id: new ObjectId(resourceid) }
-            )
-        }
-    } 
+    }
 }
 
-export async function attachSources(sourcelist, resourcetype, resourceid, profileid) {
+export async function attachSources({sources, insightid, profileid}) {
 
     const db = await DbConnection.Get()
-    const SourceTags = db.collection('sourcetags')
+    const Tags = db.collection('insighttags')
     const Sources = db.collection('sources')
 
-    const newsourcetags = sourcelist.map(source => {
+    const newsourcetags = sources.map(source => {
         return {
             _id: source._id,
-            resourcetype: resourcetype,
-            resourceid: resourceid,
-            note: source.note,
+            insightid: insightid,
+            notes: source.notes,
             datetime: new Date(),
             profileid: profileid
         }
@@ -359,37 +318,34 @@ export async function attachSources(sourcelist, resourcetype, resourceid, profil
 
     // Remove necessary tags
     const newsourceids = newsourcetags.map(tag => {return tag._id})
-    SourceTags.find(
+    Tags.find(
         {
-            resourceid: resourceid,
+            insightid: insightid,
             sourceid: {$nin: newsourceids}
         }
     )
     .toArray()
     .then(deletetags => {
         const deletetagids = deletetags.map(tag => {return new ObjectId(tag._id)})
-        SourceTags.deleteOne(
+        Tags.deleteOne(
             {_id: {$in: deletetagids}}
         )
     })
 
 
-    // Update/add tags
+    //Update/add tags
     //const updatepromisearray = []
     newsourcetags.forEach(sourcetag => {
         //updatepromisearray.push(
-            SourceTags.updateOne(
+            Tags.updateOne(
                 {
                     sourceid: sourcetag._id,
-                    resourceid: resourceid
-                },
-                {$set: {   
-                    sourceid: sourcetag._id,
-                    resourcetype: resourcetype,
-                    resourceid: resourceid,
-                    note: sourcetag.note,
-                    datetime: new Date(),
+                    insightid: insightid,
                     profileid: profileid
+                },
+                {$set: {
+                    notes: sourcetag.notes,
+                    updated: new Date()
                 },
                 $setOnInsert: {
                     created: new Date()

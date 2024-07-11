@@ -7,12 +7,38 @@ import DbConnection from '../src/database'
 
 export const typeDefs = `
     extend type Mutation {
-        migrateDBchatPromptsToVariants: Boolean
+        migrateDBSourceTagstoTags: Boolean
     }`
 
 export const resolvers = {
     Mutation: {
-        migrateDBchatPromptsToVariants: async(_, __, { req }) => {
+        migrateDBSourceTagstoTags: async(_, __, { req }) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){ //only allow my profile to run migration script: staging + prod.
+                const db = await DbConnection.Get()
+                const SourceTags = db.collection('sourcetags')
+                const InsightTags = db.collection('insighttags')
+                
+                SourceTags.find().forEach(function(doc) {
+                    let newtag = new Object()
+                    //mapping sourcetags to insighttags
+                    newtag = {
+                        profileid: doc.profileid, 
+                        insightid: doc.resourceid,
+                        sourceid: doc.sourceid,
+                        datecreated: doc.created
+                    }
+                    if (doc.datetime)  newtag.updated = doc.datetime
+                    if (doc.note) newtag.notes = doc.note
+                    if (doc.pinned) newtag.pinned = doc.pinned
+
+                    InsightTags.insertOne(newtag);
+                });
+                return true
+            }
+            return false
+        } 
+
+        /* migrateDBchatPromptsToVariants: async(_, __, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){ //only allow my profile to run migration script: staging + prod.
                 const db = await DbConnection.Get()
                 const ChatPrompts = db.collection('chatprompts')
@@ -27,7 +53,7 @@ export const resolvers = {
                     );
                 });
             }
-        }
+        } */
         /* migrate: async() => {
             //any migration script here.
         } */ 
