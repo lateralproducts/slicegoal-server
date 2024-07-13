@@ -680,6 +680,8 @@ export const resolvers = {
             return res.insertedIds[1] ? true : false
         }, */
         createInsight: async(_, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Tags = db.collection('insighttags')
             args.serverversion = pjson.version
             args.uiversion = getuiversion(req.session)
             args.datecreated = args.datetime ? new Date(args.datetime) : new Date() //time set from client argument
@@ -687,6 +689,10 @@ export const resolvers = {
 
             return await createinsight(args, req)
                 .then(insertedId => {
+                    if (args.taskid) {
+                        Tags.insertOne({insightid: insertedId, taskid: args.taskid, profileid: args.profileid, datecreated: new Date()})
+                    }
+
                     if (args.sources) {
                         attachSources({
                             sources: args.sources, 
@@ -698,7 +704,7 @@ export const resolvers = {
                         })
                     }
                     if (args.taskid) {
-                        linkInsightTask(args.taskid,insertedId)
+                        linkInsightTask(args.taskid,insertedId, req)
                     }
                     return {_id: insertedId}
                 })

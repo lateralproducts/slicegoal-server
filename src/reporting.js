@@ -127,7 +127,7 @@ export function calculateDeltaAndPercentageDelta(currentData, previousData) {
     const structuredData = {};
     keys.forEach(key => {
         const isNegative = delta[key] < 0;
-        if(isNegative) console.log('key' + key)
+        //if(isNegative) console.log('key' + key)
         structuredData[key] = {
             value: currentData[key] || 0,
             delta: (isNegative?"":"+") + delta[key], //a plus sign for positive deltas

@@ -102,7 +102,7 @@ export const typeDefs = `
     }
 `
 
-//tagChat(chatid: String, tags: [String]): Boolean
+//tagChat(chatid: String, areatags: [String]): Boolean
 
 export const resolvers = {
     Query: {

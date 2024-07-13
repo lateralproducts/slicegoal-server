@@ -5,6 +5,7 @@ import DbConnection from './database'
 import { getprofileid } from './users'
 import { activityrecord } from './pomodoros';
 import { date2str, startOfDay, daylater, startOfDayTZ, endOfDayTZ } from '../util/functions';
+import { attachAreas } from './sources';
 //import { activityrecord } from './pomodoros'
 
 export const schema = `
@@ -21,7 +22,7 @@ export const schema = `
         rescheduled: Int
         tasks: [Task]
         parenttask: Task
-        tags: [Area]
+        tags: [InsightTag]
         time: Int
         snooze: String
         listorder: Int
@@ -53,7 +54,7 @@ export const typeDefs = `
     }
     
     extend type Mutation {
-        newTask(date: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, tags: [String]): String        
+        newTask(date: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, areatags: [AreaTagIn]): String        
         editTask(taskid: String!, date: String, title: String, description: String, date: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean, tags: [String]): Boolean
         deleteTask(taskid: String!): Boolean
 
@@ -398,15 +399,14 @@ export const resolvers = {
             return await Goals.findOne({ _id: new ObjectId(goal) })
         },
         tags: async(task) => {
-                try {
-                    const db = await DbConnection.Get()
-                    const Areas = db.collection('areas')
-                    if(task.tags) return await Areas.find({_id: {$in: task.tags.map(sourceid => {return new ObjectId(sourceid)})}}).toArray()
-                    else return []
-                }
-                 catch (error) {
-                    return []
-                }
+            try {
+                const db = await DbConnection.Get()
+                const Tags = db.collection('insighttags')
+                return await Tags.find({taskid: task._id.toString()}).toArray()
+            }
+                catch (error) {
+                return []
+            }
         },
         tasks: async(parent, __, { req }) => {
             try {
@@ -459,17 +459,22 @@ export const resolvers = {
             
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
+            const Tags = db.collection('insighttags')
 
             args.profileid = getprofileid(req.session)
             if (args.parenttask) args.type = 'subtask'
             else args.type = 'task'
 
             const taskid = await createNewTask(args)
+            if (args.areatags) {
+                attachAreas(args.areatags, {taskid: taskid}, args.profileid, req)
+            }
+
             if (args.parenttask) {
                 Tasks.updateOne({profileid: getprofileid(req.session), _id: new ObjectId(args.parenttask)}, {$push: {subtasks: taskid}})
             }
             activityrecord({taskid: taskid, notes: 'Task created.', req: req, created: true})
-            if (args.insightid) linkInsightTask(taskid, args.insightid)
+            if (args.insightid) linkInsightTask(taskid, args.insightid, req)
             return taskid
         },
         editTask: async(_, args, { req }) => {
@@ -796,19 +801,19 @@ export const resolvers = {
         }, */
 
         linkInsightToTask: async(_, {taskid,insightid}, {req}) => {
-            return await linkInsightTask(taskid, insightid)
+            return await linkInsightTask(taskid, insightid, req)
         },
 
         linkSourceToTask: async(_, {taskid,sourceid}, {req}) => {
-            return await linkSourceTask(taskid, sourceid)
+            return await linkSourceTask(taskid, sourceid, req)
         },
 
         unlinkInsightToTask: async(_, {taskid,insightid}, {req}) => {
-            return await unlinkInsightTask(taskid, insightid)
+            return await unlinkInsightTask(taskid, insightid, req)
         },
 
         unlinkSourceToTask: async(_, {taskid,sourceid}, {req}) => {
-            return await unlinkSourceTask(taskid, sourceid)
+            return await unlinkSourceTask(taskid, sourceid, req)
         },
         snoozeTask: async(root, {taskid, snooze}, { req }) => {
             const db = await DbConnection.Get()
@@ -841,44 +846,32 @@ export const resolvers = {
     }
 }
 
-export async function linkInsightTask(taskid, insightid){
+export async function linkInsightTask(taskid, insightid, req){
     const db = await DbConnection.Get()
-    const Tasks = db.collection('tasks')
-    const result = await Tasks.updateOne(
-        {_id: new ObjectId(taskid)},
-        {$push: {insights: insightid}}
-    )
-    return result.modifiedCount === 1
+    const Tags = db.collection('insighttags')
+    await Tags.insertOne({taskid: taskid, insightid: insightid, profileid: getprofileid(req.session)})
+    return true
 }
 
-export async function linkSourceTask(taskid, sourceid){
+export async function linkSourceTask(taskid, sourceid, req){
     const db = await DbConnection.Get()
-    const Tasks = db.collection('tasks')
-    const result = await Tasks.updateOne(
-        {_id: new ObjectId(taskid)},
-        {$push: {sources: sourceid}}
-    )
-    return result.modifiedCount === 1
+    const Tags = db.collection('insighttags')
+    await Tags.insertOne({taskid: taskid, sourceid: sourceid, profileid: getprofileid(req.session)})
+    return true
 }
 
-export async function unlinkInsightTask(taskid, insightid){
+export async function unlinkInsightTask(taskid, insightid, req){
     const db = await DbConnection.Get()
-    const Tasks = db.collection('tasks')
-    const result = await Tasks.updateOne(
-        {_id: new ObjectId(taskid)},
-        {$pull: {insights: insightid}}
-    )
-    return result.modifiedCount === 1
+    const Tags = db.collection('insighttags')
+    await Tags.deleteOne({taskid: taskid, insightid: insightid, profileid: getprofileid(req.session)})
+    return true
 }
 
-export async function unlinkSourceTask(taskid, sourceid){
+export async function unlinkSourceTask(taskid, sourceid, req){
     const db = await DbConnection.Get()
-    const Tasks = db.collection('tasks')
-    const result = await Tasks.updateOne(
-        {_id: new ObjectId(taskid)},
-        {$pull: {sources: sourceid}}
-    )
-    return result.modifiedCount === 1
+    const Tags = db.collection('insighttags')
+    await Tags.deleteOne({taskid: taskid, sourceid: sourceid, profileid: getprofileid(req.session)})
+    return true
 }
 
 export async function createRepeatTask(taskid, req){
@@ -969,11 +962,11 @@ async function deleteTask(taskid, req){
     return result.deletedCount === 1
 }
 
-async function createNewTask({title, description, goal, complete, date, starttime, profileid, type, tags}) {
+async function createNewTask({title, description, goal, complete, date, starttime, profileid, type, areatags}) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
 
-    var task = new Object({title: title, description: description, complete: complete, tags: tags })
+    var task = new Object({title: title, description: description, complete: complete })
     task.starttime = starttime ? new Date(starttime) : (date ? new Date(date) : null) //time set from client argument
     task.created = new Date()
 

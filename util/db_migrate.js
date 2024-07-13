@@ -17,9 +17,12 @@ export const resolvers = {
                 const db = await DbConnection.Get()
                 const SourceTags = db.collection('sourcetags')
                 const GoalTags = db.collection('goaltags')
+                const Sources = db.collection('sources')
+                const Tasks = db.collection('tasks')
                 const InsightTags = db.collection('insighttags')
                 
-                /* SourceTags.find().forEach(function(doc) {
+                
+                SourceTags.find().forEach(function(doc) {
                     let newtag = new Object()
                     //mapping sourcetags to insighttags
                     newtag = {
@@ -33,7 +36,7 @@ export const resolvers = {
                     if (doc.pinned) newtag.pinned = doc.pinned
 
                     InsightTags.insertOne(newtag);
-                }); */
+                });
 
                 GoalTags.find().forEach(function(doc) {
                     let newtag = new Object()
@@ -52,7 +55,75 @@ export const resolvers = {
 
                     InsightTags.insertOne(newtag);
                 });
-                return true
+
+                Sources.find({tags: {$ne: null}}).forEach(function(doc) {
+                    
+                    if (doc.tags) {
+                        doc.tags.map(tag => {
+                            let newtag = new Object()
+                            //mapping sourcetags to insighttags
+                            newtag = {
+                                profileid: doc.profileid, 
+                                sourceid: doc._id.toString(),
+                                area: tag,
+                                datecreated: new Date(),
+                            }
+
+                            InsightTags.insertOne(newtag);
+                        })
+                    }
+                });
+                Sources.update({}, { $unset: { tags: []} }, {multi: true})
+ 
+                Tasks.find({}).forEach(function(doc) {
+                    
+                    if (doc.tags) {
+                        doc.tags.map(tag => {
+                            let newtag = new Object()
+                            //mapping sourcetags to insighttags
+                            newtag = {
+                                profileid: doc.profileid, 
+                                taskid: doc._id.toString(),
+                                area: tag,
+                                datecreated: new Date(),
+                            }
+
+                            InsightTags.insertOne(newtag);
+                        })
+                    }
+
+                    if (doc.insights) {
+                        doc.insights.map(tag => {
+                            let newtag = new Object()
+                            //mapping sourcetags to insighttags
+                            newtag = {
+                                profileid: doc.profile, 
+                                taskid: doc._id.toString(),
+                                insightid: tag,
+                                datecreated: new Date(),
+                            }
+
+                            InsightTags.insertOne(newtag);
+                        })
+                    }
+
+                    if (doc.sources) {
+                        doc.sources.map(tag => {
+                            let newtag = new Object()
+                            //mapping sourcetags to insighttags
+                            newtag = {
+                                profileid: doc.profileid, 
+                                taskid: doc._id.toString(),
+                                sourceid: tag,
+                                datecreated: new Date(),
+                            }
+
+                            InsightTags.insertOne(newtag);
+                        })
+                    }
+                });
+                //Tasks.update({}, { $unset: { tags: [], sources: [], insights: []} }, {multi: true})
+                return true 
             }
             return false
         } 

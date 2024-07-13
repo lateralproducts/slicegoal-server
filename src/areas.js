@@ -33,20 +33,30 @@ export const typeDefs = `
         setView(viewid: String): View
         deleteView(viewid: String!): View
         removeViewFromUser(viewid: String!): Boolean
+        
         createNewWheel(wheelname: String!, areas: [AreaIn]): View
+        
         removeStartArea: Boolean!
         updateStartArea(areaid: String!): Boolean
+        
         toggleFocusFlag(rootarea: String!, area: String!): Boolean
+        
+        createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
         deleteArea(areaid: String!): Boolean
         updateArea(rootarea: String, name: String, definition: String, vision: String, area: String): Area
+        
         setProfile(profileid: String!): Profile
+        
         copyWheel(wheelid: String!): Boolean
+        
         createAreaLink(rootarea: String, area: String, title: String, notes: String): Boolean
         deleteAreaLink(rootarea: String, area: String): Area
-        createArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
+        
         createCoachArea(rootarea: String, name: String, definition: String, vision: String, notes: String): Area
         createRankTime(anchorarea: String, area: String, rank: Int, datetime: String, note: String): Boolean
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
+
+        convertAreaToPerson(areaid: String!): Boolean
     }
 `
 
@@ -711,40 +721,7 @@ export const resolvers = {
             return focusflag
         },
         deleteArea: async(_, { areaid }, { req }) => {
-            
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            const AreaLinks = db.collection('arealinks')
-            const Tags = db.collection('insighttags')
-            const Pomodoros = db.collection('pomodoros')
-            const Wheels = db.collection('wheels')
-
-            //Check for right to delete area
-            const area = await Areas.findOne({ _id: new ObjectId(areaid) })
-            const wheel = await Wheels.findOne({ _id: new ObjectId(area.wheelid) })
-            if (wheel.user !== getuserid(req.session))
-                return triggererror('Unauthorised area delete')
-            else {
-                const areaDel = Areas.deleteOne({ _id: new ObjectId(areaid) })
-                const areaLinksDel = AreaLinks.deleteMany({
-                    area: areaid
-                })
-                const insightTagsDel = Tags.deleteMany({
-                    area: areaid
-                })
-                const pomodorosDel = Pomodoros.deleteMany({
-                    araed: areaid
-                })
-                const result = await Promise.all([
-                    areaDel,
-                    areaLinksDel,
-                    insightTagsDel,
-                    goalTagsDel,
-                    pomodorosDel
-                ])
-                if (result) return true
-                else return false
-            }
+            return await deletearea({areaid: areaid, req})
         },
         setProfile: async(_, { profileid }, { req }) => {
             
@@ -892,6 +869,47 @@ export const resolvers = {
             )
             args._id = args.area
             return args
+        },
+        convertAreaToPerson: async(_, {areaid}, { req }) => {
+            if(req.session.user.email === 'daniel@lateralproducts.com') {
+                const db = await DbConnection.Get()
+                const Areas = db.collection('areas')
+                const People = db.collection('people')
+                const AreaLinks = db.collection('arealinks')
+                const Tags = db.collection('insighttags')
+
+                const area = await Areas.findOne({ _id: new ObjectId(areaid)}) //profileid not stored on area.
+                let newperson = new Object()
+                newperson.name = area.name
+                if(area.definition) newperson.notes = area.definition
+                if(area.created) newperson.created = area.created
+                newperson.profileid = getprofileid(req.session)
+                const res = await People.insertOne(newperson)
+                const personid = res.insertedId.toString()
+
+                if(personid) {
+                    const arealinks = await AreaLinks.find({ 
+                        $or: [
+                            { area: areaid },
+                            { rootarea: areaid }
+                        ]
+                    }).toArray()
+
+                    arealinks.map(arealink => {
+                        if(arealink.area === areaid) {
+                            Tags.insertOne({area: arealink.rootarea, personid: personid, datecreated: new Date()})
+                        }
+                        if(arealink.rootarea === areaid) {
+                            Tags.insertOne({area: arealink.area, personid: personid, datecreated: new Date()})
+                        }
+                    })
+
+                    Tags.updateMany({area: areaid}, {$set: {personid: personid}, $unset: {area: ''}})
+
+                    deletearea({areaid: areaid, req})
+                    return true
+                }
+            }
         }
     }
 }
@@ -1285,5 +1303,38 @@ export async function setLastAccessedView(req) {
         await Views.updateOne({ _id: new ObjectId(viewid) }, { $set: { lastaccessed: new Date() } })
 
         return view //need to return the view, area.
+    }
+}
+
+export async function deletearea({ areaid, req }) {
+    const db = await DbConnection.Get()
+    const Areas = db.collection('areas')
+    const AreaLinks = db.collection('arealinks')
+    const Tags = db.collection('insighttags')
+    const Wheels = db.collection('wheels')
+
+    //Check for right to delete area
+    const area = await Areas.findOne({ _id: new ObjectId(areaid) })
+    const wheel = await Wheels.findOne({ _id: new ObjectId(area.wheelid) })
+    if (wheel.user !== getuserid(req.session))
+        return triggererror('Unauthorised area delete')
+    else {
+        const areaDel = Areas.deleteOne({ _id: new ObjectId(areaid) })
+        const areaLinksDel = AreaLinks.deleteMany({
+            $or: [
+                { area: areaid },
+                { rootarea: areaid }
+            ]
+        })
+        const insightTagsDel = Tags.deleteMany({
+            area: areaid
+        })
+        const result = await Promise.all([
+            areaDel,
+            areaLinksDel,
+            insightTagsDel
+        ])
+        if (result) return true
+        else return false
     }
 }

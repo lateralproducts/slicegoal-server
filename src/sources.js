@@ -2,12 +2,12 @@ import { ObjectId } from 'mongodb'
 import { triggererror } from './graphqlserver';
 
 import DbConnection from './database'
-import { getprofileid, getuserid } from './users'
+import { getprofileid, getuserid, getwheelid } from './users'
 import { createUserConnection } from './community'
 import { newIx } from './interactions'
 import { shareSourceEmail } from './emails'
-import { linkSourceTask } from './tasks';
-import { getPreviews } from './fileserver';
+import { linkSourceTask } from './tasks'
+import { getPreviews } from './fileserver'
 
 export const typeDefs = `
 
@@ -22,8 +22,8 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        createSource(name: String!, url: String, type: String, notes: String, tags: [String], linktotask: String, fileids: [String]): Source
-        editSource(sourceid: String!, name: String, url: String, type: String, notes: String, tags: [String], fileids: [String]) : Boolean
+        createSource(name: String!, url: String, type: String, notes: String, areas: [AreaTagIn], linktotask: String, fileids: [String]): Source
+        editSource(sourceid: String!, name: String, url: String, type: String, notes: String, areas: [AreaTagIn], fileids: [String]) : Boolean
         deleteSource(sourceid: String!): Boolean
         shareSource(sourceid: String!, targetUser: String!, shareNote: String): ShareResponse
     }
@@ -39,7 +39,7 @@ export const schema = `
         notes: String
         type: String
         url: String
-        tags: [Area]
+        tags: [InsightTag]
         filedetails: [FilePreview]
     }
 
@@ -56,11 +56,22 @@ export const resolvers = {
         sources: async function(_, {tags}, { req }) {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
+            const Tags = db.collection('insighttags')
 
-            let query = new Object()
-            query.profileid = getprofileid(req.session)
-            if (tags) query.tags = {$in: tags}
-            return await Sources.find(query).sort({accessedit: -1}).toArray()
+            let searchtags = []
+            if (tags && tags.length > 0) {
+                let query = new Object()
+                query.profileid = getprofileid(req.session)
+                query.area = {$in: tags}
+                query.sourceid = {$ne: null}
+                searchtags = await Tags.find(query).limit(10).sort({accessedit: -1}).toArray()
+            }
+            if (tags && searchtags.length === 0) return []
+
+            let querysources = new Object()
+            querysources.profileid = getprofileid(req.session)
+            if (searchtags.length > 0) querysources._id = {$in: searchtags.map(tag => {return new ObjectId(tag.sourceid)})}
+            return await Sources.find(querysources).sort({accessedit: -1}).toArray()
         },
         source: async function(_, {sourceid}, { req }) {
             const db = await DbConnection.Get()
@@ -75,17 +86,31 @@ export const resolvers = {
             if(search === undefined && areas.length === 0) return []
             else {
                 const db = await DbConnection.Get()
+                const Tags = db.collection('insighttags')
                 const Sources = db.collection('sources')
 
-                let query = new Object()
-                query.profileid = getprofileid(req.session)
-                if (search !== '' && search !== null) query.$or = [
+                let tags = []
+
+                if (areas && areas.length > 0) {
+                    let query = new Object()
+                    query.profileid = getprofileid(req.session)
+                    query.area = {$in: [...areas.map(area => {return area._id})]}
+                    query.sourceid = {$ne: null}
+
+                    tags = await Tags.find(query).limit(10).sort({accessedit: -1}).toArray()
+                    if (tags.length === 0) return []
+                }
+
+                let querysources = new Object()
+                querysources.profileid = getprofileid(req.session)
+                if (tags.length > 0) querysources._id = {$in: tags.map(tag => {return new ObjectId(tag.sourceid)})}
+                if (search) querysources.$or = [
                     { name: new RegExp(search, 'i') },
                     { notes: new RegExp(search, 'i') }
                 ]
-                if (areas && areas.length > 0) query.tags = {$in: [...areas.map(area => {return area._id})]}
-
-                return await Sources.find(query).limit(10).sort({accessedit: -1}).toArray()
+                const sources = await Sources.find(querysources).toArray()
+                
+                return sources
             }
         },
         // all sources on an insight
@@ -102,16 +127,15 @@ export const resolvers = {
         },
         // all sources on an task
         taskSources: async(_, {taskid}, { req }) => {
-            
             const db = await DbConnection.Get()
-            const Tasks = db.collection('tasks')
+            const Tags = db.collection('insighttags')
             const Sources = db.collection('sources')
-            const task = await Tasks.findOne({profile: getprofileid(req.session), _id: new ObjectId(taskid)})
+            const tags = await Tags.findOne({profile: getprofileid(req.session), taskid: taskid, sourceid: {$ne: null}})
 
-            if (task.sources) 
+            if (tags) 
                 return await Sources.find({
                     _id: {
-                        $in: task.sources.map(sourceid => {return new ObjectId(sourceid)})
+                        $in: tags.map(tag => {return new ObjectId(tag.sourceid)})
                     }
                 }).toArray()
             else return []
@@ -148,18 +172,24 @@ export const resolvers = {
         },
     },
     Source: {
-        tags: async(source) => {
+        tags: async function(source, _, { req }) {
             try {
                 const db = await DbConnection.Get()
-                const Areas = db.collection('areas')
-                if(source.tags) return await Areas.find({_id: {$in: source.tags.map(areaid => {return new ObjectId(areaid)})}}).toArray()
-                else return []
+                const Tags = db.collection('insighttags')
+
+                const tags = await Tags.find({
+                    area: {$ne: null}, //only return area tags
+                    sourceid: source._id.toString(),
+                    profileid: getprofileid(req.session)
+                }).toArray()
+                return tags
             }
              catch (error) {
+                console.log(error)
                 return []
             }
         },
-        filedetails:async function(source, _, { req }) {
+        filedetails: async function(source, _, { req }) {
             return source.fileids ? await getPreviews(req, source.fileids) : null
         }
     },
@@ -167,6 +197,8 @@ export const resolvers = {
         createSource: async function(_, args, { req }) {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
+            const Tags = db.collection('insighttags')
+            const Areas = db.collection('areas')
 
             return await Sources.insertOne(
                 {
@@ -177,12 +209,34 @@ export const resolvers = {
                     url: args.url,
                     notes: args.notes,
                     type: args.type,
-                    tags: args.tags,
                     fileids: args.fileids
                 }
             )
             .then(source => {
-                if(args.linktotask) linkSourceTask(args.linktotask, source.insertedId)
+                if(args.linktotask) linkSourceTask(args.linktotask, source.insertedId, req)
+
+                if (args.areas)
+                    args.areas.map(async link => {
+                        let areaid = link._id
+    
+                        if (!areaid) {
+                            let area = {
+                                name: link.name,
+                                wheelid: getwheelid(req.session),
+                                created: new Date()
+                            }
+    
+                            const res = await Areas.insertOne(area)
+                            areaid = res.insertedId.toString()
+                        }
+    
+                        let sourceareatag = new Object()
+                        sourceareatag.sourceid = source.insertedId.toString()
+                        sourceareatag.profileid = getprofileid(req.session)
+                        sourceareatag.area = areaid
+                        sourceareatag.datecreated = new Date()
+                        Tags.insertOne(sourceareatag)
+                    })
                 return {
                     _id: source.insertedId,
                     name: args.name
@@ -193,9 +247,11 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
 
+            attachAreas(args.areas, {sourceid: args.sourceid}, getprofileid(req.session), req)
+
             return (await Sources.updateOne(
                 {_id: new ObjectId(args.sourceid)},
-                {$set: {name: args.name, url: args.url, type: args.type, notes: args.notes, tags: args.tags, fileids: args.fileids}}
+                {$set: {name: args.name, url: args.url, type: args.type, notes: args.notes, fileids: args.fileids}}
             )).matchedCount === 1
 
         },
@@ -306,22 +362,13 @@ export async function attachSources({sources, insightid, profileid}) {
     const Tags = db.collection('insighttags')
     const Sources = db.collection('sources')
 
-    const newsourcetags = sources.map(source => {
-        return {
-            _id: source._id,
-            insightid: insightid,
-            notes: source.notes,
-            datetime: new Date(),
-            profileid: profileid
-        }
-    })
-
     // Remove necessary tags
-    const newsourceids = newsourcetags.map(tag => {return tag._id})
+    const newsourceids = sources.map(source => {return source._id})
     Tags.find(
         {
             insightid: insightid,
-            sourceid: {$nin: newsourceids}
+            sourceid: {$nin: newsourceids},
+            sourceid: {$ne: null}
         }
     )
     .toArray()
@@ -335,7 +382,7 @@ export async function attachSources({sources, insightid, profileid}) {
 
     //Update/add tags
     //const updatepromisearray = []
-    newsourcetags.forEach(sourcetag => {
+    sources.forEach(sourcetag => {
         //updatepromisearray.push(
             Tags.updateOne(
                 {
@@ -364,4 +411,63 @@ export async function attachSources({sources, insightid, profileid}) {
     })
 
     return //await Promise.all(updatepromisearray) //not using this at the moment, so removing it.
+}
+
+export async function attachAreas(areatags, attach, profileid, req) {
+    //attach area to task, source, etc.
+    const db = await DbConnection.Get()
+    const Tags = db.collection('insighttags')
+    const Areas = db.collection('areas')
+
+    // Remove all area tags
+    let query = Object.assign({}, attach) //attach task, source, etc.
+    query.area = {$ne: null}
+
+    await Tags.find(query).toArray()
+    .then(deletetags => {
+        deletetags.map(tag => {
+            Tags.deleteOne({_id: tag._id})
+        })
+    })
+    //Add new area tags
+    areatags.map(async (areatag) => {
+        let areaid = areatag._id
+    
+        if (!areaid) {
+            const area = {
+                name: areatag.name,
+                wheelid: getwheelid(req.session),
+                created: new Date()
+            };
+    
+            const res = await Areas.insertOne(area)
+            areaid = res.insertedId.toString()
+        }
+    
+        const update =  Object.assign({}, attach)
+        update.area = areaid
+        update.profileid = profileid
+        delete update.$and
+        delete update._id
+
+        Tags.updateOne(
+            update,
+            {$set: {
+                notes: areatag.notes,
+                updated: new Date()
+            },
+            $setOnInsert: {
+                datecreated: new Date()
+            }},
+            {upsert: true}
+        )
+    
+        await Areas.updateOne(
+            {
+                _id: new ObjectId(areatag._id),
+                profileid: profileid
+            },
+            { $set: { accessedit: new Date() } }
+        )
+    })
 }

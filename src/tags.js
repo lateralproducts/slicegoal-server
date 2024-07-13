@@ -22,7 +22,7 @@ export const resolvers = {
         tags: async(_, args, { req }) => {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
-            const InsightTags = db.collection('insighttags')
+            const Tags = db.collection('insighttags')
             const Spaced = db.collection('spaced')
             const Areas = db.collection('areas')
 
@@ -88,7 +88,7 @@ export const resolvers = {
                  })
                 .toArray()
 
-                tagsonarea = await InsightTags.find({ 
+                tagsonarea = await Tags.find({ 
                     $and: [
                         inputareas.length > 0 ? { area: inputareas[0]._id } : {},
                         { profileid: getprofileid(req.session)},
