@@ -8,6 +8,7 @@ import DbConnection from '../src/database'
 export const typeDefs = `
     extend type Mutation {
         migrateDBAllTags: Boolean
+        deleteAllOldTags: Boolean
     }`
 
 export const resolvers = {
@@ -73,7 +74,6 @@ export const resolvers = {
                         })
                     }
                 });
-                Sources.update({}, { $unset: { tags: []} }, {multi: true})
  
                 Tasks.find({}).forEach(function(doc) {
                     
@@ -122,11 +122,19 @@ export const resolvers = {
                         })
                     }
                 });
-                //Tasks.update({}, { $unset: { tags: [], sources: [], insights: []} }, {multi: true})
+                
                 return true 
             }
             return false
-        } 
+        },
+        deleteAllOldTags: async(_, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Sources = db.collection('sources')
+            const Tasks = db.collection('tasks')
+            Sources.update({}, { $unset: { tags: []} }, {multi: true})
+            Tasks.update({}, { $unset: { tags: [], sources: [], insights: []} }, {multi: true})
+        }
+
 
         /* migrateDBchatPromptsToVariants: async(_, __, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){ //only allow my profile to run migration script: staging + prod.
