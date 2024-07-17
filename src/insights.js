@@ -45,7 +45,6 @@ export const typeDefs = `
 `
 
 export const schema = `
-
     type Insight {
         _id: String
         area: String
@@ -873,11 +872,11 @@ async function createInsightPersonTag(insightid, person, req) {
 
     let personid = person._id
     let newperson = new Object()
-    if (personid) newperson._id = ObjectId(personid) //search for ID only.
+    newperson.profileid = getprofileid(req.session)
+    if (personid) newperson._id = new ObjectId(personid) //search for ID only.
     else {
         newperson = {
-            name: person.name,
-            profileid: getprofileid(req.session)
+            name: person.name
         }
     }
 
@@ -887,7 +886,7 @@ async function createInsightPersonTag(insightid, person, req) {
         { returnOriginal: false, upsert: true }
     )
     if (returnperson.value) personid = returnperson.value._id.toString() //if person already exists, get the ID.
-    if (returnperson.lastErrorObject) personid = returnperson.lastErrorObject.upserted.toString() //if person is new, get the ID.
+    else if (returnperson.lastErrorObject) personid = returnperson.lastErrorObject.upserted.toString() //if person is new, get the ID.
 
     await InsightTags.updateOne(
         {
