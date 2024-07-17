@@ -8,17 +8,22 @@ export const schema = `
     type Prompt {
         _id: String
         message: String
+        responses: [Response]
+        variants: [Variant]
     }
     type Variant {
         _id: String
         message: String
         promptid: String
+        prompt: Prompt
+        responses: [Response]
     }
     type Response {
         _id: String
         message: String
         context: ChatContext
         taskid: String
+        prompts: [Prompt]
     }
     type ChatContext {
         _id: String
@@ -80,8 +85,9 @@ export const typeDefs = `
         getfeedback: [Feedback]
         getresponse(responseid: String!): Response
         getprompt(promptid: String!): Prompt
-        getresponses: [Response]
-        getprompts: [Prompt]
+        getresponses(search: String): [Response]
+        getprompts(search: String): [Prompt]
+        getvariants(search: String): [Variant]
     }
 
     extend type Mutation {
@@ -94,6 +100,7 @@ export const typeDefs = `
         ackfeedback(feedbackid: String!): Boolean
         updateVariant(variantid: String!, message: String!): Boolean
         updateResponse(responseid: String!, message: String!): Boolean
+        updatePrompt(promptid: String!, message: String!): Boolean
         createVariant(promptid: String!, newvariant: String!): Boolean
         createPrompt(responseid: String, newprompt: String!): Boolean
         createResponse(promptid: String, newresponse: String!): Boolean
@@ -275,7 +282,7 @@ export const resolvers = {
                 return feedbacks
             }
         },
-        getprompt: async(_,args,{promptid}) => {
+        getprompt: async(_, args, {promptid}) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){
                 const db = await DbConnection.Get()
                 const ChatPrompts = db.collection('chatprompts')
@@ -283,7 +290,7 @@ export const resolvers = {
                 return chatprompt
             } 
         },
-        getresponse: async(_,args,{responseid}) => {
+        getresponse: async(_, args, {responseid}) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){
                 const db = await DbConnection.Get()
                 const ChatResponses = db.collection('chatresponses')
@@ -291,21 +298,78 @@ export const resolvers = {
                 return chatresponse
             } 
         },
-        getresponses: async(_,args,{}) => {
+        getresponses: async(_, {search}, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){
-                /* const db = await DbConnection.Get()
+                const db = await DbConnection.Get()
                 const ChatResponses = db.collection('chatresponses')
-                const chatresponse = await ChatResponses.find({_id: new ObjectId(responseid)})
-                return chatresponse */
+                let query = {}
+                if (search) query = {message: new RegExp('.*' + search + '.*', 'i')}
+                const chatresponses = await ChatResponses.find(query).toArray()
+                return chatresponses 
             } 
         },
-        getprompts: async(_,args,{}) => {
+        getprompts: async(_, {search}, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){
-                /* const db = await DbConnection.Get()
-                const ChatResponses = db.collection('chatresponses')
-                const chatresponse = await ChatResponses.find({_id: new ObjectId(responseid)})
-                return chatresponse */
+                const db = await DbConnection.Get()
+                const ChatPrompts = db.collection('chatprompts')
+                let query = {}
+                if (search) query = {message: new RegExp('.*' + search + '.*', 'i')}
+                const chatprompts = await ChatPrompts.find(query).toArray()
+                return chatprompts
             } 
+        },
+        getvariants: async(_, {search}, { req }) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                const db = await DbConnection.Get()
+                const ChatVariants = db.collection('chatvariants')
+                let query = {}
+                if (search) query = {message: new RegExp('.*' + search + '.*', 'i')}
+                const chatvariants = await ChatVariants.find(query).toArray()
+                return chatvariants
+            } 
+        }
+    },
+    Variant: {
+        prompt: async({promptid}, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Prompts = db.collection('chatprompts')
+            return await Prompts.findOne({_id: new ObjectId(promptid)})
+        },
+        responses: async({_id}, __, { req }) => {
+            const db = await DbConnection.Get()
+            const ChatContext = db.collection('chatcontext')
+            const Responses = db.collection('chatresponses')
+            const contexts = await ChatContext.find({promptid: _id.toString()}).toArray()
+            const responses = await Responses.find({_id: {$in: contexts.map(context => new ObjectId(context.responseid))}}).toArray()
+                
+            return responses
+        }
+    },
+    Prompt: {
+        responses: async({_id}, __, { req }) => {
+            const db = await DbConnection.Get()
+            const ChatContext = db.collection('chatcontext')
+            const Responses = db.collection('chatresponses')
+            const contexts = await ChatContext.find({promptid: _id.toString()}).toArray()
+            const responses = await Responses.find({_id: {$in: contexts.map(context => new ObjectId(context.responseid))}}).toArray()
+                
+            return responses
+        },
+        variants: async({_id}, __, { req }) => {
+            const db = await DbConnection.Get()
+            const ChatVariants = db.collection('chatvariants')
+            return await ChatVariants.find({promptid: _id.toString()}).toArray()
+        }
+    },
+    Response: {
+        prompts: async({_id}, __, { req }) => {
+            const db = await DbConnection.Get()
+            const ChatContext = db.collection('chatcontext')
+            const Prompts = db.collection('chatprompts')
+            const contexts = await ChatContext.find({responseid: _id.toString()}).toArray()
+            const prompts = await Prompts.find({_id: {$in: contexts.map(context => new ObjectId(context.promptid))}}).toArray()
+                
+            return prompts
         }
     },
     ChatContext: {
@@ -376,7 +440,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const ChatVariants = db.collection('chatvariants')
             ChatVariants.updateOne(
-                { _id: new ObjectId(args.promptid) },
+                { _id: new ObjectId(args.variantid) },
                 { 
                     $set: { message: args.message},
                 }
@@ -393,6 +457,16 @@ export const resolvers = {
                     }
                 )  
             } else triggererror('Not available.')
+        },
+        updatePrompt: async(root, args, { req }) => {
+            if (req.session.user.email === "daniel@lateralproducts.com"){
+                const db = await DbConnection.Get()
+                const ChatPrompts = db.collection('chatprompts')
+                ChatPrompts.updateOne(
+                    {_id: new ObjectId(args.promptid)}, 
+                    {$set: {message: args.message}}
+                )
+            }
         },
         sendRating: async(root, args, { req }) => {
             const userid = getuserid(req.session)
