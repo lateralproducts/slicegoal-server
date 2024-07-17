@@ -57,6 +57,7 @@ export const typeDefs = `
         createGoalTime(area: String, goal: Int, datetime: String, note: String, goaldate: String): GoalTime
 
         convertAreaToPerson(areaid: String!): Boolean
+        convertAreasToPerson(areas: [String]!, wheelid: String): Boolean
     }
 `
 
@@ -909,6 +910,56 @@ export const resolvers = {
                     deletearea({areaid: areaid, req})
                     return true
                 }
+            }
+        },
+        convertAreasToPerson: async(_, {areas, wheelid }, { req }) => {
+            if(req.session.user.email === 'daniel@lateralproducts.com') {
+                const db = await DbConnection.Get()
+                const Areas = db.collection('areas')
+                const People = db.collection('people')
+                const AreaLinks = db.collection('arealinks')
+                const Tags = db.collection('insighttags')
+                const Profiles = db.collection('profiles')
+                console.log(areas)
+                const foundareas = await Areas.find({ name: {$in: areas}, wheelid: wheelid}).toArray() //profileid not stored on area.
+
+                const profile = await Profiles.findOne({wheel: wheelid, user: getuserid(req.session)})
+                console.log(profile)
+                const profileid = profile._id.toString()
+                foundareas.map(async area => {
+                    let newperson = new Object()
+                    newperson.name = area.name
+                    if(area.definition) newperson.notes = area.definition
+                    if(area.created) newperson.created = area.created
+                    newperson.profileid = profileid
+                    console.log(newperson)
+
+                    const res = await People.insertOne(newperson)
+                    const personid = res.insertedId.toString()
+
+                    if(personid) {
+                        const arealinks = await AreaLinks.find({ 
+                            $or: [
+                                { area: area._id.toString() },
+                                { rootarea: area._id.toString() }
+                            ]
+                        }).toArray()
+
+                        arealinks.map(arealink => {
+                            if(arealink.area === area._id.toString()) {
+                                Tags.insertOne({area: arealink.rootarea, personid: personid, profileid: profileid, datecreated: new Date()})
+                            }
+                            if(arealink.rootarea === area._id.toString()) {
+                                Tags.insertOne({area: arealink.area, personid: personid, profileid: profileid, datecreated: new Date()})
+                            }
+                        })
+
+                        Tags.updateMany({area: area._id}, {$set: {personid: personid}, $unset: {area: ''}})
+
+                        deletearea({areaid: area._id, req})
+                        return true
+                    } 
+                })
             }
         }
     }
