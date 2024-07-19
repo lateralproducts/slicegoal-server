@@ -58,6 +58,7 @@ export const typeDefs = `
 
         convertAreaToPerson(areaid: String!): Boolean
         convertAreasToPerson(areas: [String]!, wheelid: String): Boolean
+        convertAreaIdToExistingPerson(areaid: String!, personname: String!): Boolean
     }
 `
 
@@ -912,6 +913,25 @@ export const resolvers = {
                 }
             }
         },
+        convertAreaIdToExistingPerson: async(_, {areaid, personname}, { req }) => {
+            if(req.session.user.email === 'daniel@lateralproducts.com') {
+                const db = await DbConnection.Get()
+                const Tags = db.collection('insighttags')
+                const People = db.collection('people')
+                
+                const person = await People.findOne({ name: personname, profileid: getprofileid(req.session) })
+                let personId
+                if (person) {
+                    personId = person._id.toString()
+                } else {
+                    const newPerson = await People.insertOne({ name: personname, profileid: getprofileid(req.session)  })
+                    personId = newPerson.insertedId.toString()
+                }
+
+                Tags.updateMany({area: areaid}, {$set: {personid: personId}, $unset: {area: ''}})
+            }
+            return true
+        },
         convertAreasToPerson: async(_, {areas, wheelid }, { req }) => {
             if(req.session.user.email === 'daniel@lateralproducts.com') {
                 const db = await DbConnection.Get()
@@ -954,7 +974,7 @@ export const resolvers = {
                             }
                         })
 
-                        Tags.updateMany({area: area._id}, {$set: {personid: personid}, $unset: {area: ''}})
+                        Tags.updateMany({area: area._id.toString()}, {$set: {personid: personid}, $unset: {area: ''}})
 
                         deletearea({areaid: area._id, req})
                         return true

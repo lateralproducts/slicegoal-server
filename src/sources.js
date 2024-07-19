@@ -364,11 +364,10 @@ export async function attachSources({sources, insightid, profileid}) {
 
     // Remove necessary tags
     const newsourceids = sources.map(source => {return source._id})
-    Tags.find(
+    await Tags.find(
         {
             insightid: insightid,
-            sourceid: {$nin: newsourceids},
-            sourceid: {$ne: null}
+            $and: [{sourceid: {$nin: newsourceids}},{sourceid: {$ne: null}}]
         }
     )
     .toArray()

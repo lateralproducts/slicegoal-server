@@ -7,7 +7,6 @@ export const schema = `
     type Person {
         _id: String
         name: String
-        dob: String
         notes: String
         tags: [InsightTag]
     }
@@ -63,7 +62,7 @@ export const resolvers = {
             try {
                 const db = await DbConnection.Get()
                 const profileid = await getprofileid(req.session)
-                const result = await db.collection('people').find({ profileid }).toArray()
+                const result = await db.collection('people').find({ profileid }).sort({lasttagged: -1, created: -1}).toArray()
                 return result
             } catch (error) {
                 throw new Error(`Failed to get all people: ${error}`)
@@ -96,6 +95,7 @@ export const resolvers = {
                 const profileid = await getprofileid(req.session)
                 person.profileid = profileid
                 person.created = new Date()
+                person.lasttagged = new Date()
                 const personid = (await db.collection('people').insertOne(person)).insertedId.toString()
                 attachAreas(areatags, {personid: personid}, profileid, req) 
                 return true
