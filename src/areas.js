@@ -279,7 +279,7 @@ export const resolvers = {
             return area
         },
         areatree: async(_, { areaid }, { req }) => {
-            const areatree = await getareatree({tags:[areaid], req})
+            const areatree = await getareatree({areas:[areaid], req})
             
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
@@ -1260,7 +1260,7 @@ async function deleteWheelAll(req, viewid) {
     Wheels.deleteMany({ _id: new ObjectId(view.wheel) })
 }
 
-export async function getareatree({tags, req}) {
+export async function getareatree({areas, req}) {
     const db = await DbConnection.Get()
     const AreaLinks = db.collection('arealinks')
     
@@ -1276,9 +1276,9 @@ export async function getareatree({tags, req}) {
         startareaid = startarea._id.toString()
     }
 
-    let areatree = tags || []
+    let areatree = areas || []
     let newareas = []
-    let checkareas = tags || []
+    let checkareas = areas || []
     
     while (checkareas.length > 0) {
         //find all parent goals linked to goals

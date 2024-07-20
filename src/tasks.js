@@ -55,7 +55,7 @@ export const typeDefs = `
     
     extend type Mutation {
         newTask(date: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, areatags: [AreaTagIn]): String        
-        editTask(taskid: String!, date: String, title: String, description: String, date: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean, tags: [String]): Boolean
+        editTask(taskid: String!, date: String, title: String, description: String, date: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean, areatags: [AreaTagIn]): Boolean
         deleteTask(taskid: String!): Boolean
 
         listTask(taskid: String!): Boolean
@@ -456,10 +456,8 @@ export const resolvers = {
     Mutation: {
         newTask: async(_, args, { req }) => {
             //need to move business logic to server.
-            
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
-            const Tags = db.collection('insighttags')
 
             args.profileid = getprofileid(req.session)
             if (args.parenttask) args.type = 'subtask'
@@ -498,7 +496,9 @@ export const resolvers = {
                 updates.goalglow = true
             }
             else {updates.goal = null}
-            if(args.tags) {updates.tags = args.tags}
+            if (args.areatags) {
+                attachAreas(args.areatags, {taskid: args.taskid}, getprofileid(req.session), req)
+            }
             //would be better to check links before deleting and inserting. Separate into function.
             await Tasks.updateMany({subtasks: args.taskid}, {$pull: {subtasks: args.taskid}})
             if (args.parenttask) {
