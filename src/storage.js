@@ -8,6 +8,7 @@ import {
 } from "@aws-sdk/client-s3"
 import { S3Client } from "@aws-sdk/client-s3" // Helper function that creates an Amazon S3 service client module.
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
+import { triggererror } from "./graphqlserver"
 
 const s3config = {
     signatureVersion: 'v4',

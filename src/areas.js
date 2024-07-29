@@ -580,8 +580,8 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const AreaWeekAggregate = db.collection('aggareaweek')
 
-            if (!datetime) datetime = new Date(new Date().toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
-            else datetime = new Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
+            if (!datetime) datetime = new Date() //new Date(new Date().toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
+            else datetime = Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
             const week = getWeekNumber(datetime)
             const weekyear = getWeekYear(datetime) //different at start of year sometimes.
 

@@ -2,6 +2,7 @@ import { ObjectId } from 'mongodb'
 import DbConnection from './database'
 import { getprofileid } from './users'
 import { attachAreas } from './sources'
+import { triggererror } from './graphqlserver'
 
 export const schema = `
     type Person {
@@ -54,7 +55,8 @@ export const resolvers = {
                 const result = await db.collection('people').findOne({ _id: new ObjectId(personid), profileid })
                 return result
             } catch (error) {
-                throw new Error(`Failed to get person by ID: ${error}`)
+                console.log(error)
+                return triggererror(`Failed to get person by ID`)
             }
         },
 
@@ -65,7 +67,8 @@ export const resolvers = {
                 const result = await db.collection('people').find({ profileid }).sort({lasttagged: -1, created: -1}).toArray()
                 return result
             } catch (error) {
-                throw new Error(`Failed to get all people: ${error}`)
+                console.log(error)
+                return triggererror(`Failed to get all people.`)
             }
         }
     },
@@ -101,9 +104,11 @@ export const resolvers = {
                 return true
             } catch (error) {
                 console.log(error)
-                throw new Error(`Failed to create person`)
+                return triggererror('Failed to create person')
             }
-        } else { throw new Error(`Failed to create person`) }
+        } else { 
+            return triggererror('Failed to create person') 
+        }
         },
 
         updatePerson: async(_, {personid, updates, areatags}, { req }) => {
@@ -119,7 +124,8 @@ export const resolvers = {
                 attachAreas(areatags, {personid: personid}, profileid, req) 
                 return true
             } catch (error) {
-                throw new Error(`Failed to update person: ${error}`)
+                console.log(error)
+                return triggererror(`Failed to update person.`)
             }
         },
 
@@ -131,7 +137,8 @@ export const resolvers = {
                 await db.collection('people').findOneAndDelete({ _id: new ObjectId(id), profileid })
                 return true
             } catch (error) {
-                throw new Error(`Failed to delete person: ${error}`)
+                console.log(error)
+                return triggererror(`Failed to delete person.`)
             }
         }
     }
