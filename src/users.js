@@ -33,6 +33,7 @@ export const typeDefs = `
       isLoggedin (url: String, timezoneoffset: Int): User
       getConnectedUsers: [User]
       onboarding: Onboarding
+      preferences: Preferences
   }
 
   extend type Mutation {
@@ -49,6 +50,8 @@ export const typeDefs = `
     resetPassword(email: String): Boolean
     setPassword(codedate: String, code: String, password: String): User
     updatePassword(userid: String, oldpassword: String, newpassword: String): User
+
+    finishOnboarding: Boolean
   }
 `
 
@@ -84,6 +87,10 @@ export const schema = `
     goal: String
   }
 
+  type Preferences {
+    rightsidebar: String  
+  }
+
   type ChatUser {
     _id: String
     name: String
@@ -94,7 +101,28 @@ export const resolvers = {
     Query: {
         onboarding: async(_, args, { req }) => {
             if (req.session.user) {
-                return req.session.user.onboarding
+                const db = await DbConnection.Get()
+                const Users = db.collection('users')
+                let user = await Users.findOne({
+                    _id: new ObjectId(getuserid(req.session))
+                })
+                return user.onboarding
+            }
+        },
+        preferences: async(_, args, { req }) => {
+            if (req.session.user) {
+                const db = await DbConnection.Get()
+                const Users = db.collection('users')
+                let user = await Users.findOne({
+                    _id: new ObjectId(getuserid(req.session))
+                })
+                if(!user.onboarding || !user.onboarding.show){
+                    if(!user.preferences) {return {rightsidebar: 'goals'}}
+                    else {return user.preferences}
+                }
+                if (user.onboarding.goal === 'active') {return {rightsidebar: 'goals'}}
+                if (user.onboarding.rank === 'active') {return {rightsidebar: 'wheel'}}
+                return user.preferences
             }
         },
         isLoggedin: async(_, args, { req }) => {
@@ -256,7 +284,7 @@ export const resolvers = {
                         args.code = bcrypt.hashSync('verifythisyo', 7)
                         args.created = new Date()
                         args.email = args.email.toLowerCase()
-                        args.onboarding = { wheel: 'done', rank: 'active', goal: 'inactive' }
+                        args.onboarding = { wheel: 'done', rank: 'active', goal: 'inactive', show: true }
                         let newuser = await Users.insertOne(args) //create record to return id
                         args._id = newuser.insertedId.toString() //use args to pass new user id for email link
                         userid = newuser.insertedId.toString() //pass id for creating view and profiles
@@ -546,7 +574,7 @@ export const resolvers = {
                     uiversion: args.uiversion,
                     serverversion: pjson.version,
                     state: 'new',
-                    onboarding: { wheel: 'active', rank: 'inactive', goal: 'inactive' },
+                    onboarding: { wheel: 'active', rank: 'inactive', goal: 'inactive', show: true },
                     profile: args.account,
                     created: date,
                     createdip: getipaddress(req)
@@ -613,7 +641,7 @@ export const resolvers = {
                     uiversion: args.uiversion,
                     serverversion: pjson.version,
                     state: 'new',
-                    onboarding: { wheel: 'active', rank: 'inactive', goal: 'inactive' },
+                    onboarding: { wheel: 'active', rank: 'inactive', goal: 'inactive', show: true },
                     profile: args.account,
                     created: date,
                     createdip: getipaddress(req)
@@ -683,7 +711,7 @@ export const resolvers = {
                     args.serverversion = pjson.version
                     args.lastip = getipaddress(req)
                     args.type = 'personal'
-                    args.onboarding = { wheel: 'active', rank: 'inactive', goal: 'inactive' },
+                    args.onboarding = { wheel: 'active', rank: 'inactive', goal: 'inactive', show: true },
                     //googleid, firstname and lastname should already be on args.
                     args.created = new Date()
                     user = args
@@ -783,6 +811,12 @@ export const resolvers = {
             )
 
             return user.value
+        },
+        finishOnboarding: async(_, __, { req }) => {
+            const user = req.session.user
+            if (user.onboarding && user.onboarding.show) updateUserOnboarding(getuserid(req.session), 'finish')
+            req.session.user.onboarding.show = false
+            return true
         }
     }
 }
@@ -944,3 +978,36 @@ function checkPasswordFormat(password) {
     if (return_message.length > 0) return triggererror(return_message)
     return return_message
 }
+
+export const updateUserOnboarding = async (userId, onboarding) => {
+    const db = await DbConnection.Get()
+    const Users = db.collection('users')
+
+    //{ wheel: 'active', rank: 'inactive', goal: 'inactive', show: true }
+    let setonboarding = {}
+    switch (onboarding) {
+        case 'wheel':
+            setonboarding = { wheel: 'done', rank: 'active', goal: 'inactive', show: true }
+            break;
+        case 'rank':
+            setonboarding = { wheel: 'done', rank: 'done', goal: 'active', show: true }
+            break;
+        case 'goal':
+            setonboarding = { wheel: 'done', rank: 'done', goal: 'done', show: true }
+            break;
+        case 'finish':
+            setonboarding.show = false
+            break;
+        default:
+            setonboarding = { wheel: 'active', rank: 'inactive', goal: 'inactive', show: true }
+    }
+
+    const updatedUser = await Users.findOneAndUpdate(
+        { _id: new ObjectId(userId) },
+        { $set: { onboarding: setonboarding } },
+        { returnOriginal: false }
+    );
+
+    return updatedUser.value;
+};
+

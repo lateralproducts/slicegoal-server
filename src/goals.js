@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb' 
 import { triggererror } from './graphqlserver';
-import { getprofileid, getwheelid } from './users'
+import { getprofileid, getuserid, getwheelid, updateUserOnboarding } from './users'
 import DbConnection from './database'
 import { date2str, getuiversion } from '../util/functions'
 import { activityrecord } from './pomodoros'
@@ -520,6 +520,10 @@ export async function creategoal(newgoal, req) {
                     goaltag.datecreated = new Date()
                     Tags.insertOne(goaltag)
                 })
+            
+            const user = req.session.user
+            if (user.onboarding && user.onboarding.show) updateUserOnboarding(getuserid(req.session), 'goal')
+
             return result.insertedId
         })
     } catch (error) {

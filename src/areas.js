@@ -3,7 +3,7 @@ import { triggererror } from './graphqlserver';
 
 import DbConnection from './database'
 import { getWeekNumber, getWeekYear, getuiversion } from '../util/functions'
-import { getuserid, getprofileid, getwheelid, getname } from './users'
+import { getuserid, getprofileid, getwheelid, getname, updateUserOnboarding } from './users'
 import { sessiontrack } from './website'
 let pjson = require('../package.json')
 
@@ -187,7 +187,7 @@ export const resolvers = {
             if (args.type === 'notcurrent')
                 query.wheel = { $ne: getwheelid(req.session) }
             if (args.type === 'default') query.default = true //defaultview //if asking for default profile only return the default.
-            var views = await Views.find(query).toArray()
+            var views = await Views.find(query).sort({lastaccessed: -1}).toArray()
             return views.map(view => {
                 if(view.type === 'shared' && user.activeofferid !== 2) view.promptupgrade = true
                 return view
@@ -841,6 +841,9 @@ export const resolvers = {
                 area: args.area
             }
 
+            const user = req.session.user
+            if (user.onboarding && user.onboarding.show) updateUserOnboarding(getuserid(req.session), 'rank')
+
             return await RankTimes.insertOne(ranktimeargs)
                 .then(ranktime => {
                     if(ranktime.insertedCount) return true
@@ -1076,6 +1079,8 @@ export async function createWheel(
         type: 'shared' //create the first shared profile.
     }
     Profiles.insertOne(newprofile)
+
+    if (user.onboarding && user.onboarding.show) updateUserOnboarding(userid, 'wheel')
 
     return { newview, newprofile }
 }
@@ -1324,27 +1329,23 @@ export async function setView(viewid, req) {
     const view = await Views.findOne(query)
     if (!view) return triggererror('View not found')
 
-    if (view.type === "shared" && user.activeofferid !== 2) {
-        //block access if not upgraded.
-        return triggererror('Plan needs to be upgraded to access wheel.')
-    } else {
-        let query = new Object()
-        query.wheel = view.wheel
-        if (view.type === 'shared')
-            query.$or = [{ user: getuserid(req.session) }, { type: 'shared' }] //access allowed to all profiles for coach.
 
-        const profile = await Profiles.findOne(query)
+    query = new Object()
+    query.wheel = view.wheel
+    if (view.type === 'shared')
+        query.$or = [{ user: getuserid(req.session) }, { type: 'shared' }] //access allowed to all profiles for coach.
 
-        if (!profile) return triggererror('View Profile combination not found')
+    const profile = await Profiles.findOne(query)
 
-        req.session.view = view
-        req.session.profile = profile
+    if (!profile) return triggererror('View Profile combination not found')
 
-        // Update the lastaccessed field of the selected view
-        await Views.updateOne({ _id: new ObjectId(viewid) }, { $set: { lastaccessed: new Date() } })
+    req.session.view = view
+    req.session.profile = profile
 
-        return view //need to return the view, area.
-    }
+    // Update the lastaccessed field of the selected view
+    await Views.updateOne({ _id: new ObjectId(viewid) }, { $set: { lastaccessed: new Date() } })
+
+    return view //need to return the view, area.
 }
 
 export async function setLastAccessedView(req) {
