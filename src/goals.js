@@ -76,38 +76,8 @@ export const resolvers = {
 
             return await Goals.findOne({profileid: getprofileid(req.session), _id: new ObjectId(args.goalid)})
         },
-        goals: async(_, args, { req }) => {
-            
-            const db = await DbConnection.Get()
-            const Goals = db.collection('goals')
-            const GoalLinks = db.collection('goallinks')
-
-            let order = new Object()
-            order = { orderrank: 1 }
-            let query = new Object()
-            query.profileid = getprofileid(req.session) //show goals from profileid.
-            query.complete = { $eq: null } //only show goals that aren't complete.
-
-            if(args.area) query.area = args.area
-
-            if (args.search || args.date) { //this is the search query on a goal.
-                if (args.search) query.goal = new RegExp(args.search, 'i')
-                if (args.date)
-                    query.$or = [
-                        { date: null },
-                        { date: { $lte: new Date(args.date) } } //time set from client argument
-                    ]
-            } else query.$or = [{ snooze: null }, { snooze: { $lt: new Date() } }] //if not a search query, only show unsnoozed goals.
-            
-            if(args.goal) {
-                var linklist = await GoalLinks.find({profileid: getprofileid(req.session), rootgoal: args.goal}).toArray()
-                query._id = {$in: linklist.map(function(link) {return new ObjectId(link.goal)})}
-                //need to eventually fix the sort on linked goals. Think this will task a refactor to figure out the way to do it.
-            }
-
-            if(!args.goal && !args.search && !args.area) query.linkreferenced = { $ne: true }
-
-            return await Goals.find(query).sort(order).toArray()
+        goals: async(_, { area, search, date, goal }, { req }) => {
+            return await getGoals({area, search, date, goal, profileid: getprofileid(req.session)})
         },
         goalstolink: async(_, args, { req }) => {
             //used for giving list of goals that can be selected. ie. to link to a task.
@@ -537,4 +507,44 @@ export async function testfunction(newgoal, req) {
     let res = await Areas.insertOne(newgoal)
     res.wheelid = getwheelid(req.session)
     return res
+}
+
+export async function getGoals({area, search, date, goal, profileid}) {
+    const db = await DbConnection.Get();
+    const Goals = db.collection('goals');
+    const GoalLinks = db.collection('goallinks');
+
+    let order = { orderrank: 1 };
+    let query = {
+        profileid: profileid,
+        complete: { $eq: null }
+    };
+
+    if (area) query.area = area;
+
+    if (search || date) {
+        if (search) query.goal = new RegExp(search, 'i');
+        if (date) {
+            query.$or = [
+                { date: null },
+                { date: { $lte: new Date(date) } }
+            ];
+        }
+    } else {
+        query.$or = [
+            { snooze: null },
+            { snooze: { $lt: new Date() } }
+        ];
+    }
+
+    if (goal) {
+        const linklist = await GoalLinks.find({ profileid: profileid, rootgoal: goal }).toArray();
+        query._id = { $in: linklist.map(link => new ObjectId(link.goal)) };
+    }
+
+    if (!goal && !search && !area) {
+        query.linkreferenced = { $ne: true };
+    }
+
+    return await Goals.find(query).sort(order).toArray();
 }

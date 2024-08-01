@@ -1,0 +1,71 @@
+<head>
+    <style>
+        a {cursor: help;}
+        .negative {
+            color: red !important;
+            padding-left: 5px;
+        }
+        .positive {
+            color: green;
+            padding-left: 5px;
+        }
+        .flex {
+            display: flex;
+        }
+    </style>
+</head> 
+<br/>
+<div><b>Overview for {{date}}</b></div>
+<br/>
+
+<div><b>Your Daily Mission:</b></div>
+{{#mission}}<div>{{mission}}</div>{{/mission}}
+{{^mission}}<div>No mission.</div>{{/mission}}
+<br/>
+<br/>
+<div><b>Activity Summary</b></div>
+<div class="flex">
+    <div>{{daycomparison.taskcompleted.value}} tasks completed</div> 
+    <div class="positive {{#daycomparison.taskcompleted.isNegative}}negative{{/daycomparison.taskcompleted.isNegative}}">{{daycomparison.taskcompleted.delta}}</div>
+</div>
+<div class="flex">
+    <div>{{daycomparison.taskcompletedgoal.value}} tasks completed with goal</div> 
+    <div class="positive {{#daycomparison.taskcompletedgoal.isNegative}}negative{{/daycomparison.taskcompletedgoal.isNegative}}">{{daycomparison.taskcompletedgoal.delta}}</div>
+</div>
+<br/>
+<div class="flex">
+    <div>{{daycomparison.logtime.value}} minutes logged </div>
+    <div class="positive {{#daycomparison.logtime.isNegative}}negative{{/daycomparison.logtime.isNegative}}"> {{daycomparison.logtime.delta}}</div>
+</div>
+<div class="flex">
+    <div>{{daycomparison.goaltime.value}} minutes linked to a goal</div> 
+    <div class="positive {{#daycomparison.goaltime.isNegative}}negative{{/daycomparison.goaltime.isNegative}}">{{daycomparison.goaltime.delta}}</div>
+</div>
+<br/>
+<div class="flex">
+    <div>{{daycomparison.taskcreated.value}} new tasks created</div> 
+    <div class="positive {{#daycomparison.taskcreated.isNegative}}negative{{/daycomparison.taskcreated.isNegative}}">{{daycomparison.taskcreated.delta}}</div>
+</div>
+<div class="flex">
+    <div>{{daycomparison.taskrescheduled.value}} tasks rescheduled</div> 
+    <div class="positive {{#daycomparison.taskrescheduled.isNegative}}negative{{/daycomparison.taskrescheduled.isNegative}}">{{daycomparison.taskrescheduled.delta}}</div>
+</div>
+<div class="flex">
+    <div>{{daycomparison.tasksnoozed.value}} tasks snoozed</div> 
+    <div class="positive {{#daycomparison.tasksnoozed.isNegative}}negative{{/daycomparison.tasksnoozed.isNegative}}">{{daycomparison.tasksnoozed.delta}}</div>
+</div>
+<br/>
+<br/>
+<div><b>Weekly Area Time Allocation</b></div>
+<ul>
+    {{#areapercentages}}
+    <li><div style="display: flex;">
+        <div>{{area}}</div><div class="positive">{{percentage}}%</div> {{#focus}}<img width='10px' src='{{focusicon}}'/>{{/focus}}
+    </div></li>
+    {{/areapercentages}}
+</ul>
+<br/>
+<a>
+    <img width='100' src='{{logopath}}'/>
+</a>
+<img src='{{pixelpath}}'/>

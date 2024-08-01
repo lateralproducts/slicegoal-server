@@ -1,6 +1,9 @@
 import DbConnection from './database'
-import { emailStats, emailWeeklySummary } from './emails'
-import { botips, getEndDateFromWeek, getStartDateFromWeek, getWeekNumber, getWeekYear, ignoreips } from '../util/functions';
+import { emailDailyMorning, emailDailySummary, emailStats, emailWeeklySummary } from './emails'
+import { botips, getEndDateFromWeek, getStartDateFromWeek, getWeekNumber, getWeekYear, ignoreips, startOfDay } from '../util/functions';
+import { ObjectId } from 'mongodb';
+import { wheelidfromprofileid } from './areas';
+import { getGoals } from './goals';
 
 export async function createreport(to,fromdate,todate){
     const db = await DbConnection.Get()
@@ -69,10 +72,82 @@ export async function createreport(to,fromdate,todate){
     to.map(email => emailStats( email, stats, title ))
 }
 
+export async function dailyafternoonemail() {
+    const db = await DbConnection.Get()
+    const Users = db.collection('users')
+    const Missions = db.collection('missions')
+    const AggDay = db.collection('aggday')
+
+    let today = new Date()
+    //get yesterday's date
+    let yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    const day = today.getDate()
+    const month = today.getMonth() + 1
+    const year = today.getFullYear()
+
+    const dailydata = await AggDay.find({
+        day: day,
+        month: month,
+        year: year
+    }).toArray()
+
+    //get previous day's data for comparison.
+    const daybeforedata = await AggDay.find({
+        day: yesterday.getDate(),
+        month: yesterday.getMonth() + 1,
+        year: yesterday.getFullYear()
+    }).toArray()
+
+    dailydata.map(async(daily) => {
+        if (daily.userid === "64d6a5338fe6f205016bc8b1" || daily.userid === "5d2adcf120f52b0d7d7faba0"){
+            daily.profileid
+
+            // Find the corresponding data for the previous day
+            const previousDayData = daybeforedata.find(data => data.userid === daily.userid) || new Object() //if no data, then create an empty object to reference 0 for comparison.
+            const daydatacomparison = calculateDeltaAndPercentageDelta(daily, previousDayData)
+
+            daily.date = yesterday
+
+            const wheelid = await wheelidfromprofileid({profileid: daily.profileid})
+
+            const areapercentages = await calculateWeekAreaPercentages({wheelid: wheelid, userid: daily.userid, week: getWeekNumber(yesterday), year: getWeekYear(yesterday)})
+            const areapercent = areapercentages.map(area => {return { area: area.name, focus: area.focus, percentage: area.percentage }})
+
+            const user = await Users.findOne({_id: new ObjectId(daily.userid)})
+            console.log(startOfDay(today))
+            const mission = await Missions.findOne({profileid: daily.profileid, date: startOfDay(today)})
+            emailDailySummary(user, daydatacomparison, daily, areapercent, mission ? mission.mission : null)
+        }
+    })
+}
+
+export async function dailymorningemail() {
+    const db = await DbConnection.Get()
+    const Users = db.collection('users')
+    const Missions = db.collection('missions')
+    const Profiles = db.collection('profiles')
+    const Tasks = db.collection('tasks')
+
+    let today = new Date()
+
+    const userids = ["64d6a5338fe6f205016bc8b1", "5d2adcf120f52b0d7d7faba0"]
+    userids.map(async(userid) => {
+        const user = await Users.findOne({_id: new ObjectId(userid)})
+        if (user){
+            const profiles = await Profiles.find({user: userid}).toArray()
+            const profileid = profiles[0]._id.toString() //change this later.
+            const mission = await Missions.findOne({profileid: profileid, date: startOfDay(today)})
+            const tasks = await Tasks.find({profileid: profileid, starttime: startOfDay(today)}).toArray()
+            const goals = await getGoals({profileid: profileid}) //top level goals
+            emailDailyMorning({user, mission, tasks, goals})
+        }
+    })
+}
+
 export async function weeklysummaryemail() {
     const db = await DbConnection.Get()
-    //const Profiles = db.collection('profiles')
-    //const RankTimes = db.collection('ranktimes')
     const Users = db.collection('users')
     const AggWeek = db.collection('aggweek')
 
@@ -99,7 +174,8 @@ export async function weeklysummaryemail() {
 
     weeklydata.map(async(weekly) => {
         if (weekly.userid === "64d6a5338fe6f205016bc8b1" || weekly.userid === "5d2adcf120f52b0d7d7faba0"){
-            const user = await Users.findOne({email: "daniel@lateralproducts.com"})
+            weekly.profileid
+
             // Find the corresponding data for the previous week
             const previousWeekData = weekbeforedata.find(data => data.userid === weekly.userid) || new Object() //if no data, then create an empty object to reference 0 for comparison.
             const weekdatacomparison = calculateDeltaAndPercentageDelta(weekly, previousWeekData)
@@ -107,7 +183,13 @@ export async function weeklysummaryemail() {
             weekly.startday = getStartDateFromWeek(week, year)
             weekly.endday = getEndDateFromWeek(week, year)
 
-            emailWeeklySummary(user, weekdatacomparison, weekly)
+            const wheelid = await wheelidfromprofileid({profileid: weekly.profileid})
+
+            const areapercentages = await calculateWeekAreaPercentages({wheelid: wheelid, userid: weekly.userid, week, year})
+            const areapercent = areapercentages.map(area => {return { area: area.name, focus: area.focus, percentage: area.percentage }})
+
+            const user = await Users.findOne({email: "daniel@lateralproducts.com"})
+            emailWeeklySummary(user, weekdatacomparison, weekly, areapercent)
         }
 
     })
@@ -151,4 +233,63 @@ function calculatePercentageDelta(currentValue, previousValue) {
     } else {
         return Math.round(((currentValue - previousValue) / previousValue) * 100);
     }
+}
+
+export async function calculateWeekAreaPercentages({wheelid, userid, week, year}) {
+    const db = await DbConnection.Get()
+    const Areas = db.collection('areas')
+    const Wheels = db.collection('wheels')
+    const AreaLinks = db.collection('arealinks')
+    const AreaWeekAggregate = db.collection('aggareaweek')
+
+    const wheel = await Wheels.findOne({_id: new ObjectId(wheelid)})
+
+    const query = {
+        rootarea: wheel.startarea.toString(), //using parent ID from Area object on Graph. No need for global boolean on AreaLink for now.
+        wheelid: wheelid
+    }
+    const arealinks = await AreaLinks.distinct('area', query)
+
+    const areas = await Areas.find({
+        _id: {
+            $in: arealinks.map(function(id) {
+                return new ObjectId(id)
+            })
+        }
+    }).toArray() 
+    
+
+    const weekdata = await AreaWeekAggregate.find({
+        wheelid: wheelid,
+        week: week,
+        year: year,
+        area: { $in: arealinks.map(function(id) { return new ObjectId(id) })},
+        userid: userid
+    }).toArray()
+
+    const totalLogTime = weekdata.reduce((sum, data) => sum + (data.logtime || 0), 0); 
+
+/*     const weekbefore = new Date()
+    weekbefore.setDate(weekbefore.getDate() - 7)
+
+    const weekbeforedata = await AreaWeekAggregate.find({
+        week: getWeekNumber(weekbefore),
+        year: getWeekYear(weekbefore),
+        area: { $in: arealinks.map(function(id) {
+            return new ObjectId(id)            
+        })}, 
+        userid: userid
+    }).toArray() */
+
+    const result = areas.map(area => {
+        const areaData = weekdata.find(data => data.area.toString() === area._id.toString()) || new Object()
+        /* const previousAreaData = weekbeforedata.find(data => data.area.toString() === area._id.toString()) || new Object()
+        const weekdatacomparison = calculateDeltaAndPercentageDelta(areaData, previousAreaData) */
+        area.percentage = Math.round(((areaData.logtime || 0) / totalLogTime)* 100)
+        area.time = areaData.logtime || 0
+        //area.weekdatacomparison = weekdatacomparison
+        return area
+    })
+
+    return result
 }

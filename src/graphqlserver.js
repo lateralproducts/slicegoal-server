@@ -249,7 +249,7 @@ export const graphql = async() => {
 
             const filename = path.basename(req.path);
             
-            if (filename === 'slicegoallong.png' || filename === 'cavesteplong.png' || filename === 'pixel.png') {
+            if (filename === 'slicegoallong.png' || filename === 'cavesteplong.png' || filename === 'pixel.png' || filename === 'focus.png') {
                 //logaccess
                 getfile(filename, res)
                 const item = req.query

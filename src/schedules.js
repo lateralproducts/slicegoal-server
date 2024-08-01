@@ -1,13 +1,14 @@
 import { ObjectId } from 'mongodb' 
 import DbConnection from './database'
 import { emailGoalNudge, emailRerankNudge, emailFunnel, reSendEmail, emailMessageNudge, emailWeeklySummary } from './emails'
-import { createreport, weeklysummaryemail } from './reporting'
+import { createreport, dailyafternoonemail, dailymorningemail, weeklysummaryemail } from './reporting'
 import { date2str } from '../util/functions'
 import { getunreadmessageusers } from './chat'
 
 let schedule = require('node-schedule')
 
-schedule.scheduleJob({ hour: 15, minute: 0 }, function() { //15:00 UTC = 2:00am, 20:30 UTC = 7:30am Sydney/Melbourne time
+schedule.scheduleJob({ hour: 15, minute: 0 }, function() { //15:00 UTC = 2:00am/1:00am, 20:30 UTC = 7:30am/6:30am Sydney/Melbourne time
+    //email daily stats.
     var today = new Date()
     var start = new Date()
     var end = today
@@ -42,6 +43,16 @@ schedule.scheduleJob({ dayOfWeek: 0, hour: 14, minute: 0}, function() {
     //summary once a week
     //set to UTC time for server 22 UTC = 8am Melbourne Time. dayOfWeek: 0, hour: 22, minute: 0 is 8am Monday in Melbourne
     weeklysummaryemail(); //holding off sending these messages again for a little bit.
+})
+
+schedule.scheduleJob({ hour: 17, minute: 59}, function() { //07:30 UTC = 6:30pm Sydney Time
+    //daily summary email
+    dailyafternoonemail(); 
+})
+
+schedule.scheduleJob({ hour: 18, minute: 53}, function() { //20:30 UTC = 6:30am Sydney Time
+    //daily summary email
+    dailymorningemail(); 
 })
 
 schedule.scheduleJob({ hour: 21, minute: 0 }, async function() { //21:00 = 8am Sydney time

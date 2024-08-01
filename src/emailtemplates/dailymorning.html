@@ -1,0 +1,52 @@
+<head>
+    <style>
+        a {cursor: help;}
+        .negative {
+            color: red !important;
+            padding-left: 5px;
+        }
+        .positive {
+            color: green;
+            padding-left: 5px;
+        }
+        .flex {
+            display: flex;
+        }
+    </style>
+</head> 
+<br/>
+<div><b>Good morning {{username}}!</b></div>
+<br/>
+
+<div><b>Your Daily Mission:</b></div>
+{{#mission}}<div>{{mission}}</div>{{/mission}}
+{{^mission}}<div>No mission set.</div>{{/mission}}
+<br/>
+<br/>
+<div><b>Your Goals</b></div>
+<ul>
+    {{#goals}}
+    <li><div style="display: flex;">
+        <div>{{goal}}</div>
+    </div></li>
+    {{/goals}}
+    {{^goals}}
+    <div>No goals set.</div>
+    {{/goals}}
+</ul>
+<br/>
+<br/>
+<div><b>Tasks Listed for Today</b></div>
+<ul>
+    {{#tasks}}
+    <li><div style="display: flex;">
+        <div>{{title}}</div>
+    </div></li>
+    {{/tasks}}
+    {{^tasks}}<div>No tasks scheduled.</div>{{/tasks}}
+</ul>
+<br/>
+<a>
+    <img width='100' src='{{logopath}}'/>
+</a>
+<img src='{{pixelpath}}'/>

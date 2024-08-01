@@ -1410,3 +1410,12 @@ export async function deletearea({ areaid, req }) {
         else return false
     }
 }
+
+export async function wheelidfromprofileid({ profileid }) {
+    const db = await DbConnection.Get()
+    const Profiles = db.collection('profiles')
+
+    const profile = await Profiles.findOne({ _id: new ObjectId(profileid) })
+    console.log(profile)
+    return profile.wheel
+}

@@ -16,6 +16,7 @@ const PATH_URL = `${process.env.PATH_URL}`
 const APP_PATH_URL = `${PATH_URL}/app`
 const LOGO_PATH_URL = `${PATH_URL}/files/slicegoallong.png`
 const PIXEL_PATH_URL = `${PATH_URL}/files/pixel.png`
+const FOCUS_ICON_URL = `${PATH_URL}/files/focus.png`
 
 const transporter = `${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test' ? 
 nodemailer.createTransport({ //test and development email client: mailhog.
@@ -43,6 +44,14 @@ const rerank = fs
 
 const weeklysummary = fs
     .readFileSync(__dirname + '/emailtemplates/weeklysummary.html')
+    .toString()
+
+const dailysummary = fs
+    .readFileSync(__dirname + '/emailtemplates/dailysummary.html')
+    .toString()
+
+const dailymorning = fs
+    .readFileSync(__dirname + '/emailtemplates/dailymorning.html')
     .toString()
 
 const lateralproducts = fs
@@ -107,42 +116,44 @@ let funnelpackage1 = {emails: [
 ]}
 
 async function sendEmail(to, subject, email, attachments, retryid) {
-    const db = await DbConnection.Get()
-    const Emails = db.collection('emails')
-    let mailOptions = {
-        from: sender,
-        to: to,
-        subject: subject,
-        html: email,
-        attachments: attachments,
-        retry: retryid
-    }
-    let response = await new Promise(function(resolve) { //wait for response to email send.
-        if((`${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test')) {
-            //dev and test email send via mailhog.
-            transporter.sendMail(mailOptions, function(error, info) {
-                if (error) {
-                    mailOptions.error = error
-                    console.log('email error: ' + error)
-                } else {
-                    mailOptions.response = info.response
-                    console.log('email sent: ' + info.response)
-                }
-                mailOptions.triggered = new Date()
-                resolve(mailOptions)
-            })}
-        else {
-            //production
-            sendSESEmail(mailOptions, resolve)
+    if (to){
+        const db = await DbConnection.Get()
+        const Emails = db.collection('emails')
+        let mailOptions = {
+            from: sender,
+            to: to,
+            subject: subject,
+            html: email,
+            attachments: attachments,
+            retry: retryid
         }
-    })
-    try {
-        Emails.insertOne(response)
-    } catch (error) { 
-        console.log('alert: email DB save not working.')
-        console.log(error)
-    } //record DB record of email send response.
-    return response
+        let response = await new Promise(function(resolve) { //wait for response to email send.
+            if((`${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test')) {
+                //dev and test email send via mailhog.
+                transporter.sendMail(mailOptions, function(error, info) {
+                    if (error) {
+                        mailOptions.error = error
+                        console.log('email error: ' + error)
+                    } else {
+                        mailOptions.response = info.response
+                        console.log('email sent: ' + info.response)
+                    }
+                    mailOptions.triggered = new Date()
+                    resolve(mailOptions)
+                })}
+            else {
+                //production
+                sendSESEmail(mailOptions, resolve)
+            }
+        })
+        try {
+            Emails.insertOne(response)
+        } catch (error) { 
+            console.log('alert: email DB save not working.')
+            console.log(error)
+        } //record DB record of email send response.
+        return response
+    } return 'no email address'
 }
 
 
@@ -279,14 +290,54 @@ export async function emailRerankNudge(user) {
     return await sendEmail(to, subject, email)
 }
 
-export async function emailWeeklySummary(user, weekdatacomparison, weekdata) {
+export async function emailWeeklySummary(user, weekdatacomparison, weekdata, areapercent) {
     let to = user.email
     let subject = 'Your weekly summary - Week ' + weekdata.week + ' ending ' + longdatestring(weekdata.endday)
     let email = Mustache.render(weeklysummary, {
-        name: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
+        username: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
         weekdata: weekdata,
         enddate: longdatestring(weekdata.endday),
+        areapercentages: areapercent,
         weekcomparison: weekdatacomparison,
+        datetime: (new Date()).toString(),
+        focusicon: FOCUS_ICON_URL,
+        pathurl: APP_PATH_URL,
+        logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL
+    })
+
+    return await sendEmail(to, subject, email)
+}
+
+export async function emailDailySummary(user, daydatacomparison, daydata, areapercent, mission) {
+    let to = user.email
+    let subject = 'Your daily summary - ' + longdatestring(new Date())
+    let email = Mustache.render(dailysummary, {
+        username: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
+        mission: mission,
+        daydata: daydata,
+        date: longdatestring(new Date()),
+        areapercentages: areapercent,
+        daycomparison: daydatacomparison,
+        datetime: (new Date()).toString(),
+        focusicon: FOCUS_ICON_URL,
+        pathurl: APP_PATH_URL,
+        logopath: LOGO_PATH_URL,
+        pixelpath: PIXEL_PATH_URL
+    })
+
+    return await sendEmail(to, subject, email)
+}
+
+export async function emailDailyMorning({user, mission, tasks, goals}) {
+    let to = user.email
+    let subject = 'Good morning! - ' + longdatestring(new Date())
+    let email = Mustache.render(dailymorning, {
+        date: longdatestring(new Date()),
+        username: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
+        mission: mission,
+        tasks: tasks.length > 0 ? tasks : null,
+        goals: goals.length > 0 ? goals : null,
         datetime: (new Date()).toString(),
         pathurl: APP_PATH_URL,
         logopath: LOGO_PATH_URL,

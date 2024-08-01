@@ -1,10 +1,11 @@
 import { ObjectId } from 'mongodb' 
-import { getprofileid, getuserid } from './users'
+import { getprofileid, getuserid, getwheelid } from './users'
 import DbConnection from './database'
 import { dayofyear, getEndDateFromWeek, getStartDateFromWeek, getWeekNumber, getWeekYear} from '../util/functions'
 import { checkTask, createRepeatTask } from './tasks'
 import { triggererror } from './graphqlserver';
 import { getareatree } from './areas'
+import { calculateWeekAreaPercentages } from './reporting'
 //let pjson = require('../package.json')
 
 export const typeDefs = `
@@ -256,9 +257,6 @@ export const resolvers = {
                 year: year,   
                 week: week
             }
-
-            weeklydata.startday = getStartDateFromWeek(week, year)
-            weeklydata.endday = getEndDateFromWeek(week, year)
 
             return weeklydata
         }
@@ -512,6 +510,11 @@ export async function areaaggregate({
     //America/Los_Angeles, Australia/Melbourne, Pacific/Honolulu
     if (!datetime) datetime = new Date(new Date().toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
     else datetime = new Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
+    
+    const userid = getuserid(req.session)
+    const profileid = getprofileid(req.session)
+    const wheelid = getwheelid(req.session)
+
     const year = datetime.getFullYear()
     const month = datetime.getMonth() + 1
     const yearday = dayofyear(datetime)
@@ -519,14 +522,48 @@ export async function areaaggregate({
     const weekyear = getWeekYear(datetime) //different at start of year sometimes.
     const day = datetime.getDate()
 
+    const DayAggregate = db.collection('aggday')
     const WeekAggregate = db.collection('aggweek')
+    const YearAggregate = db.collection('aggyear')
+
+    DayAggregate.updateOne(
+        {
+            wheelid: wheelid,            
+            profileid: profileid,
+            userid: userid,
+            month: month,
+            week: week,
+            dayofyear: yearday,
+            day: day,
+            year: weekyear,
+            week: week
+        },
+        {
+            $inc: increment
+        },
+        {upsert: true}
+    )
 
     WeekAggregate.updateOne(
         {
+            wheelid: wheelid,            
+            profileid: profileid,
+            userid: userid,
             year: weekyear,
-            week: week,
-            userid: getuserid(req.session),
-            profileid: getprofileid(req.session)
+            week: week
+        },
+        {
+            $inc: increment
+        },
+        {upsert: true}
+    )
+
+    YearAggregate.updateOne(
+        {
+            wheelid: wheelid,            
+            profileid: profileid,
+            userid: userid,
+            year: weekyear
         },
         {
             $inc: increment
@@ -543,10 +580,11 @@ export async function areaaggregate({
         const objectid = (id === 'none') ? 'none' : new ObjectId(id)
         AggYear.updateOne(
             {
+                wheelid: wheelid,            
+                profileid: profileid,
+                userid: userid,
                 area: objectid,
-                year: year,
-                userid: getuserid(req.session),
-                profileid: getprofileid(req.session)
+                year: year
             },
             {
                 $inc: increment
@@ -556,11 +594,12 @@ export async function areaaggregate({
 
         AggMonth.updateOne(
             {
+                wheelid: wheelid,            
+                profileid: profileid,
+                userid: userid,
                 area: objectid,
                 year: year,
-                month: month,
-                userid: getuserid(req.session),
-                profileid: getprofileid(req.session)
+                month: month
             },
             {
                 $inc: increment
@@ -570,11 +609,12 @@ export async function areaaggregate({
 
         AggWeek.updateOne(
             {
+                wheelid: wheelid,            
+                profileid: profileid,
+                userid: userid,
                 area: objectid,
                 year: weekyear,
-                week: week,
-                userid: getuserid(req.session),
-                profileid: getprofileid(req.session)
+                week: week
             },
             {
                 $inc: increment
@@ -584,14 +624,15 @@ export async function areaaggregate({
 
         AggDay.updateOne(
             {
+                wheelid: wheelid,            
+                profileid: profileid,
+                userid: userid,
                 area: objectid,
                 year: year,
                 month: month,
                 week: week,
                 dayofyear: yearday,
-                day: day,
-                userid: getuserid(req.session),
-                profileid: getprofileid(req.session)
+                day: day
             },
             {
                 $inc: increment

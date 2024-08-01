@@ -49,6 +49,16 @@
     <div class="positive {{#weekcomparison.tasksnoozed.isNegative}}negative{{/weekcomparison.tasksnoozed.isNegative}}">{{weekcomparison.tasksnoozed.delta}}</div>
 </div>
 <br/>
+<br/>
+<div><b>Area Time Allocation</b></div>
+<ul>
+    {{#areapercentages}}
+    <li><div style="display: flex;">
+        <div>{{area}}</div><div class="positive">{{percentage}}%</div> {{#focus}}<img width='10px' src='{{focusicon}}'/>{{/focus}}
+    </div></li>
+    {{/areapercentages}}
+</ul>
+<br/>
 <a>
     <img width='100' src='{{logopath}}'/>
 </a>
