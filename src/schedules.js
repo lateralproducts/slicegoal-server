@@ -45,12 +45,12 @@ schedule.scheduleJob({ dayOfWeek: 0, hour: 14, minute: 0}, function() {
     weeklysummaryemail(); //holding off sending these messages again for a little bit.
 })
 
-schedule.scheduleJob({ hour: 17, minute: 59}, function() { //07:30 UTC = 6:30pm Sydney Time
+schedule.scheduleJob({ hour: 7, minute: 30}, function() { //7:30 UTC = 5:30pm Sydney Time
     //daily summary email
     dailyafternoonemail(); 
 })
 
-schedule.scheduleJob({ hour: 18, minute: 53}, function() { //20:30 UTC = 6:30am Sydney Time
+schedule.scheduleJob({ hour: 18, minute: 53}, function() { //18:30 UTC = 6:30am Sydney Time
     //daily summary email
     dailymorningemail(); 
 })
