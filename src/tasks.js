@@ -335,13 +335,6 @@ export const resolvers = {
                 
                 const tasks = await Tasks.find(query).sort({dayorder: 1}).toArray() 
 
-                if (tasks.length > 1) {
-                    tasks.map(task => {
-                        if (task.tags) {
-                            areas.push(...task.tags)
-                        }
-                    })
-                }
                 // Query insighttags for areas
                 const areas = await Tags.distinct('area', { taskid: { $in: tasks.map(task => task._id.toString()) } })
 
@@ -390,18 +383,8 @@ export const resolvers = {
                 ]
             }
 
-            if(filter) {
-                query.tags = filter
-            } 
             const tasks = await Tasks.find(query).toArray()
 
-            if (tasks.length > 1) {
-                tasks.map(task => {
-                    if (task.tags) {
-                        areas.push(...task.tags)
-                    }
-                })
-            }
             // Query insighttags for areas
             const areas = await Tags.distinct('area', { taskid: { $in: tasks.map(task => task._id.toString()) } })
 
