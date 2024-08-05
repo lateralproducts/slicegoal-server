@@ -96,6 +96,7 @@ export const resolvers = {
             
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
+            const Tags = db.collection('insighttags')
             let query = new Object()
 
             const datetime = new Date(args.date) //time set from client argument
@@ -107,10 +108,6 @@ export const resolvers = {
             /* console.log(datetime)
             console.log(starttimeTZ)
             console.log(endtimeTZ) */
-
-            if(args.filter) {
-                query.tags = args.filter
-            }
 
             if(args.complete === false) {
                 query.$or = [ //only return if complete not equal to true (or doesn't exist)
@@ -200,8 +197,17 @@ export const resolvers = {
                     else sort.listorder = 1
                 }
 
-                return await Tasks.find(query)
+                let tasks = await Tasks.find(query)
                 .sort(sort).toArray()
+
+                if(args.filter) {
+                    const tags = await Tags.find({area: args.filter, taskid: {$in: tasks.map(task => task._id.toString())}}).toArray()
+                    const taskIds = tags.map(tag => tag.taskid)
+                    const filteredTasks = tasks.filter(task => taskIds.includes(task._id.toString()))
+                    return filteredTasks
+                }
+
+                return tasks
             }
         },
         task: async(_, args, { req }) => {
@@ -226,6 +232,7 @@ export const resolvers = {
         taskPriorityList: async(_, {filter}, { req }) => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
+            const Tags = db.collection('insighttags')
             const daytime = new Date() //time set from client argument
             const today = startOfDay(daytime)
             let query = {
@@ -251,12 +258,17 @@ export const resolvers = {
                 ]
             }
 
-            if(filter) {
-                query.tags = filter
-            } 
-
-            return await Tasks.find(query)
+            let tasks = await Tasks.find(query)
             .sort({listorder: 1}).toArray()
+
+            if(filter) {
+                const tags = await Tags.find({area: filter, taskid: {$in: tasks.map(task => task._id.toString())}}).toArray()
+                const taskIds = tags.map(tag => tag.taskid)
+                const filteredTasks = tasks.filter(task => taskIds.includes(task._id.toString()))
+                return filteredTasks
+            }
+
+            return tasks
         },
         pastTasks: async(_, {date, filter}, { req }) => {
             
@@ -300,6 +312,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const Areas = db.collection('areas')
+            const Tags = db.collection('insighttags')
             let query = new Object()
 
             const daytime = new Date(day) //time set from client argument
@@ -321,24 +334,23 @@ export const resolvers = {
             
             const tasks = await Tasks.find(query).sort({dayorder: 1}).toArray() 
 
-            let areas = []
-            if(tasks.length > 1) {
+            if (tasks.length > 1) {
                 tasks.map(task => {
-                    if(task.tags) areas.push(...task.tags)
+                    if (task.tags) {
+                        areas.push(...task.tags)
+                    }
                 })
             }
-            
-            //only makes sense to filter if the task list is larger than 1
+            // Query insighttags for areas
+            const areas = await Tags.distinct('area', { taskid: { $in: tasks.map(task => task._id.toString()) } })
 
             if(areas.length > 0){
-                areas = areas.map(area => new ObjectId(area))
+                let returnareas = areas.map(area => new ObjectId(area))
                 const tags = await Areas.find(
-                    {_id: {$in: areas}}
+                    {_id: {$in: returnareas}}
                 ).toArray()
                 return tags
             }
-
-            return []
         },
         taskPriorityListTags: async(_, {filter}, { req }) => {
             //could replace the day task list query with this one.
@@ -347,6 +359,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
             const Areas = db.collection('areas')
+            const Tags = db.collection('insighttags')
             const today = startOfDay(new Date()) //time set from client argument
             
             let query = {
@@ -377,14 +390,20 @@ export const resolvers = {
             } 
             const tasks = await Tasks.find(query).toArray()
 
-            let areas = []
-            if(tasks.length > 1) tasks.map(task => {if(task.tags) areas.push(...task.tags)})
-            //only makes sense to filter if the task list is larger than 1
+            if (tasks.length > 1) {
+                tasks.map(task => {
+                    if (task.tags) {
+                        areas.push(...task.tags)
+                    }
+                })
+            }
+            // Query insighttags for areas
+            const areas = await Tags.distinct('area', { taskid: { $in: tasks.map(task => task._id.toString()) } })
 
             if(areas.length > 0){
-                areas = areas.map(area => new ObjectId(area))
+                let returnareas = areas.map(area => new ObjectId(area))
                 const tags = await Areas.find(
-                    {_id: {$in: areas}}
+                    {_id: {$in: returnareas}}
                 ).toArray()
                 return tags
             }

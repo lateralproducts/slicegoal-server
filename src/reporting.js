@@ -76,51 +76,61 @@ export async function dailyafternoonemail() {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
     const Missions = db.collection('missions')
+    const Profiles = db.collection('profiles')
     const AggDay = db.collection('aggday')
+    //const Tasks = db.collection('tasks')
 
-    let today = new Date()
-    //get yesterday's date
-    let yesterday = new Date()
-    yesterday.setDate(yesterday.getDate() - 1)
+    const userids = ["64d6a5338fe6f205016bc8b1", "5d2adcf120f52b0d7d7faba0"]
+    userids.map(async(userid) => {
+        const user = await Users.findOne({_id: new ObjectId(userid)})
+        if (user){
+            const profiles = await Profiles.find({user: userid}).toArray()
+            const profileid = profiles[0]._id.toString() //change this later.
+            const mission = await Missions.findOne({profileid: profileid, date: startOfDay(today)})
+            //const tasks = await Tasks.find({profileid: profileid, starttime: startOfDay(today)}).toArray()
+            //const goals = await getGoals({profileid: profileid}) //top level goals
 
-    const day = today.getDate()
-    const month = today.getMonth() + 1
-    const year = today.getFullYear()
+            let today = new Date() //get day data.
+            let yesterday = new Date() //get yesterday's date
+            yesterday.setDate(yesterday.getDate() - 1)
 
-    const dailydata = await AggDay.find({
-        day: day,
-        month: month,
-        year: year
-    }).toArray()
+            const day = today.getDate()
+            const month = today.getMonth() + 1
+            const year = today.getFullYear()
 
-    //get previous day's data for comparison.
-    const daybeforedata = await AggDay.find({
-        day: yesterday.getDate(),
-        month: yesterday.getMonth() + 1,
-        year: yesterday.getFullYear()
-    }).toArray()
+            //get today's data
+            const dailydata = await AggDay.find({
+                day: day,
+                month: month,
+                year: year
+            }).toArray()
 
-    dailydata.map(async(daily) => {
-        if (daily.userid === "64d6a5338fe6f205016bc8b1" || daily.userid === "5d2adcf120f52b0d7d7faba0"){
-            daily.profileid
+            //get previous day's data for comparison.
+            const daybeforedata = await AggDay.find({
+                day: yesterday.getDate(),
+                month: yesterday.getMonth() + 1,
+                year: yesterday.getFullYear()
+            }).toArray()
 
-            // Find the corresponding data for the previous day
-            const previousDayData = daybeforedata.find(data => data.userid === daily.userid) || new Object() //if no data, then create an empty object to reference 0 for comparison.
-            const daydatacomparison = calculateDeltaAndPercentageDelta(daily, previousDayData)
+            const {daydatacomparison, daily, areapercent} = dailydata.map(async(daily) => {
+                if (daily.userid === userid){
+                    // Find the corresponding data for the previous day
+                    const previousDayData = daybeforedata.find(data => data.userid === userid) || new Object() //if no data, then create an empty object to reference 0 for comparison.
+                    const daydatacomparison = calculateDeltaAndPercentageDelta(daily, previousDayData)
+                    daily.date = yesterday
+        
+                    const wheelid = await wheelidfromprofileid({profileid: daily.profileid})
+        
+                    const areapercentages = await calculateWeekAreaPercentages({wheelid: wheelid, userid: daily.userid, week: getWeekNumber(yesterday), year: getWeekYear(yesterday)})
+                    const areapercent = areapercentages.map(area => {return { area: area.name, focus: area.focus, percentage: area.percentage }})
+                    return {daydatacomparison, daily, areapercent}
+                }
+            })
 
-            daily.date = yesterday
-
-            const wheelid = await wheelidfromprofileid({profileid: daily.profileid})
-
-            const areapercentages = await calculateWeekAreaPercentages({wheelid: wheelid, userid: daily.userid, week: getWeekNumber(yesterday), year: getWeekYear(yesterday)})
-            const areapercent = areapercentages.map(area => {return { area: area.name, focus: area.focus, percentage: area.percentage }})
-
-            const user = await Users.findOne({_id: new ObjectId(daily.userid)})
-            console.log(startOfDay(today))
-            const mission = await Missions.findOne({profileid: daily.profileid, date: startOfDay(today)})
             emailDailySummary(user, daydatacomparison, daily, areapercent, mission ? mission.mission : null)
         }
     })
+
 }
 
 export async function dailymorningemail() {

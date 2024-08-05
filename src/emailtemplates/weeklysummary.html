@@ -51,15 +51,15 @@
 <br/>
 <br/>
 <div><b>Area Time Allocation</b></div>
+{{#areapercentages}}
 <ul>
-    {{#areapercentages}}
     <li><div style="display: flex;">
-        <div>{{area}}</div><div class="positive">{{percentage}}%</div> {{#focus}}<img width='10px' src='{{focusicon}}'/>{{/focus}}
+        <div>{{area}}</div><div class="positive">{{percentage}}%</div> {{#focus}}<img width='10px' height='10px' src='{{focusicon}}'/>{{/focus}}
     </div></li>
-    {{/areapercentages}}
 </ul>
+{{/areapercentages}}
 <br/>
-<a>
+<a href="{{ pathurl }}">
     <img width='100' src='{{logopath}}'/>
 </a>
 <img src='{{pixelpath}}'/>

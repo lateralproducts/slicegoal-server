@@ -16,7 +16,7 @@ const PATH_URL = `${process.env.PATH_URL}`
 const APP_PATH_URL = `${PATH_URL}/app`
 const LOGO_PATH_URL = `${PATH_URL}/files/slicegoallong.png`
 const PIXEL_PATH_URL = `${PATH_URL}/files/pixel.png`
-const FOCUS_ICON_URL = `${PATH_URL}/files/focus.png`
+const FOCUS_ICON_URL = `${PATH_URL}/files/target-small.png`
 
 const transporter = `${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test' ? 
 nodemailer.createTransport({ //test and development email client: mailhog.

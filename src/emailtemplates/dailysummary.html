@@ -1,6 +1,6 @@
 <head>
     <style>
-        a {cursor: help;}
+        a {cursor: pointer;}
         .negative {
             color: red !important;
             padding-left: 5px;
@@ -12,6 +12,34 @@
         .flex {
             display: flex;
         }
+        .primary-button {
+            margin-bottom: 20px;
+            text-decoration-color: white;
+            font-weight: 700;
+            font-family: 'Karla', Arial, Verdana, sans-serif;
+            font-size:12px;
+            height: 90px;
+            border: none;
+            text-decoration: none;
+            color: white;
+            border-radius: 30px;
+            padding: 7px 12px 7px 12px;
+            background-color: #27D0FC;
+        }
+        .secondary-button {
+            margin-bottom: 20px;
+            text-decoration-color: grey;
+            font-weight: 700;
+            font-family: 'Karla', Arial, Verdana, sans-serif;
+            font-size:12px;
+            height: 90px;
+            border: solid 2px #27D0FC;
+            text-decoration: none;
+            color: #27D0FC;
+            border-radius: 30px;
+            padding: 7px 12px 7px 12px;
+            background-color: white;
+        }
     </style>
 </head> 
 <br/>
@@ -20,10 +48,20 @@
 
 <div><b>Your Daily Mission:</b></div>
 {{#mission}}<div>{{mission}}</div>{{/mission}}
-{{^mission}}<div>No mission.</div>{{/mission}}
+{{^mission}}
+<div style="margin-top: 10px; margin-bottom: 20px;">
+    <a  
+        class="secondary-button"
+        href="{{ pathurl }}"
+    >
+        Add a mission
+    </a>
+</div>
+{{/mission}}
 <br/>
 <br/>
 <div><b>Activity Summary</b></div>
+{{#daycomparison}}
 <div class="flex">
     <div>{{daycomparison.taskcompleted.value}} tasks completed</div> 
     <div class="positive {{#daycomparison.taskcompleted.isNegative}}negative{{/daycomparison.taskcompleted.isNegative}}">{{daycomparison.taskcompleted.delta}}</div>
@@ -54,18 +92,33 @@
     <div>{{daycomparison.tasksnoozed.value}} tasks snoozed</div> 
     <div class="positive {{#daycomparison.tasksnoozed.isNegative}}negative{{/daycomparison.tasksnoozed.isNegative}}">{{daycomparison.tasksnoozed.delta}}</div>
 </div>
+{{/daycomparison}}
+{{^daycomparison}}
+<div style="margin-top: 10px; margin-bottom: 20px;">
+    <a class="secondary-button" href="{{ pathurl }}">
+        Action a task
+    </a>
+</div>
+{{/daycomparison}}
 <br/>
 <br/>
 <div><b>Weekly Area Time Allocation</b></div>
+{{#areapercentages}}
 <ul>
-    {{#areapercentages}}
     <li><div style="display: flex;">
-        <div>{{area}}</div><div class="positive">{{percentage}}%</div> {{#focus}}<img width='10px' src='{{focusicon}}'/>{{/focus}}
+        <div>{{area}}</div><div class="positive">{{percentage}}%</div> {{#focus}}<img width='10px' height='10px' src='{{focusicon}}'/>{{/focus}}
     </div></li>
-    {{/areapercentages}}
 </ul>
+{{/areapercentages}}
+{{^areapercentages}}
+<div style="margin-top: 10px; margin-bottom: 20px;">
+    <a class="secondary-button" href="{{ pathurl }}">
+        Action a task
+    </a>
+</div>
+{{/areapercentages}}
 <br/>
-<a>
+<a href="{{ pathurl }}">
     <img width='100' src='{{logopath}}'/>
 </a>
 <img src='{{pixelpath}}'/>
