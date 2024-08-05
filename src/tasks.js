@@ -306,50 +306,55 @@ export const resolvers = {
             else return []
         },
         taskDayListTags: async(_, {day}, { req }) => {
-            //could replace the day task list query with this one.
-            
-            //return triggererror('Test Error')
-            const db = await DbConnection.Get()
-            const Tasks = db.collection('tasks')
-            const Areas = db.collection('areas')
-            const Tags = db.collection('insighttags')
-            let query = new Object()
+            try {
+                //could replace the day task list query with this one.
+                
+                //return triggererror('Test Error')
+                const db = await DbConnection.Get()
+                const Tasks = db.collection('tasks')
+                const Areas = db.collection('areas')
+                const Tags = db.collection('insighttags')
+                let query = new Object()
 
-            const daytime = new Date(day) //time set from client argument
-            const starttime = startOfDay(daytime)
-            const endtime = daylater(daytime)
-            
-            query.$and = [
-                {'starttime': {$gte: starttime}},
-                {'starttime': {$lt: endtime}}
-            ]
+                const daytime = new Date(day) //time set from client argument
+                const starttime = startOfDay(daytime)
+                const endtime = daylater(daytime)
+                
+                query.$and = [
+                    {'starttime': {$gte: starttime}},
+                    {'starttime': {$lt: endtime}}
+                ]
 
-            query.$or = [ //only return if complete not equal to true (or doesn't exist)
-                {complete: null},
-                {complete: false},
-                {complete: {$exists: false}},
-            ]
+                query.$or = [ //only return if complete not equal to true (or doesn't exist)
+                    {complete: null},
+                    {complete: false},
+                    {complete: {$exists: false}},
+                ]
 
-            query.profile = getprofileid(req.session)
-            
-            const tasks = await Tasks.find(query).sort({dayorder: 1}).toArray() 
+                query.profile = getprofileid(req.session)
+                
+                const tasks = await Tasks.find(query).sort({dayorder: 1}).toArray() 
 
-            if (tasks.length > 1) {
-                tasks.map(task => {
-                    if (task.tags) {
-                        areas.push(...task.tags)
-                    }
-                })
-            }
-            // Query insighttags for areas
-            const areas = await Tags.distinct('area', { taskid: { $in: tasks.map(task => task._id.toString()) } })
+                if (tasks.length > 1) {
+                    tasks.map(task => {
+                        if (task.tags) {
+                            areas.push(...task.tags)
+                        }
+                    })
+                }
+                // Query insighttags for areas
+                const areas = await Tags.distinct('area', { taskid: { $in: tasks.map(task => task._id.toString()) } })
 
-            if(areas.length > 0){
-                let returnareas = areas.map(area => new ObjectId(area))
-                const tags = await Areas.find(
-                    {_id: {$in: returnareas}}
-                ).toArray()
-                return tags
+                if(areas.length > 0){
+                    let returnareas = areas.map(area => new ObjectId(area))
+                    const tags = await Areas.find(
+                        {_id: {$in: returnareas}}
+                    ).toArray()
+                    return tags
+                }
+            } catch (error) {
+                console.error('Error fetching task tags:', error);
+                triggererror('Failed to fetch task tags')
             }
         },
         taskPriorityListTags: async(_, {filter}, { req }) => {

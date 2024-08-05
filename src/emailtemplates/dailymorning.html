@@ -12,15 +12,38 @@
         .flex {
             display: flex;
         }
+        .primary-button {
+            margin-bottom: 20px;
+            text-decoration-color: white;
+            font-weight: 700;
+            font-family: 'Karla', Arial, Verdana, sans-serif;
+            font-size:12px;
+            height: 90px;
+            border: none;
+            text-decoration: none;
+            color: white;
+            border-radius: 30px;
+            padding: 7px 12px 7px 12px;
+            background-color: #27D0FC;
+        }
+        .secondary-button {
+            margin-bottom: 20px;
+            text-decoration-color: grey;
+            font-weight: 700;
+            font-family: 'Karla', Arial, Verdana, sans-serif;
+            font-size:12px;
+            height: 90px;
+            border: solid 2px #27D0FC;
+            text-decoration: none;
+            color: #27D0FC;
+            border-radius: 30px;
+            padding: 7px 12px 7px 12px;
+            background-color: white;
+        }
     </style>
 </head> 
 <br/>
-<div><b>Good morning {{username}}!</b></div>
-<br/>
-
-<div><b>Your Daily Mission:</b></div>
-{{#mission}}<div>{{mission}}</div>{{/mission}}
-{{^mission}}<div>No mission set.</div>{{/mission}}
+<div>Good morning {{username}}!</div>
 <br/>
 <br/>
 <div><b>Your Goals</b></div>
@@ -31,9 +54,30 @@
     </div></li>
     {{/goals}}
     {{^goals}}
-    <div>No goals set.</div>
+    <div style="margin-top: 10px; margin-bottom: 20px;">
+        <a  
+            class="secondary-button"
+            href="{{ pathurl }}"
+        >
+            Add a goal
+        </a>
+    </div>
     {{/goals}}
 </ul>
+<br/>
+<br/>
+<div><b>Your Daily Mission:</b></div>
+{{#mission}}<div>{{mission}}</div>{{/mission}}
+{{^mission}}
+<div style="margin-top: 10px; margin-bottom: 20px;">
+    <a  
+        class="secondary-button"
+        href="{{ pathurl }}"
+    >
+        Add a mission
+    </a>
+</div>
+{{/mission}}
 <br/>
 <br/>
 <div><b>Tasks Listed for Today</b></div>
@@ -43,7 +87,16 @@
         <div>{{title}}</div>
     </div></li>
     {{/tasks}}
-    {{^tasks}}<div>No tasks scheduled.</div>{{/tasks}}
+    {{^tasks}}
+    <div style="margin-top: 10px; margin-bottom: 20px;">
+        <a  
+            class="secondary-button"
+            href="{{ pathurl }}"
+        >
+            Add your daily tasks
+        </a>
+    </div>
+    {{/tasks}}
 </ul>
 <br/>
 <a href="{{ pathurl }}">
