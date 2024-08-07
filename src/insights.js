@@ -874,11 +874,7 @@ async function createInsightPersonTag(insightid, person, req) {
     let newperson = new Object()
     newperson.profileid = getprofileid(req.session)
     if (personid) newperson._id = new ObjectId(personid) //search for ID only.
-    else {
-        newperson = {
-            name: person.name
-        }
-    }
+    else { newperson.name = person.name }
 
     const returnperson = await People.findOneAndUpdate(
         newperson,
@@ -939,69 +935,71 @@ async function createinsight(newinsight, req) {
 
         if (newinsight.areatags)
             //if there are area tags, save the area tags
-        newinsight.areatags.map(async link => {
-            let areaid = link.area._id
-            if (!areaid) {
-                //if area doesn't exist, create it.
-                let area = {
-                    name: link.name,
-                    wheelid: newinsight.wheelid
-                        ? newinsight.wheelid
-                        : getwheelid(req.session),
-                    serverversion: pjson.version,
-                    uiversion: getuiversion(req.session),
-                    created: new Date()
+            newinsight.areatags.map(async link => {
+                let areaid = link.area._id
+                if (!areaid) {
+                    //if area doesn't exist, create it.
+                    let area = {
+                        name: link.name,
+                        wheelid: newinsight.wheelid
+                            ? newinsight.wheelid
+                            : getwheelid(req.session),
+                        serverversion: pjson.version,
+                        uiversion: getuiversion(req.session),
+                        created: new Date()
+                    }
+
+                    const res = await Areas.insertOne(area)
+                    areaid = res.insertedId
                 }
 
-                const res = await Areas.insertOne(area)
-                areaid = res.insertedId
+                let insighttag = new Object()
+                insighttag.insightid = result.insertedId.toString()
+                insighttag.profileid = newinsight.profileid
+                insighttag.area = areaid
+                insighttag.notes = link.notes
+                insighttag.datecreated = new Date()
+                InsightTags.insertOne(insighttag)
+
+                Areas.updateOne(
+                    {
+                        wheelid: newinsight.wheelid
+                            ? newinsight.wheelid
+                            : getwheelid(req.session),
+                        _id: new ObjectId(areaid)
+                    },
+                    { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
+                )
             }
+        )
 
-            let insighttag = new Object()
-            insighttag.insightid = result.insertedId.toString()
-            insighttag.profileid = newinsight.profileid
-            insighttag.area = areaid
-            insighttag.notes = link.notes
-            insighttag.datecreated = new Date()
-            InsightTags.insertOne(insighttag)
+        if (newinsight.people){ //if there are people tags, save the people tags
+            newinsight.people.map(async link => {
+                let personid = link._id
+                if (!personid) {
+                    //if person doesn't exist, create it.
+                    link.profileid = newinsight.profileid
+                    const res = await People.insertOne(link)
+                    personid = res.insertedId.toString()
+                }
 
-            Areas.updateOne(
-                {
-                    wheelid: newinsight.wheelid
-                        ? newinsight.wheelid
-                        : getwheelid(req.session),
-                    _id: new ObjectId(areaid)
-                },
-                { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
-            )
-        })
+                let persontag = new Object()
+                persontag.insightid = result.insertedId.toString()
+                persontag.profileid = newinsight.profileid
+                persontag.personid = personid
+                persontag.notes = link.notes
+                persontag.datecreated = new Date()
+                InsightTags.insertOne(persontag)
 
-        if (newinsight.people) //if there are people tags, save the people tags
-        newinsight.people.map(async link => {
-            let personid = link._id
-            if (!personid) {
-                //if person doesn't exist, create it.
-                link.profileid = newinsight.profileid
-                const res = await People.insertOne(link)
-                personid = res.insertedId.toString()
-            }
-
-            let persontag = new Object()
-            persontag.insightid = result.insertedId.toString()
-            persontag.profileid = newinsight.profileid
-            persontag.personid = personid
-            persontag.notes = link.notes
-            persontag.datecreated = new Date()
-            InsightTags.insertOne(persontag)
-
-            People.updateOne(
-                {
-                    profileid: newinsight.profileid,
-                    _id: new ObjectId(personid)
-                },
-                { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
-            )
-        })
+                People.updateOne(
+                    {
+                        profileid: newinsight.profileid,
+                        _id: new ObjectId(personid)
+                    },
+                    { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } },
+                )
+            })
+        }
         return result.insertedId.toString()
     } catch (error) {
         console.log(error)

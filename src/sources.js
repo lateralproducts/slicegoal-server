@@ -22,10 +22,13 @@ export const typeDefs = `
     }
 
     extend type Mutation {
-        createSource(name: String!, url: String, type: String, notes: String, areas: [AreaTagIn], linktotask: String, fileids: [String]): Source
+        createSource(name: String!, url: String, type: String, notes: String, areas: [AreaTagIn], people: [PersonInput], linktotask: String, fileids: [String]): Source
         editSource(sourceid: String!, name: String, url: String, type: String, notes: String, areas: [AreaTagIn], fileids: [String]) : Boolean
         deleteSource(sourceid: String!): Boolean
         shareSource(sourceid: String!, targetUser: String!, shareNote: String): ShareResponse
+
+        createSourcePersonTag(sourceid: String!, person: PersonInput): Boolean
+        deleteSourcePersonTag(sourceid: String!, personid: String!): Boolean
     }
 `
 
@@ -178,7 +181,7 @@ export const resolvers = {
                 const Tags = db.collection('insighttags')
 
                 const tags = await Tags.find({
-                    area: {$ne: null}, //only return area tags
+                    //area: {$ne: null}, //only return area tags
                     sourceid: source._id.toString(),
                     profileid: getprofileid(req.session)
                 }).toArray()
@@ -237,6 +240,26 @@ export const resolvers = {
                         sourceareatag.datecreated = new Date()
                         Tags.insertOne(sourceareatag)
                     })
+                    if (args.people)
+                        args.people.map(async person => {
+                            let personid = person._id
+                            if (!personid) {
+                                let newperson = {
+                                    name: person.name,
+                                    profileid: getprofileid(req.session),
+                                    created: new Date(),
+                                    lasttagged: new Date()
+                                }
+                                const res = await db.collection('people').insertOne(newperson)
+                                personid = res.insertedId.toString()
+                            }
+                            let sourcepersontag = new Object()
+                            sourcepersontag.sourceid = source.insertedId.toString()
+                            sourcepersontag.profileid = getprofileid(req.session)
+                            sourcepersontag.personid = personid
+                            sourcepersontag.datecreated = new Date()
+                            Tags.insertOne(sourcepersontag)
+                        })
                 return {
                     _id: source.insertedId,
                     name: args.name
@@ -352,6 +375,23 @@ export const resolvers = {
                     })
                 })
             }
+        },
+        createSourcePersonTag: async function(_, {sourceid, person}, { req }) {
+            await createSourcePersonTag(sourceid, person, req)
+            return true
+        },
+        deleteSourcePersonTag: async function(_, {sourceid, personid}, { req }) {
+            const db = await DbConnection.Get()
+            const Tags = db.collection('insighttags')
+
+            await Tags.deleteOne(
+                {
+                    sourceid: sourceid,
+                    profileid: getprofileid(req.session),
+                    personid: personid
+                }
+            )
+            return true
         }
     }
 }
@@ -433,6 +473,7 @@ export async function attachAreas(areatags, attach, profileid, req) {
         let areaid = areatag._id
     
         if (!areaid) {
+            if (areatag.name === '') return
             const area = {
                 name: areatag.name,
                 wheelid: getwheelid(req.session),
@@ -469,4 +510,36 @@ export async function attachAreas(areatags, attach, profileid, req) {
             { $set: { accessedit: new Date() } }
         )
     })
+}
+
+async function createSourcePersonTag(sourceid, person, req) {
+    const db = await DbConnection.Get()
+    const Tags = db.collection('insighttags')
+    const People = db.collection('people')
+
+    let personid = person._id
+    let newperson = new Object()
+    newperson.profileid = getprofileid(req.session)
+    if (personid) newperson._id = new ObjectId(personid) //search for ID only.
+    else { newperson.name = person.name }
+
+    const returnperson = await People.findOneAndUpdate(
+        newperson,
+        { $inc: { tagged: 1 }, $set: { lasttagged: new Date() } }, 
+        { returnOriginal: false, upsert: true }
+    )
+    if (returnperson.value) personid = returnperson.value._id.toString() //if person already exists, get the ID.
+    else if (returnperson.lastErrorObject) personid = returnperson.lastErrorObject.upserted.toString() //if person is new, get the ID.
+
+    await Tags.updateOne(
+        {
+            sourceid: sourceid,
+            profileid: getprofileid(req.session),
+            personid: personid
+        },
+        { $set: { datecreated: new Date() } }, 
+        {upsert: true}
+    )
+
+    return true
 }
