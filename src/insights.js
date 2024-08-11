@@ -11,6 +11,7 @@ import { newIx } from './interactions'
 import { shareInsightEmail } from './emails'
 import { linkInsightTask } from './tasks'
 import { getPreviews, getfileid } from './fileserver';
+import { activityrecord } from './pomodoros';
 
 export const typeDefs = `
 
@@ -688,6 +689,7 @@ export const resolvers = {
 
             return await createinsight(args, req)
                 .then(insertedId => {
+                    activityrecord({req, newinsight: true})
                     if (args.taskid) {
                         Tags.insertOne({insightid: insertedId, taskid: args.taskid, profileid: args.profileid, datecreated: new Date()})
                     }

@@ -35,7 +35,7 @@
             height: 90px;
             border: solid 2px #27D0FC;
             text-decoration: none;
-            color: #27D0FC;
+            color: grey;
             border-radius: 30px;
             padding: 7px 12px 7px 12px;
             background-color: white;
@@ -87,17 +87,17 @@
         <div>{{title}}</div>
     </div></li>
     {{/tasks}}
-    {{^tasks}}
-    <div style="margin-top: 10px; margin-bottom: 20px;">
-        <a  
-            class="secondary-button"
-            href="{{ pathurl }}"
-        >
-            Add your daily tasks
-        </a>
-    </div>
-    {{/tasks}}
 </ul>
+{{^tasks}}
+<div style="margin-top: 10px; margin-bottom: 20px;">
+    <a  
+        class="secondary-button"
+        href="{{ pathurl }}"
+    >
+        Add your daily tasks
+    </a>
+</div>
+{{/tasks}}
 <br/>
 <a href="{{ pathurl }}">
     <img width='100' src='{{logopath}}'/>

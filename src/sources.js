@@ -8,6 +8,7 @@ import { newIx } from './interactions'
 import { shareSourceEmail } from './emails'
 import { linkSourceTask } from './tasks'
 import { getPreviews } from './fileserver'
+import { activityrecord } from './pomodoros';
 
 export const typeDefs = `
 
@@ -216,6 +217,7 @@ export const resolvers = {
                 }
             )
             .then(source => {
+                activityrecord({req, newsource: true})
                 if(args.linktotask) linkSourceTask(args.linktotask, source.insertedId, req)
 
                 if (args.areas)

@@ -57,6 +57,8 @@ export const schema = `
         tasksnoozed: Int
         taskpriorityadded: Int
         messagetotal: Int
+        newinsight: Int
+        newsource: Int
     }
 
     type PomodoroData {
@@ -268,6 +270,14 @@ export const resolvers = {
             return await Tasks.findOne({_id: new ObjectId(parent.task)})
         }
     },
+    Aggregates: {
+        startday: async(parent) => {
+            return getStartDateFromWeek(parent.week, parent.year)
+        },
+        endday: async(parent) => {
+            return getEndDateFromWeek(parent.week, parent.year)
+        }
+    },
     Mutation: {
         savePomodoro: async(root, args, { req }) => {
             if (args.alreadydone) args.checked = true //if labeled as "already done", then check the completed boolean
@@ -305,7 +315,9 @@ export async function activityrecord({
     priorityadded,
     snoozed, 
     copied,
-    alreadydone
+    alreadydone,
+    newinsight,
+    newsource
 }) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
@@ -347,6 +359,8 @@ export async function activityrecord({
     if (snoozed) record.snoozed = snoozed
     if (copied) record.copied = copied
     if (alreadydone) record.alreadydone = alreadydone
+    if (newinsight) record.newinsight = newinsight
+    if (newsource) record.newsource = newsource
     //if (unscheduled) record.unscheduled = unscheduled //removed
 
 
@@ -382,7 +396,9 @@ export async function activityrecord({
         snoozed, 
         copied,
         goal: record.goal || treegoals.length > 0, 
-        alreadydone
+        alreadydone,
+        newinsight,
+        newsource
     })
 
 }
@@ -454,7 +470,9 @@ export async function areaaggregate({
     priorityadded,
     copied,
     goal,
-    alreadydone
+    alreadydone,
+    newinsight,
+    newsource
 }) {
     //future development: check/aggregate parent tasks.
     if ((!treeareas) || !pomoid) { //must have all fields
@@ -488,6 +506,8 @@ export async function areaaggregate({
     if(priorityadded) increment.taskpriorityadded = 1
     if(copied) increment.taskcopied = 1
     if(alreadydone) increment.alreadydone = 1
+    if(newinsight) increment.newinsight = 1
+    if(newsource) increment.newsource = 1
 
     if (areatree.length > 0){
         const Areas = db.collection('areas')
