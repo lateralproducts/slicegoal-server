@@ -197,6 +197,7 @@ export async function weeklysummaryemail() {
 
             const areapercentages = await calculateWeekAreaPercentages({wheelid: wheelid, userid: weekly.userid, week, year})
             const areapercent = areapercentages.map(area => {return { area: area.name, focus: area.focus, percentage: area.percentage }})
+            .sort((a, b) => b.percentage - a.percentage)
 
             const user = await Users.findOne({email: "daniel@lateralproducts.com"})
             emailWeeklySummary(user, weekdatacomparison, weekly, areapercent)
