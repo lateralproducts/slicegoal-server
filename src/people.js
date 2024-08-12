@@ -24,6 +24,7 @@ export const typeDefs = `
         getPersonById(personid: String!): Person
         getAllPeople: [Person]
         personInsights(personid: String!): [InsightTag]
+        personSources(personid: String!): [InsightTag]
     }
 
     extend type Mutation {
@@ -40,14 +41,25 @@ export const resolvers = {
             const Tags = db.collection('insighttags')
 
             return await Tags.find({
-                insightid: {$ne: null},
-                personid: args.personid
+                    insightid: {$ne: null},
+                    personid: args.personid
                 },
-                { sort: { pinned: -1, created: -1 } }
+                { sort: { created: -1 } }
             )
             .toArray()
         },
+        personSources: async(_, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Tags = db.collection('insighttags')
 
+            return await Tags.find({
+                    sourceid: {$ne: null},//$or: [{insightid: {$ne: null}},{sourceid: {$ne: null}}],
+                    personid: args.personid
+                },
+                { sort: { created: -1 } }
+            )
+            .toArray()
+        },
         getPersonById: async(_, { personid }, { req }) => {
             try {
                 const db = await DbConnection.Get()
