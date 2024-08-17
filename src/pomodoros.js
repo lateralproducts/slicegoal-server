@@ -474,165 +474,88 @@ export async function areaaggregate({
     newinsight,
     newsource
 }) {
-    //future development: check/aggregate parent tasks.
-    if ((!treeareas) || !pomoid) { //must have all fields
-        console.log('areaaggregate error - missing fields')
-        console.log('areas: ' + treeareas)
-        console.log('pomoid: ' + pomoid)
-        return
-    }
-    let areatree = await getareatree({areas: treeareas, req})
-    const db = await DbConnection.Get()
-
-    let increment = new Object()
-
-    if(minutes) {
-        increment.logtime = minutes
-        increment.logcount = 1 //only count if there is a pomodoro with minutes
-        if(goal) {
-            increment.goaltime = minutes
-            increment.goalattached = 1
+    try {
+        //future development: check/aggregate parent tasks.
+        if ((!treeareas) || !pomoid) { //must have all fields
+            console.log('areaaggregate error - missing fields')
+            console.log('areas: ' + treeareas)
+            console.log('pomoid: ' + pomoid)
+            return
         }
-    }
-    if(created) increment.taskcreated = 1
-    if(completed) {
-        increment.taskcompleted = 1
-        if(goal) increment.taskcompletedgoal = 1
-    }
-    if(reschedule) increment.taskrescheduled = 1
-    if(snoozed) increment.tasksnoozed = 1
-    if(reopened) increment.taskreopened = 1
-    if(priorityremoved) increment.taskpriorityremove = 1 
-    if(priorityadded) increment.taskpriorityadded = 1
-    if(copied) increment.taskcopied = 1
-    if(alreadydone) increment.alreadydone = 1
-    if(newinsight) increment.newinsight = 1
-    if(newsource) increment.newsource = 1
+        let areatree = await getareatree({areas: treeareas, req})
+        const db = await DbConnection.Get()
 
-    if (areatree.length > 0){
-        const Areas = db.collection('areas')
-        
-        Areas.updateMany(
-            {_id: {
-                $in: areatree.map(function(id) {
-                    return new ObjectId(id)
-                })
-            }},
-            {
-                $inc: increment,
-                $push: {history: pomoid} //this might be too much info. Could remove this.
+        let increment = new Object()
+
+        if(minutes) {
+            increment.logtime = minutes
+            increment.logcount = 1 //only count if there is a pomodoro with minutes
+            if(goal) {
+                increment.goaltime = minutes
+                increment.goalattached = 1
             }
-    )} else {
-        areatree = ['none']
-    }
-    //Update time aggregates: Year, Month, Week, Day.
-    //Need to adjust for timezone on profile. Do this later.d
-    //America/Los_Angeles, Australia/Melbourne, Pacific/Honolulu
-    if (!datetime) datetime = new Date(new Date().toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
-    else datetime = new Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
-    
-    const userid = getuserid(req.session)
-    const profileid = getprofileid(req.session)
-    const wheelid = getwheelid(req.session)
+        }
+        if(created) increment.taskcreated = 1
+        if(completed) {
+            increment.taskcompleted = 1
+            if(goal) increment.taskcompletedgoal = 1
+        }
+        if(reschedule) increment.taskrescheduled = 1
+        if(snoozed) increment.tasksnoozed = 1
+        if(reopened) increment.taskreopened = 1
+        if(priorityremoved) increment.taskpriorityremove = 1 
+        if(priorityadded) increment.taskpriorityadded = 1
+        if(copied) increment.taskcopied = 1
+        if(alreadydone) increment.alreadydone = 1
+        if(newinsight) increment.newinsight = 1
+        if(newsource) increment.newsource = 1
 
-    const year = datetime.getFullYear()
-    const month = datetime.getMonth() + 1
-    const yearday = dayofyear(datetime)
-    const week = getWeekNumber(datetime)
-    const weekyear = getWeekYear(datetime) //different at start of year sometimes.
-    const day = datetime.getDate()
+        if (areatree.length > 0){
+            const Areas = db.collection('areas')
+            
+            Areas.updateMany(
+                {_id: {
+                    $in: areatree.map(function(id) {
+                        return new ObjectId(id)
+                    })
+                }},
+                {
+                    $inc: increment,
+                    $push: {history: pomoid} //this might be too much info. Could remove this.
+                }
+        )} else {
+            areatree = ['none']
+        }
+        //Update time aggregates: Year, Month, Week, Day.
+        //Need to adjust for timezone on profile. Do this later.d
+        //America/Los_Angeles, Australia/Melbourne, Pacific/Honolulu
+        if (!datetime) datetime = new Date(new Date().toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
+        else datetime = new Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Australia/Melbourne"}))
+        
+        const userid = getuserid(req.session)
+        const profileid = getprofileid(req.session)
+        const wheelid = getwheelid(req.session)
 
-    const DayAggregate = db.collection('aggday')
-    const WeekAggregate = db.collection('aggweek')
-    const YearAggregate = db.collection('aggyear')
+        const year = datetime.getFullYear()
+        const month = datetime.getMonth() + 1
+        const yearday = dayofyear(datetime)
+        const week = getWeekNumber(datetime)
+        const weekyear = getWeekYear(datetime) //different at start of year sometimes.
+        const day = datetime.getDate()
 
-    DayAggregate.updateOne(
-        {
-            wheelid: wheelid,            
-            profileid: profileid,
-            userid: userid,
-            month: month,
-            week: week,
-            dayofyear: yearday,
-            day: day,
-            year: weekyear,
-            week: week
-        },
-        {
-            $inc: increment
-        },
-        {upsert: true}
-    )
+        const DayAggregate = db.collection('aggday')
+        const WeekAggregate = db.collection('aggweek')
+        const YearAggregate = db.collection('aggyear')
 
-    WeekAggregate.updateOne(
-        {
-            wheelid: wheelid,            
-            profileid: profileid,
-            userid: userid,
-            year: weekyear,
-            week: week
-        },
-        {
-            $inc: increment
-        },
-        {upsert: true}
-    )
-
-    YearAggregate.updateOne(
-        {
-            wheelid: wheelid,            
-            profileid: profileid,
-            userid: userid,
-            year: weekyear
-        },
-        {
-            $inc: increment
-        },
-        {upsert: true}
-    )
-    
-    const AggYear = db.collection('aggareayear')
-    const AggMonth = db.collection('aggareamonth')
-    const AggWeek = db.collection('aggareaweek')
-    const AggDay= db.collection('aggareaday')
-
-    areatree.map(function(id) {
-        const objectid = (id === 'none') ? 'none' : new ObjectId(id)
-        AggYear.updateOne(
+        DayAggregate.updateOne(
             {
                 wheelid: wheelid,            
                 profileid: profileid,
                 userid: userid,
-                area: objectid,
-                year: year
-            },
-            {
-                $inc: increment
-            },
-            {upsert: true}
-        )
-
-        AggMonth.updateOne(
-            {
-                wheelid: wheelid,            
-                profileid: profileid,
-                userid: userid,
-                area: objectid,
-                year: year,
-                month: month
-            },
-            {
-                $inc: increment
-            },
-            {upsert: true}
-        )
-
-        AggWeek.updateOne(
-            {
-                wheelid: wheelid,            
-                profileid: profileid,
-                userid: userid,
-                area: objectid,
+                month: month,
+                week: week,
+                dayofyear: yearday,
+                day: day,
                 year: weekyear,
                 week: week
             },
@@ -642,24 +565,106 @@ export async function areaaggregate({
             {upsert: true}
         )
 
-        AggDay.updateOne(
+        WeekAggregate.updateOne(
             {
                 wheelid: wheelid,            
                 profileid: profileid,
                 userid: userid,
-                area: objectid,
-                year: year,
-                month: month,
-                week: week,
-                dayofyear: yearday,
-                day: day
+                year: weekyear,
+                week: week
             },
             {
                 $inc: increment
             },
             {upsert: true}
         )
-    })
+
+        YearAggregate.updateOne(
+            {
+                wheelid: wheelid,            
+                profileid: profileid,
+                userid: userid,
+                year: weekyear
+            },
+            {
+                $inc: increment
+            },
+            {upsert: true}
+        )
+        
+        const AggYear = db.collection('aggareayear')
+        const AggMonth = db.collection('aggareamonth')
+        const AggWeek = db.collection('aggareaweek')
+        const AggDay= db.collection('aggareaday')
+
+        areatree.map(function(id) {
+            const objectid = (id === 'none') ? 'none' : new ObjectId(id)
+            AggYear.updateOne(
+                {
+                    wheelid: wheelid,            
+                    profileid: profileid,
+                    userid: userid,
+                    area: objectid,
+                    year: year
+                },
+                {
+                    $inc: increment
+                },
+                {upsert: true}
+            )
+
+            AggMonth.updateOne(
+                {
+                    wheelid: wheelid,            
+                    profileid: profileid,
+                    userid: userid,
+                    area: objectid,
+                    year: year,
+                    month: month
+                },
+                {
+                    $inc: increment
+                },
+                {upsert: true}
+            )
+
+            AggWeek.updateOne(
+                {
+                    wheelid: wheelid,            
+                    profileid: profileid,
+                    userid: userid,
+                    area: objectid,
+                    year: weekyear,
+                    week: week
+                },
+                {
+                    $inc: increment
+                },
+                {upsert: true}
+            )
+
+            AggDay.updateOne(
+                {
+                    wheelid: wheelid,            
+                    profileid: profileid,
+                    userid: userid,
+                    area: objectid,
+                    year: year,
+                    month: month,
+                    week: week,
+                    dayofyear: yearday,
+                    day: day
+                },
+                {
+                    $inc: increment
+                },
+                {upsert: true}
+            )
+        })
+    } catch (e) {
+        console.log('error in areaaggregate')
+        console.log(e)
+    }
 }
 
 async function getgoaltree({treegoals}) {

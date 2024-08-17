@@ -267,16 +267,19 @@ export const resolvers = {
                 .toArray()
         },
         area: async(_, { _id, navdirection }, { req }) => {
-            
-            const db = await DbConnection.Get()
-            const Areas = db.collection('areas')
-            logareaclick(_id, navdirection, req)
+            if (_id !== ''){
+                const db = await DbConnection.Get()
+                const Areas = db.collection('areas')
+                logareaclick(_id, navdirection, req)
 
-            let area = await Areas.findOne({
-                _id: new ObjectId(_id),
-                $or: [{ wheelid: getwheelid(req.session) }, { global: true }]
-            })
-            return area
+                let area = await Areas.findOne({
+                    _id: new ObjectId(_id),
+                    $or: [{ wheelid: getwheelid(req.session) }, { global: true }]
+                })
+                return area
+            } else {
+                return triggererror('No area id provided')
+            }
         },
         areatree: async(_, { areaid }, { req }) => {
             const areatree = await getareatree({areas:[areaid], req})
