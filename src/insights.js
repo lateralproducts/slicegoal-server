@@ -42,6 +42,9 @@ export const typeDefs = `
     markSpaced(insightid: String, datetime: String, check: String, marked: String): Boolean
     
     createInsightPersonTag(insightid: String!, person: PersonInput): Tag
+
+    recordImpression(insightid: String!): Boolean
+    recordHighlight(insightid: String!): Boolean
   }
 `
 
@@ -58,6 +61,9 @@ export const schema = `
         file: String
         filedetails: [FilePreview]
         files: [FilePreview]
+        sources: [Source]
+        areas: [Area]
+        people: [Person]
     }
     type SharedInsightList {
         numberOfInsights: Int
@@ -348,6 +354,49 @@ export const resolvers = {
         filedetails: async(insight, __, { req }) => {
             if (insight.fileids) return  await getPreviews(req, insight.fileids) || null
             else if (insight.file) return [await getfileid(req, insight.file)] || null
+        },
+        sources: async(insight, __, { req }) => {
+            const db = await DbConnection.Get()
+            const InsightTags = db.collection('insighttags')
+            const Sources = db.collection('sources')
+            const sources = await InsightTags.find({
+                insightid: insight._id.toString(),
+                profileid: getprofileid(req.session),
+                sourceid: {$ne: null}
+            }).toArray()
+            const sourceids = sources.map(source => new ObjectId(source.sourceid))
+            return await Sources.find({
+                _id: {$in: sourceids}
+            }).toArray()
+        },
+        people: async(insight, __, { req }) => {
+            const db = await DbConnection.Get()
+            const InsightTags = db.collection('insighttags')
+            const People = db.collection('people')
+            const tags = await InsightTags.find({
+                insightid: insight._id.toString(),
+                profileid: getprofileid(req.session),
+                personid: {$ne: null}
+            }).toArray()
+            const peopleids = tags.map(tag => new ObjectId(tag.personid))
+            return await People.find({
+                _id: {$in: peopleids}
+            }).toArray()
+        },
+        areas: async(insight, __, { req }) => {
+            const db = await DbConnection.Get()
+            const InsightTags = db.collection('insighttags')
+            const Areas = db.collection('areas')
+            const tags = await InsightTags.find({
+                insightid: insight._id.toString(),
+                profileid: getprofileid(req.session),
+                area: {$ne: null}
+            }).toArray()
+            const areaids = tags.map(tag => new ObjectId(tag.area))
+            console.log(areaids)
+            return await Areas.find({
+                _id: {$in: areaids}
+            }).toArray()
         }
     },
     InsightTag: {
@@ -863,6 +912,27 @@ export const resolvers = {
                 {$set: {pinned: args.setpinned}}
             )
             return (resultsourcetags !== null)
+        },
+        recordImpression: async(_, args) => {
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+            const result = await Insights.updateOne(
+                { _id: new ObjectId(args.insightid) },
+                { $inc: { impressions: 1 }, $set: { lastimpression: new Date() } }
+            )
+            return (result !== null)
+        },
+        recordHighlight: async(_, args) => {
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+            const result = await Insights.updateOne(
+                { _id: new ObjectId(args.insightid) },
+                { 
+                    $inc: { highlights: 1 },
+                    $set: { lasthighlighted: new Date() } 
+                }
+            )
+            return (result !== null)
         }
     }
 }

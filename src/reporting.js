@@ -1,6 +1,6 @@
 import DbConnection from './database'
 import { emailDailyMorning, emailDailySummary, emailStats, emailWeeklySummary } from './emails'
-import { botips, getEndDateFromWeek, getStartDateFromWeek, getWeekNumber, getWeekYear, ignoreips, startOfDay } from '../util/functions';
+import { botips, getEndDateFromWeek, getStartDateFromWeek, getWeekNumber, getWeekYear, ignoreips, startOfDay, startOfDayTZ } from '../util/functions';
 import { ObjectId } from 'mongodb';
 import { wheelidfromprofileid } from './areas';
 import { getGoals } from './goals';
@@ -148,8 +148,8 @@ export async function dailymorningemail() {
         if (user){
             const profiles = await Profiles.find({user: userid}).toArray()
             const profileid = profiles[0]._id.toString() //change this later.
-            const mission = await Missions.findOne({profileid: profileid, date: startOfDay(today)})
-            const tasks = await Tasks.find({profileid: profileid, starttime: startOfDay(today)}).toArray()
+            const mission = await Missions.findOne({profileid: profileid, date: startOfDayTZ({datetime: today, timezoneOffset: 11})})
+            const tasks = await Tasks.find({profileid: profileid, starttime: startOfDayTZ({datetime: today, timezoneOffset: 11})}).toArray()
             const goals = await getGoals({profileid: profileid}) //top level goals
             emailDailyMorning({user, mission, tasks, goals})
         }
