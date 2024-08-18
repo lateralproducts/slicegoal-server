@@ -45,6 +45,7 @@ export const typeDefs = `
 
     recordImpression(insightid: String!): Boolean
     recordHighlight(insightid: String!): Boolean
+    recordAreaHighlight(insightid: String!, areaid: String!): Boolean
   }
 `
 
@@ -926,6 +927,18 @@ export const resolvers = {
             const Insights = db.collection('insights')
             const result = await Insights.updateOne(
                 { _id: new ObjectId(args.insightid) },
+                { 
+                    $inc: { highlights: 1 },
+                    $set: { lasthighlighted: new Date() } 
+                }
+            )
+            return (result !== null)
+        },
+        recordAreaHighlight: async(_, {insightid, areaid}) => {
+            const db = await DbConnection.Get()
+            const InsightTags = db.collection('insighttags')
+            const result = await InsightTags.updateOne(
+                { insightid: insightid, area: areaid },
                 { 
                     $inc: { highlights: 1 },
                     $set: { lasthighlighted: new Date() } 
