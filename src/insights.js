@@ -62,6 +62,7 @@ export const schema = `
         file: String
         filedetails: [FilePreview]
         files: [FilePreview]
+        fileids: [String]
         sources: [Source]
         areas: [Area]
         people: [Person]

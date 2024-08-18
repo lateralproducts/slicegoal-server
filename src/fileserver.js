@@ -23,6 +23,7 @@ export const typeDefs = `
     extend type Query {
         fileDownloadUrl(fileid: String): String
         filePreview(fileid: String!): FilePreview
+        filePreviews(fileids: [String!]): [FilePreview]
     }
     
     extend type Mutation {
@@ -36,6 +37,9 @@ export const resolvers = {
     Query: {
         filePreview: async(_, {fileid}, { req }) => {
             return await getfileid(req, fileid)
+        },
+        filePreviews: async(_, {fileids}, { req }) => {
+            return await getPreviews(req, fileids)
         },
         fileDownloadUrl: async(_, {fileid}, { req }) => {
             
