@@ -46,6 +46,8 @@ export const typeDefs = `
     recordImpression(insightid: String!): Boolean
     recordHighlight(insightid: String!): Boolean
     recordAreaHighlight(insightid: String!, areaid: String!): Boolean
+    recordSourceHighlight(insightid: String!, sourceid: String!): Boolean
+    recordPersonHighlight(insightid: String!, personid: String!): Boolean
   }
 `
 
@@ -456,7 +458,6 @@ export const resolvers = {
                 area: {$ne: null}
             }).toArray()
             const areaids = tags.map(tag => new ObjectId(tag.area))
-            console.log(areaids)
             return await Areas.find({
                 _id: {$in: areaids}
             }).toArray()
@@ -1002,6 +1003,30 @@ export const resolvers = {
             const InsightTags = db.collection('insighttags')
             const result = await InsightTags.updateOne(
                 { insightid: insightid, area: areaid },
+                { 
+                    $inc: { highlights: 1 },
+                    $set: { lasthighlighted: new Date() } 
+                }
+            )
+            return (result !== null)
+        },
+        recordSourceHighlight: async(_, {insightid, sourceid}) => {
+            const db = await DbConnection.Get()
+            const InsightTags = db.collection('insighttags')
+            const result = await InsightTags.updateOne(
+                { insightid: insightid, sourceid: sourceid },
+                { 
+                    $inc: { highlights: 1 },
+                    $set: { lasthighlighted: new Date() } 
+                }
+            )
+            return (result !== null)
+        },
+        recordPersonHighlight: async(_, {insightid, personid}) => {
+            const db = await DbConnection.Get()
+            const InsightTags = db.collection('insighttags')
+            const result = await InsightTags.updateOne(
+                { insightid: insightid, personid: personid },
                 { 
                     $inc: { highlights: 1 },
                     $set: { lasthighlighted: new Date() } 
