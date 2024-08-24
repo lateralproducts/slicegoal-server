@@ -321,14 +321,33 @@ export const resolvers = {
             }
             insightquery.profileid = getprofileid(req.session)
 
-            //if (swipe)  {insightquery.$or = [{lastimpression: {$lt: startOfDay(new Date())}}, {lastimpression: {$exists: false}}]}
+            if (swipe)  {
+                //insightquery.$or = [{lastimpression: {$lt: startOfDay(new Date())}}, {lastimpression: {$exists: false}}]
 
-            const insights = await Insights.find(
-                insightquery,
-                { sort: { datecreated: -1 } }, //return reverse chron. Last note created at top of list.
-            ).limit(50).toArray()
+                // Create a list of insights alternating between datecreated descending and datecreated ascending
+                const insightlist1 = await Insights.find(insightquery)
+                    .sort({ datecreated: 1 })
+                    .limit(25)
+                    .toArray();
 
-            return insights
+                insightquery._id = {$nin: insightlist1.map(insight => insight._id)}
+
+                const insightlist2 = await Insights.find(insightquery)
+                    .sort({ datecreated: -1 })
+                    .limit(25)
+                    .toArray()
+
+                const insights = []
+                for (let i = 0; i < 25; i++) {
+                    if (insightlist1[i]) insights.push(insightlist1[i])
+                    if (insightlist2[i]) insights.push(insightlist2[i])
+                }
+
+                insights.length = Math.min(insights.length, 50)
+
+                return insights
+            }
+            else return await Insights.find(insightquery).sort({datecreated: -1}).toArray()
         },
         insightList: async(_, {page}, { req }) => {
             
@@ -417,7 +436,7 @@ export const resolvers = {
             return parent.file ? await getfileid(req, parent.file) : null
         },
         filedetails: async(insight, __, { req }) => {
-            if (insight.fileids) return  await getPreviews(req, insight.fileids) || null
+            if (insight.fileids) return await getPreviews(req, insight.fileids) || null
             else if (insight.file) return [await getfileid(req, insight.file)] || null
         },
         sources: async(insight, __, { req }) => {
