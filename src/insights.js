@@ -324,16 +324,16 @@ export const resolvers = {
             if (swipe)  {
                 //insightquery.$or = [{lastimpression: {$lt: startOfDay(new Date())}}, {lastimpression: {$exists: false}}]
 
-                // Create a list of insights alternating between datecreated descending and datecreated ascending
+                // Create a list of insights alternating between lastimpression and datecreated 
                 const insightlist1 = await Insights.find(insightquery)
-                    .sort({ datecreated: 1 })
+                    .sort({ lastimpression: 1, datecreated: 1 })
                     .limit(25)
                     .toArray();
 
                 insightquery._id = {$nin: insightlist1.map(insight => insight._id)}
 
                 const insightlist2 = await Insights.find(insightquery)
-                    .sort({ datecreated: -1 })
+                    .sort({ highlights: -1, lastimpression: 1 })
                     .limit(25)
                     .toArray()
 
