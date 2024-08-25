@@ -327,23 +327,31 @@ export const resolvers = {
                 // Create a list of insights alternating between lastimpression and datecreated 
                 const insightlist1 = await Insights.find(insightquery)
                     .sort({ lastimpression: 1, datecreated: 1 })
-                    .limit(25)
+                    .limit(50)
                     .toArray();
 
-                insightquery._id = {$nin: insightlist1.map(insight => insight._id)}
+                if (insightquery._id) {
+                    insightquery.$and = [
+                        {_id: insightquery._id},
+                        {_id: {$nin: insightlist1.map(insight => insight._id)}}
+                    ]
+                    delete insightquery._id
+                } else {
+                    insightquery._id = {$nin: insightlist1.map(insight => insight._id)}
+                }
 
                 const insightlist2 = await Insights.find(insightquery)
                     .sort({ highlights: -1, lastimpression: 1 })
-                    .limit(25)
+                    .limit(50)
                     .toArray()
 
                 const insights = []
-                for (let i = 0; i < 25; i++) {
+                for (let i = 0; i < 50; i++) {
                     if (insightlist1[i]) insights.push(insightlist1[i])
                     if (insightlist2[i]) insights.push(insightlist2[i])
                 }
 
-                insights.length = Math.min(insights.length, 50)
+                insights.length = Math.min(insights.length, 100)
 
                 return insights
             }
