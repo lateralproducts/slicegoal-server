@@ -12,7 +12,7 @@ export const typeDefs = `
         migrateLinkInsights: Boolean
     }`
 
-async function getWebpageTitle(url) {
+/* async function getWebpageTitle(url) {
     try {
         const response = await axios.get(url)
         const $ = cheerio.load(response.data)
@@ -21,11 +21,11 @@ async function getWebpageTitle(url) {
         console.error('Error fetching webpage:', error)
         return "No Title"
     }
-}
+} */
 
 export const resolvers = {
     Mutation: {
-        migrateLinkInsights: async(_, __, { req }) => {
+        /* migrateLinkInsights: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             const Insights = db.collection('insights')
@@ -34,19 +34,18 @@ export const resolvers = {
             
             insights.map(async insight => {
                 const title = await getWebpageTitle(insight.answer);
-                console.log(title)
-                if (title !== "No Title") { //if title isn't found don't insert and delete the insight.
-                    Sources.insertOne({
-                        profileid: insight.profileid,
-                        name: title,
-                        url: insight.answer,
-                        datetime: insight.datecreated,
-                        type: "Webpage"
-                    })
-                   Insights.deleteOne({_id: insight._id})
-                }
+                //if (title !== "No Title") { //if title isn't found don't insert and delete the insight.
+                Sources.insertOne({
+                    profileid: insight.profileid,
+                    name: title,
+                    url: insight.answer,
+                    datetime: insight.datecreated,
+                    type: "Webpage",
+                    fromsource: true
+                })
+                Insights.deleteOne({_id: insight._id})
             })
-        }
+        } */
         /* deleteAllOldTags: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
