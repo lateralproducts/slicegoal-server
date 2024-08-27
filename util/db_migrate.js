@@ -1,6 +1,6 @@
 import DbConnection from '../src/database'
-import axios from 'axios'
-const cheerio = require("cheerio")
+//import axios from 'axios'
+//const cheerio = require("cheerio")
 //import { ObjectId } from 'mongodb'
 //import { triggererror } from '../src/graphqlserver'
 //import { startOfDayTZ } from './functions'
@@ -25,7 +25,7 @@ export const typeDefs = `
 
 export const resolvers = {
     Mutation: {
-        /* migrateLinkInsights: async(_, __, { req }) => {
+        migrateLinkInsights: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             const Insights = db.collection('insights')
@@ -33,7 +33,8 @@ export const resolvers = {
             const insights = await Insights.find({answer: {$regex: "^https?:\/\/[^\r\n]+$"}}).toArray();
             
             insights.map(async insight => {
-                const title = await getWebpageTitle(insight.answer);
+                const title = "No title" //await getWebpageTitle(insight.answer);
+                
                 //if (title !== "No Title") { //if title isn't found don't insert and delete the insight.
                 Sources.insertOne({
                     profileid: insight.profileid,
@@ -45,7 +46,7 @@ export const resolvers = {
                 })
                 Insights.deleteOne({_id: insight._id})
             })
-        } */
+        }
         /* deleteAllOldTags: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
