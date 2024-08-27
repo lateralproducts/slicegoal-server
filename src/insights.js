@@ -356,7 +356,7 @@ export const resolvers = {
 
                     return insights
                 }
-                else return await Insights.find(insightquery).sort({datecreated: -1}).toArray()
+                else return await Insights.find(insightquery).limit(20).sort({datecreated: -1}).toArray()
             } catch (error) {
                 console.log(error)
                 return []
