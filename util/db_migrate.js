@@ -1,4 +1,6 @@
 import DbConnection from '../src/database'
+import axios from 'axios'
+const cheerio = require("cheerio")
 //import { ObjectId } from 'mongodb'
 //import { triggererror } from '../src/graphqlserver'
 //import { startOfDayTZ } from './functions'
@@ -7,18 +9,51 @@ import DbConnection from '../src/database'
 
 export const typeDefs = `
     extend type Mutation {
-        deleteAllOldTags: Boolean
+        migrateLinkInsights: Boolean
     }`
+
+async function getWebpageTitle(url) {
+    try {
+        const response = await axios.get(url)
+        const $ = cheerio.load(response.data)
+        return $('title').text()
+    } catch (error) {
+        console.error('Error fetching webpage:', error)
+        return "No Title"
+    }
+}
 
 export const resolvers = {
     Mutation: {
-        deleteAllOldTags: async(_, __, { req }) => {
+        migrateLinkInsights: async(_, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Sources = db.collection('sources')
+            const Insights = db.collection('insights')
+
+            const insights = await Insights.find({answer: {$regex: "^https?:\/\/[^\r\n]+$"}}).toArray();
+            
+            insights.map(async insight => {
+                const title = await getWebpageTitle(insight.answer);
+                console.log(title)
+                if (title !== "No Title") { //if title isn't found don't insert and delete the insight.
+                    Sources.insertOne({
+                        profileid: insight.profileid,
+                        name: title,
+                        url: insight.answer,
+                        datetime: insight.datecreated,
+                        type: "Webpage"
+                    })
+                   Insights.deleteOne({_id: insight._id})
+                }
+            })
+        }
+        /* deleteAllOldTags: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             const Tasks = db.collection('tasks')
             Sources.update({}, { $unset: { tags: []} }, {multi: true})
             Tasks.update({}, { $unset: { tags: [], sources: [], insights: []} }, {multi: true})
-        }
+        } */
         /* migrateDBAllTags: async(_, __, { req }) => {
             if (req.session.user.email === "daniel@lateralproducts.com"){ //only allow my profile to run migration script: staging + prod.
                 const db = await DbConnection.Get()
