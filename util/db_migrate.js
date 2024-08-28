@@ -29,8 +29,8 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             const Insights = db.collection('insights')
-            const InsightTags = db.collection('insighttags')
-            const insights = await Insights.find({answer: {$regex: /\bhttps?:\/\/\S+\b/, $options: "i"}}).toArray();
+            const InsightTags = db.collection('insighttags') 
+            const insights = await Insights.find({answer: /.*http*./}).toArray();
             
             insights.map(async insight => {
                 // Get area tags for the current insight
