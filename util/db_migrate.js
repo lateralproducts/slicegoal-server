@@ -30,7 +30,7 @@ export const resolvers = {
             const Sources = db.collection('sources')
             const Insights = db.collection('insights')
             const InsightTags = db.collection('insighttags') 
-            const insights = await Insights.find({answer: /.*http*./}).toArray();
+            const insights = await Insights.find({answer: /.*http*./}).limit(10).toArray();
             
             insights.map(async insight => {
                 // Get area tags for the current insight
