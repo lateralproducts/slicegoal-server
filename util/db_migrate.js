@@ -1,6 +1,6 @@
 import DbConnection from '../src/database'
-//import axios from 'axios'
-//const cheerio = require("cheerio")
+import axios from 'axios'
+const cheerio = require("cheerio")
 //import { ObjectId } from 'mongodb'
 //import { triggererror } from '../src/graphqlserver'
 //import { startOfDayTZ } from './functions'
@@ -12,7 +12,7 @@ export const typeDefs = `
         migrateLinkInsights: Boolean
     }`
 
-/* async function getWebpageTitle(url) {
+async function getWebpageTitle(url) {
     try {
         const response = await axios.get(url)
         const $ = cheerio.load(response.data)
@@ -21,7 +21,7 @@ export const typeDefs = `
         console.error('Error fetching webpage:', error)
         return "No Title"
     }
-} */
+}
 
 export const resolvers = {
     Mutation: {
@@ -29,22 +29,30 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             const Insights = db.collection('insights')
-
-            const insights = await Insights.find({answer: {$regex: "^https?:\/\/[^\r\n]+$"}}).toArray();
+            const insights = await Insights.find({answer: {$regex: "^https?:\/\/[^\r\n]+"}, splitURLs: true}).toArray();
             
             insights.map(async insight => {
-                const title = "No title" //await getWebpageTitle(insight.answer);
-                
-                //if (title !== "No Title") { //if title isn't found don't insert and delete the insight.
-                Sources.insertOne({
-                    profileid: insight.profileid,
-                    name: title,
-                    url: insight.answer,
-                    datetime: insight.datecreated,
-                    type: "Webpage",
-                    fromsource: true
-                })
-                Insights.deleteOne({_id: insight._id})
+                // Extract URLs from the insight answer
+                const urlRegex = /https?:\/\/[^\s/$.?#].[^\s]*/g;
+                const urls = insight.answer.match(urlRegex);
+
+                if (urls && urls.length > 0) {
+                    // Insert a new source for each URL found
+                    urls.forEach(async (url) => {
+                        const title = await getWebpageTitle(url);
+                        await Sources.insertOne({
+                            profileid: insight.profileid,
+                            name: title,
+                            url: url,
+                            datetime: insight.datecreated,
+                            type: "Webpage",
+                            fromsource: true
+                        });
+                    });
+
+                    // Delete the original insight
+                    //await Insights.deleteOne({_id: insight._id});
+                }
             })
         }
         /* deleteAllOldTags: async(_, __, { req }) => {
