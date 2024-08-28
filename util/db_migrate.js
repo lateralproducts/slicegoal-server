@@ -18,7 +18,7 @@ async function getWebpageTitle(url) {
         const $ = cheerio.load(response.data)
         return $('title').text()
     } catch (error) {
-        console.error('Error fetching webpage:', error)
+        //console.error('Error fetching webpage:', error)
         return "No Title"
     }
 }
@@ -29,18 +29,31 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
             const Insights = db.collection('insights')
-            const insights = await Insights.find({answer: {$regex: "^https?:\/\/[^\r\n]+"}, splitURLs: true}).toArray();
+            const InsightTags = db.collection('insighttags')
+            const insights = await Insights.find({answer: {$regex: /\bhttps?:\/\/\S+\b/, $options: "i"}}).toArray();
             
             insights.map(async insight => {
+                // Get area tags for the current insight
+                const tags = await InsightTags.find({
+                    insightid: insight._id.toString(),
+                    $or: [
+                        {area: {$exists: true}},
+                        {personid: {$exists: true}}
+                    ]
+                }).toArray();
+
+                // Extract area IDs from the tags
+                //const areaIds = areaTags.map(tag => tag.area);
                 // Extract URLs from the insight answer
                 const urlRegex = /https?:\/\/[^\s/$.?#].[^\s]*/g;
                 const urls = insight.answer.match(urlRegex);
 
                 if (urls && urls.length > 0) {
                     // Insert a new source for each URL found
-                    urls.forEach(async (url) => {
+                    const sourceIds = [];
+                    for (const url of urls) {
                         const title = await getWebpageTitle(url);
-                        await Sources.insertOne({
+                        const result = await Sources.insertOne({
                             profileid: insight.profileid,
                             name: title,
                             url: url,
@@ -48,10 +61,37 @@ export const resolvers = {
                             type: "Webpage",
                             fromsource: true
                         });
-                    });
+                        sourceIds.push(result.insertedId);
+                    }
 
-                    // Delete the original insight
-                    //await Insights.deleteOne({_id: insight._id});
+                    let cleanText = insight.answer;
+                    cleanText = cleanText.replace(/\bhttps?:\/\/\S+\b/g, "");
+                    cleanText = cleanText.trim().replace(/(\r\n|\n|\r){2,}/g, '\n')
+                     .replace(/\/\s*(\r\n|\n|\r)|^\/$/gm, '');
+                    
+                    //Only update the insight and link tags if the answer is not empty
+                    if (cleanText.length > 0) {
+                        await Insights.updateOne({_id: insight._id}, {$set: {answer: cleanText}})
+                    } else {
+                        await Insights.deleteOne({_id: insight._id})
+                    }
+                    // Create InsightTag for each source created
+                    for (const sourceId of sourceIds) {
+                        if (cleanText.length > 0) await InsightTags.insertOne({
+                            profileid: insight.profileid,
+                            insightid: insight._id.toString(),
+                            sourceid: sourceId.toString(),
+                            datecreated: new Date()
+                        });
+
+                        //Create Source InsightTag for each area tagged to the insight
+                        for (let tag of tags) {
+                            delete tag._id
+                            delete tag.insightid
+                            tag.sourceid = sourceId.toString()
+                            await InsightTags.insertOne(tag);
+                        }
+                    }
                 }
             })
         }
