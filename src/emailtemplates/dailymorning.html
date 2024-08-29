@@ -45,7 +45,6 @@
 <br/>
 <div>Good morning {{username}}!</div>
 <br/>
-<br/>
 <div><b>Your Goals</b></div>
 <ul>
     {{#goals}}
@@ -74,12 +73,13 @@
         class="secondary-button"
         href="{{ pathurl }}"
     >
-        Add a mission
+        Add your daily mission
     </a>
 </div>
 {{/mission}}
 <br/>
 <br/>
+{{tasks}}
 <div><b>Tasks Listed for Today</b></div>
 <ul>
     {{#tasks}}
@@ -88,7 +88,8 @@
     </div></li>
     {{/tasks}}
 </ul>
-{{^tasks}}
+{{/tasks}}
+<!-- {{^tasks}}
 <div style="margin-top: 10px; margin-bottom: 20px;">
     <a  
         class="secondary-button"
@@ -97,7 +98,7 @@
         Add your daily tasks
     </a>
 </div>
-{{/tasks}}
+{{/tasks}} -->
 <br/>
 <a href="{{ pathurl }}">
     <img width='100' src='{{logopath}}'/>

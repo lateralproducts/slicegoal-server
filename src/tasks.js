@@ -54,7 +54,7 @@ export const typeDefs = `
     }
     
     extend type Mutation {
-        newTask(date: String, title: String, description: String, insightid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, areatags: [AreaTagIn]): String        
+        newTask(date: String, title: String, description: String, insightid: String, sourceid: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, areatags: [AreaTagIn]): String        
         editTask(taskid: String!, date: String, title: String, description: String, date: String, goal: String, parenttask: String, complete: Boolean, schedule: Boolean, reschedule: Boolean, areatags: [AreaTagIn]): Boolean
         deleteTask(taskid: String!): Boolean
 
@@ -480,6 +480,7 @@ export const resolvers = {
             }
             activityrecord({taskid: taskid, notes: 'Task created.', req: req, created: true})
             if (args.insightid) linkInsightTask(taskid, args.insightid, req)
+            if (args.sourceid) linkSourceTask(taskid, args.sourceid, req)
             return taskid
         },
         editTask: async(_, args, { req }) => {
