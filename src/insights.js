@@ -1009,16 +1009,17 @@ export const resolvers = {
             )
             return (resultsourcetags !== null)
         },
-        recordImpression: async(_, args) => {
+        recordImpression: async(_, args, {req}) => {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const result = await Insights.updateOne(
                 { _id: new ObjectId(args.insightid) },
                 { $inc: { impressions: 1 }, $set: { lastimpression: new Date() } }
             )
+            activityrecord({req, insightid: args.insightid, impression: true})
             return (result !== null)
         },
-        recordHighlight: async(_, args) => {
+        recordHighlight: async(_, args, {req}) => {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const result = await Insights.updateOne(
@@ -1028,6 +1029,7 @@ export const resolvers = {
                     $set: { lasthighlighted: new Date() } 
                 }
             )
+            activityrecord({req, insightid: args.insightid, highlight: true})
             return (result !== null)
         },
         recordAreaHighlight: async(_, {insightid, areaid}) => {

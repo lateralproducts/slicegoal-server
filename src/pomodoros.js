@@ -59,6 +59,8 @@ export const schema = `
         messagetotal: Int
         newinsight: Int
         newsource: Int
+        highlight: Int
+        impression: Int
     }
 
     type PomodoroData {
@@ -317,12 +319,16 @@ export async function activityrecord({
     copied,
     alreadydone,
     newinsight,
-    newsource
+    newsource,
+    insightid,
+    highlight,
+    impression
 }) {
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
     const Tags = db.collection('insighttags')
     const Pomodoros = db.collection('pomodoros')
+    const Insights = db.collection('insights')
 
     let record = new Object()
     
@@ -335,6 +341,14 @@ export async function activityrecord({
             const tags = await Tags.find({taskid: taskid, area: {$ne: null}}).toArray()
             if (tags) record.areas = tags.map(tag => tag.area)
             //if (Task.tags) record.tags = Task.tags asdfjaskdjhfklajsdhg
+        }
+    }
+    if(insightid) {
+        record.insightid = insightid
+        const Insight = await Insights.findOne({ _id: new ObjectId(insightid)})
+        if (Insight) {
+            const tags = await Tags.find({insightid: insightid, area: {$ne: null}}).toArray()
+            if (tags) record.areas = tags.map(tag => tag.area)
         }
     }
     if(goalid) record.goal = goalid
@@ -361,26 +375,34 @@ export async function activityrecord({
     if (alreadydone) record.alreadydone = alreadydone
     if (newinsight) record.newinsight = newinsight
     if (newsource) record.newsource = newsource
+    if (highlight) record.highlight = highlight
+    if (impression) record.impression = impression
     //if (unscheduled) record.unscheduled = unscheduled //removed
 
 
     const pomoid = (await Pomodoros.insertOne(record)).insertedId.toString()
 
     //save all the aggregate data and history for the task, goal, and areas for the whole tree.
-    const {treetasks, treegoals, treeareas} = await gettasktrees({taskid, goalid: record.goal, areas: record.areas})
     
-    taskaggregate({
-        treetasks,
-        minutes, 
-        pomoid
-    })
+    let {treetasks, treegoals, treeareas} = await gettasktrees({taskid, goalid: record.goal, areas: record.areas})
     
-    goalaggregate({
-        treegoals,
-        minutes, 
-        pomoid
-    })
+    if (treetasks.length > 0) {
+        taskaggregate({
+            treetasks,
+            minutes, 
+            pomoid
+        })
+    }
 
+    if (treegoals.length > 0) {
+        goalaggregate({
+            treegoals,
+            minutes, 
+            pomoid
+        })
+    }
+
+    if (treeareas = [] && !taskid) {treeareas = record.areas}
     areaaggregate({
         treeareas, 
         datetime: datetime,
@@ -398,7 +420,9 @@ export async function activityrecord({
         goal: record.goal || treegoals.length > 0, 
         alreadydone,
         newinsight,
-        newsource
+        newsource,
+        impression,
+        highlight   
     })
 
 }
@@ -472,7 +496,9 @@ export async function areaaggregate({
     goal,
     alreadydone,
     newinsight,
-    newsource
+    newsource,
+    impression,
+    highlight
 }) {
     try {
         //future development: check/aggregate parent tasks.
@@ -509,6 +535,8 @@ export async function areaaggregate({
         if(alreadydone) increment.alreadydone = 1
         if(newinsight) increment.newinsight = 1
         if(newsource) increment.newsource = 1
+        if(impression) increment.impression = 1
+        if(highlight) increment.highlight = 1
 
         if (areatree.length > 0){
             const Areas = db.collection('areas')
@@ -700,6 +728,7 @@ async function getgoaltree({treegoals}) {
 }
 
 async function gettasktrees({taskid, areas, goalid}) {
+    if (!taskid) return {treetasks: [], treegoals: [], treeareas: []}
     const db = await DbConnection.Get()
     const Tasks = db.collection('tasks')
 
