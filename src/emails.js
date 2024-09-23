@@ -127,6 +127,7 @@ async function sendEmail(to, subject, email, attachments, retryid) {
             attachments: attachments,
             retry: retryid
         }
+        
         let response = await new Promise(function(resolve) { //wait for response to email send.
             if((`${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test')) {
                 //dev and test email send via mailhog.
@@ -312,6 +313,7 @@ export async function emailWeeklySummary(user, weekdatacomparison, weekdata, are
 export async function emailDailySummary(user, daydatacomparison, daydata, areapercent, mission) {
     let to = user.email
     let subject = 'Your daily summary - ' + longdatestring(new Date())
+    let cta = {prompt: "Add a mission for your day.", button: 'Add mission'}
     let email = Mustache.render(dailysummary, {
         username: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
         mission: mission,
@@ -320,6 +322,7 @@ export async function emailDailySummary(user, daydatacomparison, daydata, areape
         areapercentages: areapercent,
         daycomparison: daydatacomparison,
         datetime: (new Date()).toString(),
+        cta: cta,
         focusicon: FOCUS_ICON_URL,
         pathurl: APP_PATH_URL,
         logopath: LOGO_PATH_URL,
@@ -331,13 +334,16 @@ export async function emailDailySummary(user, daydatacomparison, daydata, areape
 
 export async function emailDailyMorning({user, mission, tasks, goals}) {
     let to = user.email
+    let cta = {prompt: "Add a mission for your day.", button: 'Add mission'}
+    let emailtasks = [] //tasks.length > 0 ? tasks : null
     let subject = 'Good morning! - ' + longdatestring(new Date())
     let email = Mustache.render(dailymorning, {
         date: longdatestring(new Date()),
         username: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
         mission: mission,
-        tasks: tasks.length > 0 ? tasks : null,
+        tasks: emailtasks,
         goals: goals.length > 0 ? goals : null,
+        cta: cta,
         datetime: (new Date()).toString(),
         pathurl: APP_PATH_URL,
         logopath: LOGO_PATH_URL,

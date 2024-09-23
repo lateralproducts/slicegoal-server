@@ -13,6 +13,7 @@
             display: flex;
         }
         .primary-button {
+            margin-top: 20px;
             margin-bottom: 20px;
             text-decoration-color: white;
             font-weight: 700;
@@ -52,34 +53,17 @@
         <div>{{goal}}</div>
     </div></li>
     {{/goals}}
-    {{^goals}}
-    <div style="margin-top: 10px; margin-bottom: 20px;">
-        <a  
-            class="secondary-button"
-            href="{{ pathurl }}"
-        >
-            Add a goal
-        </a>
-    </div>
-    {{/goals}}
 </ul>
+{{^goals}}<div>Create your first goal.</div>{{/goals}}
 <br/>
 <br/>
-<div><b>Your Daily Mission:</b></div>
-{{#mission}}<div>{{mission}}</div>{{/mission}}
-{{^mission}}
-<div style="margin-top: 10px; margin-bottom: 20px;">
-    <a  
-        class="secondary-button"
-        href="{{ pathurl }}"
-    >
-        Add your daily mission
-    </a>
-</div>
+{{#mission}}
+    <div><b>Your Daily Mission:</b></div>
+    <div>{{mission}}</div>
 {{/mission}}
+{{#tasks}}
 <br/>
 <br/>
-{{tasks}}
 <div><b>Tasks Listed for Today</b></div>
 <ul>
     {{#tasks}}
@@ -89,16 +73,18 @@
     {{/tasks}}
 </ul>
 {{/tasks}}
-<!-- {{^tasks}}
-<div style="margin-top: 10px; margin-bottom: 20px;">
+<br/>
+{{#cta}}
+    <div><b>Your Next Step:</b></div>
+    <div>{{prompt}}</div>
     <a  
-        class="secondary-button"
+        class="primary-button"
         href="{{ pathurl }}"
     >
-        Add your daily tasks
+        {{button}}
     </a>
-</div>
-{{/tasks}} -->
+{{/cta}}
+
 <br/>
 <a href="{{ pathurl }}">
     <img width='100' src='{{logopath}}'/>

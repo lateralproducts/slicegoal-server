@@ -46,17 +46,9 @@
 <div><b>{{date}}</b></div>
 <br/>
 
-<div><b>Your Daily Mission:</b></div>
-{{#mission}}<div>{{mission}}</div>{{/mission}}
-{{^mission}}
-<div style="margin-top: 10px; margin-bottom: 20px;">
-    <a  
-        class="secondary-button"
-        href="{{ pathurl }}"
-    >
-        Add a mission
-    </a>
-</div>
+{{#mission}}
+    <div><b>Your Daily Mission:</b></div>
+    <div>{{mission}}</div>
 {{/mission}}
 <br/>
 <br/>
@@ -93,13 +85,6 @@
     <div class="positive {{#daycomparison.tasksnoozed.isNegative}}negative{{/daycomparison.tasksnoozed.isNegative}}">{{daycomparison.tasksnoozed.delta}}</div>
 </div>
 {{/daycomparison}}
-{{^daycomparison}}
-<div style="margin-top: 10px; margin-bottom: 20px;">
-    <a class="secondary-button" href="{{ pathurl }}">
-        Action a task
-    </a>
-</div>
-{{/daycomparison}}
 <br/>
 <br/>
 <div><b>Weekly Area Time Allocation</b></div>
@@ -110,14 +95,17 @@
     </div></li>
 </ul>
 {{/areapercentages}}
-{{^areapercentages}}
-<div style="margin-top: 10px; margin-bottom: 20px;">
-    <a class="secondary-button" href="{{ pathurl }}">
-        Action a task
-    </a>
-</div>
-{{/areapercentages}}
 <br/>
+{{#cta}}
+    <div><b>Your Next Step:</b></div>
+    <div>{{prompt}}</div>
+    <a  
+        class="primary-button"
+        href="{{ pathurl }}"
+    >
+        {{button}}
+    </a>
+{{/cta}}
 <a href="{{ pathurl }}">
     <img width='100' src='{{logopath}}'/>
     <div> </div>

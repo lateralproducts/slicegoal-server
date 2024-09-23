@@ -45,9 +45,9 @@ export const typeDefs = `
 
     recordImpression(insightid: String!): Boolean
     recordHighlight(insightid: String!): Boolean
-    recordAreaHighlight(insightid: String!, areaid: String!): Boolean
-    recordSourceHighlight(insightid: String!, sourceid: String!): Boolean
-    recordPersonHighlight(insightid: String!, personid: String!): Boolean
+    recordAreaHighlight(insightid: String!, areaids: [String!]): Boolean
+    recordSourceHighlight(insightid: String!, sourceids: [String!]): Boolean
+    recordPersonHighlight(insightid: String!, peopleids: [String!]): Boolean
   }
 `
 
@@ -834,7 +834,7 @@ export const resolvers = {
 
             return await createinsight(args, req)
                 .then(insertedId => {
-                    activityrecord({req, newinsight: true})
+                    activityrecord({req, newinsight: true, insightid: insertedId})
                     if (args.taskid) {
                         Tags.insertOne({insightid: insertedId, taskid: args.taskid, profileid: args.profileid, datecreated: new Date()})
                     }
@@ -1032,11 +1032,11 @@ export const resolvers = {
             activityrecord({req, insightid: args.insightid, highlight: true})
             return (result !== null)
         },
-        recordAreaHighlight: async(_, {insightid, areaid}) => {
+        recordAreaHighlight: async(_, {insightid, areaids}) => {
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
-            const result = await InsightTags.updateOne(
-                { insightid: insightid, area: areaid },
+            const result = await InsightTags.updateMany(
+                { insightid: insightid, area: {$in: areaids }},
                 { 
                     $inc: { highlights: 1 },
                     $set: { lasthighlighted: new Date() } 
@@ -1044,11 +1044,11 @@ export const resolvers = {
             )
             return (result !== null)
         },
-        recordSourceHighlight: async(_, {insightid, sourceid}) => {
+        recordSourceHighlight: async(_, {insightid, sourceids}) => {
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
-            const result = await InsightTags.updateOne(
-                { insightid: insightid, sourceid: sourceid },
+            const result = await InsightTags.updateMany(
+                { insightid: insightid, sourceid: {$in: sourceids} },
                 { 
                     $inc: { highlights: 1 },
                     $set: { lasthighlighted: new Date() } 
@@ -1056,11 +1056,11 @@ export const resolvers = {
             )
             return (result !== null)
         },
-        recordPersonHighlight: async(_, {insightid, personid}) => {
+        recordPersonHighlight: async(_, {insightid, peopleids}) => {
             const db = await DbConnection.Get()
             const InsightTags = db.collection('insighttags')
-            const result = await InsightTags.updateOne(
-                { insightid: insightid, personid: personid },
+            const result = await InsightTags.updateMany(
+                { insightid: insightid, personid: {$in: peopleids} },
                 { 
                     $inc: { highlights: 1 },
                     $set: { lasthighlighted: new Date() } 
