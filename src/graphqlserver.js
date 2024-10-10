@@ -169,7 +169,7 @@ export const schema = makeExecutableSchema({
     )
 })
 
-export const schemaWithMiddleware = applyMiddleware(schema, authMiddleWare);
+export const schemaWithMiddleware = applyMiddleware(schema, authMiddleWareInput); //, authMiddleWareOutput - to track the output.
 
 const graphQLServer = createServer({
     schema: schemaWithMiddleware,
@@ -179,8 +179,9 @@ const graphQLServer = createServer({
 // List of query names that can be accessed by unauthenticated users
 const unauthenticatedQueries = ['isLoggedin', 'login', 'googleLogin', 'trackpage', 'sendlateralproductsemail', 'signup', 'verifyAccount', 'resetPassword', 'setPassword', 'publicwheels'];
 
-async function authMiddleWare(resolve, root, args, context, info) {
-    if (!unauthenticatedQueries.includes(info.fieldName)){
+async function authMiddleWareInput(resolve, root, args, context, info) {
+    //using root to check if the query is a root query (from the client) or a nested query/resolver.
+    if (!root && !unauthenticatedQueries.includes(info.fieldName)){
         if (!context.req.session || !context.req.session.user) return triggererror('Invalid Session')
         //what about introducing a check on the profile too? For profile specific requests.
     }
