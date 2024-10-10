@@ -17,6 +17,7 @@ export const typeDefs = `
     extend type Query {
         wheel(wheelid: String):[Wheel]
         wheels(tag: String):[Wheel]
+        publicwheels(tag: String):[Wheel]
         allviews (type: String): [View]
         sharedviews: [View]
         profiles: [Profile]
@@ -219,6 +220,18 @@ export const resolvers = {
             })
         },
         wheels: async(_, { tag }) => {
+            //This is a **publicly** accessible call, used on the website. Don't need to login to retrieve.
+            //Could potentially have a completely different server running this in the future.
+            const db = await DbConnection.Get()
+            const Wheels = db.collection('wheels')
+            const query = new Object()
+            query.global = true
+            if (tag) query.tag = tag
+            return await Wheels.find(query)
+                .sort({ templateorder: -1 })
+                .toArray()
+        },
+        publicwheels: async(_, { tag }) => {
             //This is a **publicly** accessible call, used on the website. Don't need to login to retrieve.
             //Could potentially have a completely different server running this in the future.
             const db = await DbConnection.Get()
