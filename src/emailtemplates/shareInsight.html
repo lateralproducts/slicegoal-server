@@ -2,12 +2,7 @@
 <html>
 
 <body>
-    <table style="border-collapse: separate; border-spacing: 10px; max-width: 400px;">
-        <tr>
-            <td align="center">
-                <img width="100" src="{{ logopath }}?ix={{ interactionid }}" />
-            </td>
-        </tr>
+    <table style="border-collapse: separate; border-spacing: 10px; max-width: 400px; margin: 0 auto;">
         <tr>
             <td align="center">
                 <div style="font-size: 0.8em;">{{ sharerName }} ({{ sharerEmail }}) shared this insight with you.</div>
@@ -37,6 +32,11 @@
             </td>
         </tr>
         <img src='{{pixelpath}}?ix={{interactionid}}'/>
+        <tr>
+            <td align="center">
+                <img width="100" src="{{ logopath }}?ix={{ interactionid }}" />
+            </td>
+        </tr>
     </table>
 </body>
 </html>
