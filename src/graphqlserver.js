@@ -180,7 +180,8 @@ const graphQLServer = createServer({
 const unauthenticatedQueries = ['isLoggedin', 'login', 'googleLogin', 'trackpage', 'sendlateralproductsemail', 'signup', 'verifyAccount', 'resetPassword', 'setPassword', 'publicwheels'];
 
 async function authMiddleWareInput(resolve, root, args, context, info) {
-    //using root to check if the query is a root query (from the client) or a nested query/resolver.
+    
+    //using root to check if the query is a root query (from the client) or a nested query/resolver. The query from the client doesn't have a root attached.
     if (!root && !unauthenticatedQueries.includes(info.fieldName)){
         if (!context.req.session || !context.req.session.user) return triggererror('Invalid Session')
         //what about introducing a check on the profile too? For profile specific requests.
@@ -198,8 +199,8 @@ export const graphql = async() => {
                 credentials: true,
                 preflightContinue: true,
                 origin: [
+                    'https://www.slicegoal.com',
                     'https://www.slicegoal.com.au',
-                    'https://www.cavestep.com.au',
                     'https://www.lateralproducts.com',
                     'https://localhost:8000',
                     'https://localhost:3000'
