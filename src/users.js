@@ -9,6 +9,8 @@ import {
     newUserNotificationEmail
 } from './emails'
 
+import { copywheel } from './areas'
+
 import { sessiontrack } from './website'
 
 let pjson = require('../package.json')
@@ -37,10 +39,10 @@ export const typeDefs = `
   }
 
   extend type Mutation {
-    googleLogin(token: String, googleid: String, uiversion: String, urlparams: String): User
+    googleLogin(token: String, googleid: String, uiversion: String, urlparams: String, newwheel: String): User
     login(email: String!, pwd: String!, setView: String, uiversion: String): User
     setSignUpContext(account: String): Boolean
-    signup(email: String, firstname: String, uiversion: String, account: String, queryStringParams: String): Boolean!
+    signup(email: String, firstname: String, uiversion: String, account: String, newwheel: String, queryStringParams: String): Boolean!
     verifyAccount(code: String, setView: String, password: String, firstname: String, lastname: String): User
     logout: Boolean!
 
@@ -579,7 +581,7 @@ export const resolvers = {
                     created: date,
                     createdip: getipaddress(req)
                 }
-                emailuser = await signup(newuser, args, req)
+                emailuser = await signup(newuser, args.newwheel, req)
             }
 
             const queryStringParams = args.queryStringParams ? args.queryStringParams : '' 
@@ -715,7 +717,7 @@ export const resolvers = {
                     //googleid, firstname and lastname should already be on args.
                     args.created = new Date()
                     user = args
-                    let newuser = await signup(user, args, req) //automatically sign up google login.
+                    let newuser = await signup(user, args.newwheel, req) //automatically sign up google login.
                     sessiontrack(req, args, 'app', 'signup-success', 'success','google')
                     return await login(newuser, args, req)
                 } else {
@@ -931,11 +933,14 @@ export async function createNewViewProfile(args, userid, req) {
     return view
 }
 
-async function signup(newuser, __, req) {
+async function signup(newuser, newwheel, req) {
     const db = await DbConnection.Get()
     const Users = db.collection('users')
     newuser.lastip = getipaddress(req)
     let userid = (await Users.insertOne(newuser)).insertedId.toString()
+
+    newuser._id = userid
+    if (newwheel) copywheel(newwheel, newuser)
 
     if (userid) {
         newUserNotificationEmail(newuser)

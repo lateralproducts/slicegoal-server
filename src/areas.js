@@ -757,7 +757,7 @@ export const resolvers = {
         },
         copyWheel: async(_, { wheelid }, { req }) => {
             
-            copywheel(wheelid, getuserid(req.session))
+            copywheel(wheelid, req.session.user)
             return true
         },
         deleteAreaLink: async(_, { rootarea, area }, { req }) => {
@@ -1101,7 +1101,7 @@ export async function createWheel(
     return { newview, newprofile }
 }
 
-async function copywheel(wheelid, userid) {
+export async function copywheel(wheelid, user) {
     const db = await DbConnection.Get()
     const Wheels = db.collection('wheels')
     const Areas = db.collection('areas')
@@ -1110,7 +1110,7 @@ async function copywheel(wheelid, userid) {
     const Profiles = db.collection('profiles')
     const viewtype = 'owner'
 
-    //only using userid as a tag to keep track of the copy.
+    //only using user._id as a tag to keep track of the copy.
     //wheel - global
     let newwheel = await Wheels.findOne({
         _id: new ObjectId(wheelid)
@@ -1121,7 +1121,7 @@ async function copywheel(wheelid, userid) {
         return triggererror('Wheel not found to copy')
     } else {
         newwheel.copy = wheelid
-        newwheel.user = userid
+        newwheel.user = user._id
         newwheel.created = new Date()
         delete newwheel._id
         delete newwheel.global
@@ -1131,59 +1131,62 @@ async function copywheel(wheelid, userid) {
         //areas - global
 
         let newareas = await Areas.find({ wheelid: wheelid }).toArray()
-        newareas.map(area => {
-            area.user = userid
-            area.wheelid = newwheelid
-            area.copywheel = wheelid
-            area.copyarea = area._id.toString()
-            area.created = new Date()
-            delete area._id
-            return area
-        })
 
-        let insertedareaids = (await Areas.insertMany(newareas)).insertedIds
+        if (newareas.length > 0) {
 
-        let newstartareaid = insertedareaids[0]
-        /* insertedareas
-            .find(o => o.copyarea === newwheel.startarea)
-            ._id.toString() */
+            newareas.map(area => {
+                area.user = user._id
+                area.wheelid = newwheelid
+                area.copywheel = wheelid
+                area.copyarea = area._id.toString()
+                area.created = new Date()
+                delete area._id
+                return area
+            })
 
-        const insertedareas = await Areas.find(
-            {_id: {$in: Object.values(insertedareaids)}}
-        ).toArray()
+            let insertedareaids = (await Areas.insertMany(newareas)).insertedIds
 
-        Wheels.updateOne(
-            { _id: new ObjectId(newwheelid) },
-            { $set: { startarea: newstartareaid } },
-        )
-        //arealinks - global
-        let newarealinks = await AreaLinks.find({
-            wheelid: wheelid
-        }).toArray()
+            let newstartareaid = insertedareaids[0]
+            /* insertedareas
+                .find(o => o.copyarea === newwheel.startarea)
+                ._id.toString() */
 
-        newarealinks.map(arealink => {
-            const newarea = insertedareas.find(
-                area => area.copyarea === arealink.area,
+            const insertedareas = await Areas.find(
+                {_id: {$in: Object.values(insertedareaids)}}
+            ).toArray()
+
+            Wheels.updateOne(
+                { _id: new ObjectId(newwheelid) },
+                { $set: { startarea: newstartareaid } },
             )
-            const newrootarea = insertedareas.find(
-                o => o.copyarea === arealink.rootarea,
-            )
-            arealink.user = userid //this is just copied as a reference for ease
-            arealink.wheelid = newwheelid //this is the id used for returning arealinks
-            arealink.rootarea = newrootarea._id.toString()
-            arealink.area = newarea._id.toString()
-            arealink.copywheel = wheelid
-            arealink.copylink = arealink._id.toString()
-            arealink.created = new Date()
-            delete arealink._id
-            return arealink
-        })
+            //arealinks - global
+            let newarealinks = await AreaLinks.find({
+                wheelid: wheelid
+            }).toArray()
 
-        if(newarealinks.length > 0) AreaLinks.insertMany(newarealinks)
-        
+            newarealinks.map(arealink => {
+                const newarea = insertedareas.find(
+                    area => area.copyarea === arealink.area,
+                )
+                const newrootarea = insertedareas.find(
+                    o => o.copyarea === arealink.rootarea,
+                )
+                arealink.user = user._id //this is just copied as a reference for ease
+                arealink.wheelid = newwheelid //this is the id used for returning arealinks
+                arealink.rootarea = newrootarea._id.toString()
+                arealink.area = newarea._id.toString()
+                arealink.copywheel = wheelid
+                arealink.copylink = arealink._id.toString()
+                arealink.created = new Date()
+                delete arealink._id
+                return arealink
+            })
+
+            if(newarealinks.length > 0) AreaLinks.insertMany(newarealinks)
+        }
         //create new profile
         let newprofile = {
-            user: userid,
+            user: user._id,
             wheel: newwheelid,
             created: new Date(),
             name: newwheel.name,
@@ -1193,7 +1196,7 @@ async function copywheel(wheelid, userid) {
 
         //create new view
         let newview = {
-            user: userid,
+            user: user._id,
             wheel: newwheelid, //req.session.view.wheel,
             created: new Date(),
             name: newwheel.name,
@@ -1201,10 +1204,13 @@ async function copywheel(wheelid, userid) {
         }
         Views.insertOne(newview)
 
+        if (user.onboarding && user.onboarding.show) updateUserOnboarding(user._id, 'wheel')
+
         //return wheel
         return newwheelid
     }
 }
+
 export async function logareaclick(_id, navdirection, req) {
     const db = await DbConnection.Get()
     const Clicks = db.collection('clicks')
