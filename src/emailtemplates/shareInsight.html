@@ -2,16 +2,16 @@
 <html>
 
 <body>
-    <table style="border-collapse: separate; border-spacing: 10px; max-width: 400px; margin: 0 auto;">
+    <table style="border-collapse: separate; border-spacing: 10px; max-width: 600px; margin: 0 auto;">
         <tr>
             <td align="center">
-                <div style="font-size: 0.8em;">{{ sharerName }} ({{ sharerEmail }}) shared this insight with you.</div>
+                <div style="font-size: 1.2em;">{{ sharerName }} ({{ sharerEmail }}) shared this insight with you.</div>
             </td>
         </tr>
         <tr>
             {{#shareNote}}
             <td align="center">
-                <div style="margin-top: 10px; font-size: 0.8em; display:flex; white-space: pre-wrap;">"{{ shareNote }}"</div>
+                <div style="margin-top: 10px; font-size: 1.4em; display:flex; white-space: pre-wrap;">"{{ shareNote }}"</div>
             </td>
             {{/shareNote}}
         </tr>
@@ -22,7 +22,7 @@
                     <div style="font-size: 1em; font-style: italic; white-space: pre-wrap;">{{ insightPrompt }}</div>
                     {{/insightPrompt}}
                     <div style="font-size: 1em; white-space: pre-wrap;">{{ insightText }}</div>
-                    <img width="100" src="{{filepath}}?ix={{interactionid}}" />
+                    <img width="600" src="{{filepath}}?ix={{interactionid}}" />
                 </div>
             </td>
         </tr>
