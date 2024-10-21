@@ -534,7 +534,7 @@ export async function shareInsightEmail(
             logopath: LOGO_PATH_URL,
             pixelpath: PIXEL_PATH_URL,
             acceptLink: `${APP_PATH_URL}` + acceptLink,
-            filepath: `${APP_PATH_URL}` + '/files/image',
+            filepath: `${PATH_URL}` + '/files/image',
             shareNote: shareNote,
             interactionid: interactionid
         })
