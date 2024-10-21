@@ -33,10 +33,10 @@ function mapemail(mailOptions) {
       ], */
     },
     Message: { /* required */
-      /* ReplyToAddresses: [
-        'message@cavestep.com',
+      ReplyToAddresses: [
+        'daniel@lateralproducts.com',
         //more items 
-      ], */
+      ],
       Subject: {
         Charset: 'UTF-8',
         Data: mailOptions.subject
