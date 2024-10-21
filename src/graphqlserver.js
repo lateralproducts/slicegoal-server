@@ -32,7 +32,7 @@ import ms from 'ms'
 import { Queries } from './schema/queries'
 import { Mutations } from './schema/mutations'
 import { merge } from 'lodash'
-import { updateIx } from './interactions'
+import { getIxFile, updateIx } from './interactions'
 import { getipaddress } from './users'
 import { schema as userSchema } from './users'
 import { schema as areaSchema } from './areas'
@@ -242,7 +242,7 @@ export const graphql = async() => {
         }) 
 
         // file server
-        app.get('/files/*', (req, res, next) => {
+        app.get('/files/*', async (req, res, next) => {
             // here you can use your way to get the path dir ..  
             //const pathDir = path.join(__dirname, "files/slicegoallong.png"); //using local files
             //res.sendFile(pathDir);
@@ -250,20 +250,32 @@ export const graphql = async() => {
             console.log("ip address - " + getipaddress(req))
 
             const filename = path.basename(req.path);
+            const item = req.query
             
             if (filename === 'slicegoallong.png' || filename === 'cavesteplong.png' || filename === 'pixel.png' || filename === 'target-small.png') {
                 //logaccess
                 getfile(filename, res)
-                const item = req.query
                 if(item.ix) {
                     updateIx(item.ix,'seen','open','email', getipaddress(req))
                     //console.log('slicegoal image accessed - ' + item.ix)
                 }
             } else {
+                if(!item.ix) {
+                    res.send({ 'error': 'Unauthorized' })
+                    res.status(401).json({ error: 'Unauthorized' })
+                    return
+                } else {
+                    const interactionexist = await updateIx(item.ix,'seen','open','email', getipaddress(req))
+                    if (interactionexist) {
+                        const ixfilename = await getIxFile(item.ix)
+                        getfile(ixfilename, res)
+                    }else {
+                        res.send({ 'error': 'Unauthorized' })
+                        res.status(401).json({ error: 'Unauthorized' })
+                        return
+                    }
+                }
                 //check that there is a valid session before giving access to any files.
-                //if (!req.session && !req.session.user) 
-                res.status(401).json({ error: 'Unauthorized' });
-                //getfile(filename, res)
             }
 
         }) // ✔️🚀

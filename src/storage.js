@@ -80,8 +80,8 @@ export async function getfile(file,res){
             'Cache-Control': 'post-check=0, pre-check=0',
             'Pragma': 'no-cache'})
         }
-        res.write(data.Body, 'binary')
-        res.end(null, 'binary')
+        res.write(data.Body, 'binary') //send the file
+        res.end(null, 'binary') //end the response
         return //res.send(data)
     })
 }

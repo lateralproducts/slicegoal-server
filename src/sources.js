@@ -318,7 +318,14 @@ export const resolvers = {
                 }
             else {
                 //let to = args.targetUser
-                let interactionid = (await newIx(currentUser._id.toString(),targetUser._id.toString(),'share source email', args.sourceid, args.shareNote)).insertedId.toString()
+                let interactionid = (await newIx({
+                    from: currentUser._id.toString(),
+                    to: targetUser._id.toString(),
+                    type: 'share source email', 
+                    sourceid: args.sourceid, 
+                    profileid: getprofileid(req.session),
+                    message: args.shareNote
+                })).insertedId.toString()
                 return await Sources.findOne({
                     _id: new ObjectId(args.sourceid)
                 })

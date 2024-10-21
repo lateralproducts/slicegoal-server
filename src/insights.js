@@ -914,13 +914,21 @@ export const resolvers = {
                     message: 'Cannot share with yourself - try duplicating'
                 }
             else {
-                //let to = args.targetUser
-                let interactionid = (await newIx(currentUser._id.toString(),targetUser._id.toString(),'share insight email', args.insightid, args.shareNote)).insertedId.toString()
                 return await Insights.findOne({
                     _id: new ObjectId(args.insightid)
                 })
-                .then(insight => {
+                .then(async insight => {
                     //save shared insight to be accessed.
+                    let interactionid = (await newIx({
+                        from: currentUser._id.toString(),
+                        to: targetUser._id.toString(),
+                        type: 'share insight email', 
+                        insightid: args.insightid, 
+                        profileid: getprofileid(req.session),
+                        fileid: insight.fileids ? insight.fileids[0] : null,
+                        message: args.shareNote
+                    })).insertedId.toString()
+
                     return Insights.insertOne({
                         sharedfrom: getuserid(req.session),
                         status: 'newshared',

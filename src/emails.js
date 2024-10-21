@@ -414,7 +414,11 @@ export async function emailHabitGuide(
         name,
         toemail
     ){
-    let interactionid = (await newIx('slicegoal - funnel - habits', toemail, 'lead magnet email', 'habit guide', '')).insertedId.toString()
+    let interactionid = (await newIx({
+        from: 'slicegoal - funnel - habits', 
+        to: toemail, 
+        type: 'lead magnet email', 
+        message: 'habit guide'})).insertedId.toString()
     let to = toemail
     let subject = 'Here\'s your Free Habit Guide'
     let email = Mustache.render(habitGuide, {
@@ -444,7 +448,12 @@ export async function emailFunnel(
     //future: map funnelpackage to be able to handle other packages 
     
     try{
-        let interactionid = (await newIx(funnelpackage + ' - ' + emailstep, toemail, 'funnel email', funnelpackage1.emails[emailstep].subject, '')).insertedId.toString()
+        let interactionid = (await newIx({
+            from: funnelpackage + ' - ' + emailstep, 
+            to: toemail, 
+            type: 'funnel email', 
+            message: funnelpackage1.emails[emailstep].subject
+        })).insertedId.toString()
         let template = funnelpackage1.emails[emailstep].template
         
         const emailtemplate = fs
@@ -525,6 +534,7 @@ export async function shareInsightEmail(
             logopath: LOGO_PATH_URL,
             pixelpath: PIXEL_PATH_URL,
             acceptLink: `${APP_PATH_URL}` + acceptLink,
+            filepath: `${APP_PATH_URL}` + '/files/image',
             shareNote: shareNote,
             interactionid: interactionid
         })
