@@ -1,12 +1,13 @@
 const AWS = require('aws-sdk')
 import {
+    S3Client,
     //CreateBucketCommand,
     //DeleteObjectCommand,
     //DeleteBucketCommand,
     PutObjectCommand,
-    GetObjectCommand
+    GetObjectCommand,
+    CopyObjectCommand
 } from "@aws-sdk/client-s3"
-import { S3Client } from "@aws-sdk/client-s3" // Helper function that creates an Amazon S3 service client module.
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { triggererror } from "./graphqlserver"
 
@@ -62,6 +63,18 @@ export async function getReadLinkfromAWS(file){
         return triggererror("Error creating presigned URL for read.")
     }
 }
+
+export async function copyS3File({ fromfileid, fromfolder, tofileid, tofolder }) {
+    // we will add the code here
+    const copyCommand = new CopyObjectCommand({
+        //ACL: 'public-read', // access permissions
+        Bucket: s3bucket, // the new bucket (if supplied)
+        CopySource: `${s3bucket}/${fromfolder}/${fromfileid}`, // the location of the file to be copied
+        Key: `${tofolder}/${tofileid}` // the new location
+    });
+    await s3Client.send(copyCommand);
+    console.log('file copied')
+};
 
 export async function getfile(file,res){
     //passing the file through the server.

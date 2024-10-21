@@ -91,7 +91,7 @@ export async function getIxFile(ixid){
     const Interactions = db.collection('interactions')
     try {
         const interaction = await Interactions.findOne({ _id: new ObjectId(ixid) })
-        if (interaction) return interaction.profileid + '/' + interaction.fileid
+        if (interaction) return interaction.to + '/' + interaction.fileid
         else return null
     } catch (error) {
         console.log("error logging ix update - " + error)

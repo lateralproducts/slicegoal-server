@@ -2,7 +2,7 @@ import DbConnection from './database'
 import { ObjectId } from 'mongodb' 
 import { triggererror } from './graphqlserver';
 import { getprofileid, getuserid } from './users'
-import { getUploadLinkFromAWS, getReadLinkfromAWS } from './storage'
+import { getUploadLinkFromAWS, getReadLinkfromAWS, copyS3File } from './storage'
 
 export const schema = `
     type FileUploadLink {
@@ -139,6 +139,69 @@ export async function getfileid(req, fileid) {
     return preview
 }
 
+export async function shareFileToUser({req, fileid, userid}) {
+    if (fileid && userid){
+        const db = await DbConnection.Get()
+        const Files = db.collection('files')
+        const file = await Files.findOne({_id: new ObjectId(fileid), profileid: getprofileid(req.session)})
+        if (!file) throw Error('File not found.')
+        
+        const newfile = {
+            name: file.name,
+            type: file.type,
+            userid: userid,
+            sharedby: getuserid(req.session),
+            shared: new Date(),
+            uploadedby: file.uploadedby,
+            uploaded: file.uploaded
+        }
+
+        const result = await Files.insertOne(newfile)
+        copyS3File({fromfileid: fileid, fromfolder: getprofileid(req.session), tofileid: result.insertedId.toString(), tofolder: userid})
+
+        return result.insertedId.toString()
+    } else {
+        return null
+    }
+}
+
+export async function copyFileToProfile({req, fileid, profileid}) {
+    try {
+        console.log('copyFileToProfile')
+        console.log(fileid)
+        console.log(profileid)
+        console.log(req.session)
+        if (profileid){
+            const db = await DbConnection.Get()
+            const Files = db.collection('files')
+            const file = await Files.findOne({_id: new ObjectId(fileid), userid: getuserid(req.session)})
+            if (!file) throw Error('File not found.')
+            
+            const newfile = {
+                name: file.name,
+                type: file.type,
+                profileid: profileid,
+                acceptedby: getuserid(req.session),
+                accepted: new Date(),
+                sharedby: file.sharedby,
+                shared: file.shared,
+                uploadedby: file.uploadedby,
+                uploaded: file.uploaded
+            }
+
+            const result = await Files.insertOne(newfile)
+            copyS3File({fromfileid: fileid, fromfolder: getuserid(req.session), tofileid: result.insertedId.toString(), tofolder: profileid})
+            console.log('copyFileToProfile result')
+            console.log(result.insertedId.toString())
+            return result.insertedId.toString()
+        } else {
+            throw Error('User not found.')
+        }
+    } catch (error) {
+        console.log(error)
+    }
+}
+
 export async function getPreviews(req, fileids) {
     const db = await DbConnection.Get()
     const Files = db.collection('files')
@@ -146,10 +209,10 @@ export async function getPreviews(req, fileids) {
     const previews = []
 
     for (const fileid of fileids) {
-        const file = await Files.findOne({_id: new ObjectId(fileid), profileid: getprofileid(req.session)})
-        if (file){
+        const file = await Files.findOne({_id: new ObjectId(fileid), $or: [{profileid: getprofileid(req.session)},{userid: getuserid(req.session)}]})
+        if (file.profileid || file.userid) {
             const awsfile = {
-                folder: getprofileid(req.session),
+                folder: file.profileid ? file.profileid : file.userid,
                 name: fileid
             }
 

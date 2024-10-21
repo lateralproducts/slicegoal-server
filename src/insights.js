@@ -10,8 +10,9 @@ import { attachSources } from './sources'
 import { newIx } from './interactions'
 import { shareInsightEmail } from './emails'
 import { linkInsightTask } from './tasks'
-import { getPreviews, getfileid } from './fileserver';
+import { copyFileToProfile, getPreviews, getfileid, shareFileToUser } from './fileserver';
 import { activityrecord } from './pomodoros';
+import { copyS3File } from './storage';
 
 export const typeDefs = `
 
@@ -30,10 +31,11 @@ export const typeDefs = `
     createInsight(datetime: String, profileid: String, prompt: String, fileids: [String], answer: String, areatags: [AreaTagIn], sources: [SourceTagIn], people: [PersonInput], taskid: String): Spaced
     updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, fileids: [String], sources: [SourceTagIn]): Spaced 
     removeInsight(insightid: String!): Boolean
-
+    
     pinInsight(insightid: String!, areaid: String, sourceid: String, setpinned: Boolean, resourcetype: String): Boolean
+
     shareInsight(insightid: String!, targetUser: String!, shareNote: String): ShareResponse
-    popSharedInsight(insightid: String!): Boolean
+    acceptInsight(insightid: String!, profileid: String, areatags: [AreaTagIn], sources: [SourceTagIn], people: [PersonInput]): Boolean
 
     createInsightTag(insightid: String!, profileid: String, area: String, areaname: String): Tag
     updateInsightTag(tagid: String!, notes: String): Boolean
@@ -855,6 +857,35 @@ export const resolvers = {
                     return {_id: insertedId}
                 })
         },
+        acceptInsight: async(_, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+
+            let result = await Insights.findOneAndUpdate({ _id: new ObjectId(args.insightid), userid: getuserid(req.session) }, { $set: { status: 'accepted' } })
+
+            if(result.value) {
+                let insight = result.value
+                if (insight.fileids) { //copy any files to profile
+                    let newfileids = []
+                    for (let fileid of insight.fileids) {
+                        console.log(fileid)
+                        let newfileid = await copyFileToProfile({req, fileid: fileid, profileid: args.profileid})
+                        console.log(newfileid)
+                        newfileids.push(newfileid)
+                    }
+                    insight.fileids = newfileids
+                }
+
+                delete insight._id
+                insight.accepted = new Date() //time set from client argument
+                insight.profileid = args.profileid
+                insight.status = 'accepted'
+                
+                Insights.insertOne(insight)
+
+                return true
+            } else { return false }
+        },
         removeInsight: async(_, { insightid }, { req }) => {
             
             const db = await DbConnection.Get()
@@ -918,6 +949,9 @@ export const resolvers = {
                     _id: new ObjectId(args.insightid)
                 })
                 .then(async insight => {
+
+                    const newfileid = await shareFileToUser({req, fileid: insight.fileids[0], userid: targetUser._id.toString()})
+
                     //save shared insight to be accessed.
                     let interactionid = (await newIx({
                         from: currentUser._id.toString(),
@@ -925,17 +959,21 @@ export const resolvers = {
                         type: 'share insight email', 
                         insightid: args.insightid, 
                         profileid: getprofileid(req.session),
-                        fileid: insight.fileids ? insight.fileids[0] : null,
+                        fileid: newfileid,
                         message: args.shareNote
                     })).insertedId.toString()
 
+                    
+
                     return Insights.insertOne({
                         sharedfrom: getuserid(req.session),
+                        userid: targetUser._id.toString(),
                         status: 'newshared',
                         datetimeshared: new Date(),
                         email: args.targetUser,
                         datecreated: insight.datecreated,
-                        answer: insight.answer
+                        answer: insight.answer,
+                        fileids: [newfileid]
                     })
                     .then(result => {
                         Insights.findOne({_id: new ObjectId(result.insertedId)})
@@ -975,31 +1013,6 @@ export const resolvers = {
                         }
                     })
                 })
-            }
-        },
-        popSharedInsight: async(_, args, { req }) => {
-            
-            const db = await DbConnection.Get()
-            const Insights = db.collection('insights')
-            const Users = db.collection('users')
-
-            const user = await Users.findOne({
-                _id: new ObjectId(getuserid(req.session))
-            })
-
-            const insight = await Insights.findOne({
-                _id: new ObjectId(args.insightid)
-            })
-
-            if(!insight || !user) return triggererror("can\'t remove from the list")
-
-            if (insight.email !== user.email)
-                return triggererror('can\'t remove from the list')
-            else {
-                const result = await Insights.deleteOne({
-                    _id: new ObjectId(args.insightid)
-                })
-                return true
             }
         },
         pinInsight: async(_, args) => {
