@@ -206,9 +206,10 @@ export async function getPreviews(req, fileids) {
     const db = await DbConnection.Get()
     const Files = db.collection('files')
 
+    if (!fileids) return null
     const previews = []
-
     for (const fileid of fileids) {
+        if (!fileid) continue 
         const file = await Files.findOne({_id: new ObjectId(fileid), $or: [{profileid: getprofileid(req.session)},{userid: getuserid(req.session)}]})
         if (file.profileid || file.userid) {
             const awsfile = {
