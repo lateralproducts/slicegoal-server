@@ -208,7 +208,7 @@ export async function weeklysummaryemail() {
 
 export function calculateDeltaAndPercentageDelta(currentData, previousData) {
     //calculate the delta and percentage delta for each metric and present as structured data like logcount: {value, delta, percentageDelta}
-    let keys = ['logcount', 'logtime', 'goalcount', 'goaltime', 'messagetotal', 'rankcount', 'ranktime', 'taskcreated', 'alreadydone', 'taskcopied', 'taskcompleted', 'taskcompletedgoal', 'taskrescheduled', 'taskreopened', 'tasksnoozed', 'taskpriorityadded'];
+    let keys = ['logcount', 'logtime', 'goalcount', 'goaltime', 'messagetotal', 'rankcount', 'ranktime', 'taskcreated', 'alreadydone', 'taskcopied', 'taskcompleted', 'taskcompletedgoal', 'taskrescheduled', 'taskreopened', 'tasksnoozed', 'taskpriorityadded', 'impressions', 'highlights'];
     const delta = {};
     const percentageDelta = {};
 
