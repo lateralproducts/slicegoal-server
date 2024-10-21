@@ -977,7 +977,7 @@ export const resolvers = {
                     })
                     .then(result => {
                         Insights.findOne({_id: new ObjectId(result.insertedId)})
-                        .then(result => { 
+                        .then(() => { 
                             //save interaction to track
                             try {
                                 var ctalink;
@@ -994,7 +994,8 @@ export const resolvers = {
                                     targetUser,
                                     args.shareNote,
                                     ctalink,
-                                    interactionid
+                                    interactionid,
+                                    newfileid
                                 )
                             }catch (error) {
                                 console.log("failed to send shared insights email - " + error)

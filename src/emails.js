@@ -522,10 +522,11 @@ export async function shareInsightEmail(
     receiver,
     shareNote,
     acceptLink,
-    interactionid
+    interactionid,
+    newfileid
     ) { 
         const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
-        const subject = `${sharerName.trim()} shared an insight with you`
+        const subject = `Insight from ${sharerName.trim()}${insight.answer ? ': ' + insight.answer.substring(0,15) : null}...`
         const email = Mustache.render(shareInsightTemplate, {
             insightPrompt: insight.prompt,
             insightText: insight.answer,
@@ -534,7 +535,7 @@ export async function shareInsightEmail(
             logopath: LOGO_PATH_URL,
             pixelpath: PIXEL_PATH_URL,
             acceptLink: `${APP_PATH_URL}` + acceptLink,
-            filepath: `${PATH_URL}` + '/files/image',
+            filepath: newfileid && `${PATH_URL}` + '/files/image',
             shareNote: shareNote,
             interactionid: interactionid
         })
