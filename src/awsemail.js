@@ -33,10 +33,10 @@ function mapemail(mailOptions) {
       ], */
     },
     Message: { /* required */
-      ReplyToAddresses: [
-        'daniel@lateralproducts.com',
+      /* ReplyToAddresses: [
+        'message@e.slicegoal.com',
         //more items 
-      ],
+      ], */
       Subject: {
         Charset: 'UTF-8',
         Data: mailOptions.subject
