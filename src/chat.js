@@ -75,7 +75,7 @@ export const typeDefs = `
     extend type Query {
         chatprompts(search: String): [Prompt]
         chatvariants(search: String): [Variant]
-        getchat(chatid: String): Chat
+        getchat(chatid: String, showall: Boolean): Chat
         gettaskchatid(taskid: String): String
         getdaychatid(date: String): String
         getareachatid(area: String): String
@@ -93,7 +93,7 @@ export const typeDefs = `
     extend type Mutation {
         sendChatPrompt(chatid: String, wrote: String, variantid: String): Boolean
         sendChatMessage(chatid: String, message: String!): Boolean
-        sendRating(contextid: String, chatid: String!, rating: Int!, ratemessage: String, original: String): Boolean
+        sendRating(contextid: String, chatid: String!, rating: Int, ratemessage: String, original: String): Boolean
         sendFeedback(contextid: String, promptid: String, responseid: String, variantid: String, chatid: String!, feedback: String!, message: String!): Boolean
         archivechat(chatid: String!): Boolean
 
@@ -221,7 +221,7 @@ export const resolvers = {
             })
             return chatid.toString()
         },
-        getchat: async(_, {chatid}, { req }) => {
+        getchat: async(_, {chatid, showall}, { req }) => {
             //get chat id.
             
             const profileid = getprofileid(req.session)
@@ -476,7 +476,7 @@ export const resolvers = {
             const ChatContext = db.collection('chatcontext')
             const ChatFeedback = db.collection('chatfeedback')
             
-            if (args.contextid) { //rate context if there is a context.
+            if (args.contextid && args.rating) { //rate context if there is a context.
                 const context = await ChatContext.findOne({_id: new ObjectId(args.contextid)})
             
                 let newrating = 0
