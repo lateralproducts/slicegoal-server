@@ -973,7 +973,7 @@ export const resolvers = {
                         email: args.targetUser,
                         datecreated: insight.datecreated,
                         answer: insight.answer,
-                        fileids: [newfileid]
+                        fileids: newfileid ? [newfileid] : null
                     })
                     .then(result => {
                         Insights.findOne({_id: new ObjectId(result.insertedId)})
