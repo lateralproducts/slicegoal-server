@@ -61,7 +61,7 @@ export async function createreport(to,fromdate,todate){
     const activesessions = await Sessions.find({
         'pages.action':'login-success', //old code: 'emaillogin' or 'googlelogin'
         landed: {$gte: fromdate, $lt: todate},
-        email:{$nin:[null,"test@cavestep.com","daniel@lateralproducts.com", "daniel@cavestep.com"]}
+        email:{$nin:[null,"test@slicegoal.com","daniel@lateralproducts.com", "daniel@slicegoal.com"]}
     }).toArray()
     stats.push({metric: "active users", measure: activesessions.length, notes: activesessions.map(session => { return session.email + ' : ' + session.screenwidth + 'px' })})
 
@@ -112,7 +112,7 @@ export async function dailyafternoonemail() {
                 year: yesterday.getFullYear()
             }).toArray()
 
-            const {daydatacomparison, daily, areapercent} = dailydata.map(async(daily) => {
+            const returned = await Promise.all(dailydata.map(async(daily) => {
                 if (daily.userid === userid){
                     // Find the corresponding data for the previous day
                     const previousDayData = daybeforedata.find(data => data.userid === userid) || new Object() //if no data, then create an empty object to reference 0 for comparison.
@@ -125,9 +125,9 @@ export async function dailyafternoonemail() {
                     const areapercent = areapercentages.map(area => {return { area: area.name, focus: area.focus, percentage: area.percentage }})
                     return {daydatacomparison, daily, areapercent}
                 }
-            })
-
-            emailDailySummary(user, daydatacomparison, daily, areapercent, mission ? mission.mission : null)
+                
+            }))
+            if (returned) emailDailySummary(user, returned[0].daydatacomparison, returned[0].daily, returned[0].areapercent, mission ? mission.mission : null)
         }
     })
 
@@ -208,25 +208,44 @@ export async function weeklysummaryemail() {
 
 export function calculateDeltaAndPercentageDelta(currentData, previousData) {
     //calculate the delta and percentage delta for each metric and present as structured data like logcount: {value, delta, percentageDelta}
-    let keys = ['logcount', 'logtime', 'goalcount', 'goaltime', 'messagetotal', 'rankcount', 'ranktime', 'taskcreated', 'alreadydone', 'taskcopied', 'taskcompleted', 'taskcompletedgoal', 'taskrescheduled', 'taskreopened', 'tasksnoozed', 'taskpriorityadded', 'impressions', 'highlights'];
+    let keys = [
+        ['logcount', 'Number of Logs'],
+        ['logtime', 'Time Logged'],
+        ['goalcount', 'Goals Completed'],
+        ['goaltime', 'Time on Goals'],
+        ['messagetotal', 'Messages Sent'],
+        ['taskcreated', 'Tasks Created'],
+        ['alreadydone', 'Tasks Already Done'],
+        ['taskcopied', 'Tasks Copied'],
+        ['taskcompleted', 'Tasks Completed'],
+        ['taskcompletedgoal', 'Tasks Completed with Goal'],
+        ['taskrescheduled', 'Tasks Rescheduled'],
+        ['taskreopened', 'Tasks Reopened'],
+        ['taskpriorityadded', 'Tasks Added to Priority List'],
+        ['newinsight', 'New Insights'],
+        ['newsource', 'New Sources'],
+        ['impressions', 'Impressions'],
+        ['highlights', 'Highlights']
+    ];
     const delta = {};
     const percentageDelta = {};
 
-    keys.forEach(key => {
-        delta[key] = (currentData[key] || 0) - (previousData[key] || 0);
-        percentageDelta[key] = calculatePercentageDelta(currentData[key], previousData[key]);
-    });
+     keys.forEach(key => {
+        delta[key[0]] = (currentData[key[0]] || 0) - (previousData[key[0]] || 0);
+        percentageDelta[key[0]] = calculatePercentageDelta(currentData[key[0]], previousData[key[0]]);
+    }); 
 
-    const structuredData = {};
+    const structuredData = [];
     keys.forEach(key => {
-        const isNegative = delta[key] < 0;
+        const isNegative = delta[key[0]] < 0;
         //if(isNegative) console.log('key' + key)
-        structuredData[key] = {
-            value: currentData[key] || 0,
-            delta: (isNegative?"":"+") + delta[key], //a plus sign for positive deltas
-            percentageDelta: (isNegative?"":"+") + percentageDelta[key], //a plus sign for positive deltas
-            isNegative: isNegative
-        };
+        structuredData.push({
+            value: currentData[key[0]] || 0,
+            delta: (isNegative?"":"+") + delta[key[0]], //a plus sign for positive deltas
+            percentageDelta: (isNegative?"":"+") + percentageDelta[key[0]], //a plus sign for positive deltas
+            isNegative: isNegative,
+            description: key[1]
+        });
     });
 
     return structuredData;
@@ -296,7 +315,7 @@ export async function calculateWeekAreaPercentages({wheelid, userid, week, year}
         const areaData = weekdata.find(data => data.area.toString() === area._id.toString()) || new Object()
         /* const previousAreaData = weekbeforedata.find(data => data.area.toString() === area._id.toString()) || new Object()
         const weekdatacomparison = calculateDeltaAndPercentageDelta(areaData, previousAreaData) */
-        area.percentage = Math.round(((areaData.logtime || 0) / totalLogTime)* 100)
+        area.percentage = Math.round(((areaData.logtime || 0) / totalLogTime)* 100) || 0
         area.time = areaData.logtime || 0
         //area.weekdatacomparison = weekdatacomparison
         return area

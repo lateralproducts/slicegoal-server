@@ -45,45 +45,18 @@
 <br/>
 <div><b>{{date}}</b></div>
 <br/>
-
 {{#mission}}
     <div><b>Your Daily Mission:</b></div>
     <div>{{mission}}</div>
 {{/mission}}
-<br/>
-<br/>
 <div><b>Activity Summary</b></div>
 {{#daycomparison}}
-<div class="flex">
-    <div>{{daycomparison.taskcompleted.value}} tasks completed</div> 
-    <div class="positive {{#daycomparison.taskcompleted.isNegative}}negative{{/daycomparison.taskcompleted.isNegative}}">{{daycomparison.taskcompleted.delta}}</div>
-</div>
-<div class="flex">
-    <div>{{daycomparison.taskcompletedgoal.value}} tasks completed with goal</div> 
-    <div class="positive {{#daycomparison.taskcompletedgoal.isNegative}}negative{{/daycomparison.taskcompletedgoal.isNegative}}">{{daycomparison.taskcompletedgoal.delta}}</div>
-</div>
-<br/>
-<div class="flex">
-    <div>{{daycomparison.logtime.value}} minutes logged </div>
-    <div class="positive {{#daycomparison.logtime.isNegative}}negative{{/daycomparison.logtime.isNegative}}"> {{daycomparison.logtime.delta}}</div>
-</div>
-<div class="flex">
-    <div>{{daycomparison.goaltime.value}} minutes linked to a goal</div> 
-    <div class="positive {{#daycomparison.goaltime.isNegative}}negative{{/daycomparison.goaltime.isNegative}}">{{daycomparison.goaltime.delta}}</div>
-</div>
-<br/>
-<div class="flex">
-    <div>{{daycomparison.taskcreated.value}} new tasks created</div> 
-    <div class="positive {{#daycomparison.taskcreated.isNegative}}negative{{/daycomparison.taskcreated.isNegative}}">{{daycomparison.taskcreated.delta}}</div>
-</div>
-<div class="flex">
-    <div>{{daycomparison.taskrescheduled.value}} tasks rescheduled</div> 
-    <div class="positive {{#daycomparison.taskrescheduled.isNegative}}negative{{/daycomparison.taskrescheduled.isNegative}}">{{daycomparison.taskrescheduled.delta}}</div>
-</div>
-<div class="flex">
-    <div>{{daycomparison.tasksnoozed.value}} tasks snoozed</div> 
-    <div class="positive {{#daycomparison.tasksnoozed.isNegative}}negative{{/daycomparison.tasksnoozed.isNegative}}">{{daycomparison.tasksnoozed.delta}}</div>
-</div>
+    {{#value}}
+    <div class="flex">
+        <div>{{value}} {{description}}</div> 
+        <div class="positive {{#isNegative}}negative{{/isNegative}}">{{delta}}</div>
+    </div>
+    {{/value}}
 {{/daycomparison}}
 <br/>
 <br/>

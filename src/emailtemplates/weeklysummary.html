@@ -18,37 +18,14 @@
 <div><b>Week {{weekdata.week}} Summary</b></div>
 <div>{{enddate}}</div>
 <br/>
-<div class="flex">
-    <div>{{weekcomparison.taskcompleted.value}} tasks completed</div> 
-    <div class="positive {{#weekcomparison.taskcompleted.isNegative}}negative{{/weekcomparison.taskcompleted.isNegative}}">{{weekcomparison.taskcompleted.delta}}</div>
-</div>
-<div class="flex">
-    <div>{{weekcomparison.taskcompletedgoal.value}} tasks completed with goal</div> 
-    <div class="positive {{#weekcomparison.taskcompletedgoal.isNegative}}negative{{/weekcomparison.taskcompletedgoal.isNegative}}">{{weekcomparison.taskcompletedgoal.delta}}</div>
-</div>
-<br/>
-<div class="flex">
-    <div>{{weekcomparison.logtime.value}} minutes logged </div>
-    <div class="positive {{#weekcomparison.logtime.isNegative}}negative{{/weekcomparison.logtime.isNegative}}"> {{weekcomparison.logtime.delta}}</div>
-</div>
-<div class="flex">
-    <div>{{weekcomparison.goaltime.value}} minutes linked to a goal</div> 
-    <div class="positive {{#weekcomparison.goaltime.isNegative}}negative{{/weekcomparison.goaltime.isNegative}}">{{weekcomparison.goaltime.delta}}</div>
-</div>
-<br/>
-<div class="flex">
-    <div>{{weekcomparison.taskcreated.value}} new tasks created</div> 
-    <div class="positive {{#weekcomparison.taskcreated.isNegative}}negative{{/weekcomparison.taskcreated.isNegative}}">{{weekcomparison.taskcreated.delta}}</div>
-</div>
-<div class="flex">
-    <div>{{weekcomparison.taskrescheduled.value}} tasks rescheduled</div> 
-    <div class="positive {{#weekcomparison.taskrescheduled.isNegative}}negative{{/weekcomparison.taskrescheduled.isNegative}}">{{weekcomparison.taskrescheduled.delta}}</div>
-</div>
-<div class="flex">
-    <div>{{weekcomparison.tasksnoozed.value}} tasks snoozed</div> 
-    <div class="positive {{#weekcomparison.tasksnoozed.isNegative}}negative{{/weekcomparison.tasksnoozed.isNegative}}">{{weekcomparison.tasksnoozed.delta}}</div>
-</div>
-<br/>
+{{#weekdatacomparison}}
+    {{#value}}
+    <div class="flex">
+        <div>{{value}} {{description}}</div> 
+        <div class="positive {{#isNegative}}negative{{/isNegative}}">{{delta}}</div>
+    </div>
+    {{/value}}
+{{/weekdatacomparison}}
 <br/>
 <div><b>Area Time Allocation</b></div>
 {{#areapercentages}}

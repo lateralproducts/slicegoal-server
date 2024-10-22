@@ -313,7 +313,7 @@ export async function emailWeeklySummary(user, weekdatacomparison, weekdata, are
 export async function emailDailySummary(user, daydatacomparison, daydata, areapercent, mission) {
     let to = user.email
     let subject = 'Your daily summary - ' + longdatestring(new Date())
-    let cta = {prompt: "Add a mission for your day.", button: 'Add mission'}
+    //let cta = {prompt: "Add a mission for your day.", button: 'Add mission'}
     let email = Mustache.render(dailysummary, {
         username: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
         mission: mission,
@@ -322,7 +322,7 @@ export async function emailDailySummary(user, daydatacomparison, daydata, areape
         areapercentages: areapercent,
         daycomparison: daydatacomparison,
         datetime: (new Date()).toString(),
-        cta: cta,
+        //cta: cta,
         focusicon: FOCUS_ICON_URL,
         pathurl: APP_PATH_URL,
         logopath: LOGO_PATH_URL,
