@@ -3,7 +3,7 @@ import { triggererror } from './graphqlserver';
 
 import DbConnection from './database'
 import { getWeekNumber, getWeekYear, getuiversion } from '../util/functions'
-import { getuserid, getprofileid, getwheelid, getname, updateUserOnboarding } from './users'
+import { getuserid, getprofileid, getwheelid, getname, updateUserOnboarding, getipaddress } from './users'
 import { sessiontrack } from './website'
 let pjson = require('../package.json')
 
@@ -231,17 +231,31 @@ export const resolvers = {
                 .sort({ templateorder: -1 })
                 .toArray()
         },
-        publicwheels: async(_, { tag }) => {
+        publicwheels: async(_, { tag }, { req }) => {
             //This is a **publicly** accessible call, used on the website. Don't need to login to retrieve.
             //Could potentially have a completely different server running this in the future.
             const db = await DbConnection.Get()
             const Wheels = db.collection('wheels')
+            const WheelSearchTerms = db.collection('wheelsearchterms')
             const query = new Object()
             query.global = true
-            if (tag) query.tag = tag
-            return await Wheels.find(query)
+
+            if (tag) {
+                WheelSearchTerms.insertOne({tag: tag.toLowerCase(), date: new Date(), ip: getipaddress(req)})
+            }
+            
+            if (tag) query.tag = tag.toLowerCase()
+            const searchresult = await Wheels.find(query)
                 .sort({ templateorder: -1 })
                 .toArray()
+            
+            console.log(searchresult)
+            if (searchresult.length < 1) return await Wheels.find({global: true})
+                .sort({ templateorder: -1 })
+                .toArray()
+
+            console.log(searchresult)
+            return searchresult
         },
         areas: async(_, {wheelid, search, limit=0}, { req }) => {
             const db = await DbConnection.Get()

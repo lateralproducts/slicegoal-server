@@ -208,6 +208,7 @@ export async function sessiontrack(
         const newsession = new Object()
         newsession.session = req.session.id
         newsession.landedip = getipaddress(req)
+        if (isBot) newsession.bot = isBot
         newsession.email = args.email
         newsession.landpage = page ? page : 'app'
         if (screenwidth) newsession.screenwidth = screenwidth
