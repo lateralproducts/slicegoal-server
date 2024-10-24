@@ -243,18 +243,16 @@ export const resolvers = {
             if (tag) {
                 WheelSearchTerms.insertOne({tag: tag.toLowerCase(), date: new Date(), ip: getipaddress(req)})
             }
-            
+
             if (tag) query.tag = tag.toLowerCase()
             const searchresult = await Wheels.find(query)
                 .sort({ templateorder: -1 })
                 .toArray()
             
-            console.log(searchresult)
             if (searchresult.length < 1) return await Wheels.find({global: true})
                 .sort({ templateorder: -1 })
                 .toArray()
-
-            console.log(searchresult)
+                
             return searchresult
         },
         areas: async(_, {wheelid, search, limit=0}, { req }) => {

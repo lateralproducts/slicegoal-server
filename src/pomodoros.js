@@ -402,7 +402,7 @@ export async function activityrecord({
         })
     }
 
-    if (treeareas = [] && !taskid) {treeareas = record.areas}
+    if ((treeareas = [] && !taskid) || treeareas === false){treeareas = record.areas}
     areaaggregate({
         treeareas, 
         datetime: datetime,

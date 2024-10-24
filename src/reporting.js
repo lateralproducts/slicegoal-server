@@ -127,7 +127,7 @@ export async function dailyafternoonemail() {
                 }
                 
             }))
-            if (returned) emailDailySummary(user, returned[0].daydatacomparison, returned[0].daily, returned[0].areapercent, mission ? mission.mission : null)
+            if (returned[0]) emailDailySummary(user, returned[0].daydatacomparison, returned[0].daily, returned[0].areapercent, mission ? mission.mission : null)
         }
     })
 
@@ -224,8 +224,8 @@ export function calculateDeltaAndPercentageDelta(currentData, previousData) {
         ['taskpriorityadded', 'Tasks Added to Priority List'],
         ['newinsight', 'New Insights'],
         ['newsource', 'New Sources'],
-        ['impressions', 'Impressions'],
-        ['highlights', 'Highlights']
+        ['impression', 'Impressions'],
+        ['highlight', 'Highlights']
     ];
     const delta = {};
     const percentageDelta = {};
