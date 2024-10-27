@@ -119,6 +119,11 @@ async function sendEmail(to, subject, email, attachments, retryid) {
     if (to){
         const db = await DbConnection.Get()
         const Emails = db.collection('emails')
+        const SuppressionList = db.collection('suppressionlist')
+
+        const suppression = await SuppressionList.findOne({email: to})
+        let response = ''
+
         let mailOptions = {
             from: sender,
             to: to,
@@ -127,28 +132,34 @@ async function sendEmail(to, subject, email, attachments, retryid) {
             attachments: attachments,
             retry: retryid
         }
-        
-        let response = await new Promise(function(resolve) { //wait for response to email send.
-            if((`${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test')) {
-                //dev and test email send via mailhog.
-                transporter.sendMail(mailOptions, function(error, info) {
-                    if (error) {
-                        mailOptions.error = error
-                        console.log('email error: ' + error)
-                    } else {
-                        mailOptions.response = info.response
-                        console.log('email sent: ' + info.response)
-                    }
-                    mailOptions.triggered = new Date()
-                    resolve(mailOptions)
-                })}
-            else {
-                //production
-                sendSESEmail(mailOptions, resolve)
-            }
-        })
+
+        if (!suppression){
+            
+            response = await new Promise(function(resolve) { //wait for response to email send.
+                if((`${process.env.NODE_ENV}` === 'development' || `${process.env.NODE_ENV}` === 'test')) {
+                    //dev and test email send via mailhog.
+                    transporter.sendMail(mailOptions, function(error, info) {
+                        if (error) {
+                            mailOptions.error = error
+                            console.log('email error: ' + error)
+                        } else {
+                            mailOptions.response = info.response
+                            console.log('email sent: ' + info.response)
+                        }
+                        mailOptions.triggered = new Date()
+                        resolve(mailOptions)
+                    })}
+                else {
+                    //production
+                    sendSESEmail(mailOptions, resolve)
+                }
+            })
+        } else {
+            response = 'email suppressed'
+            mailOptions.response = response
+        }
         try {
-            Emails.insertOne(response)
+            Emails.insertOne(mailOptions)
         } catch (error) { 
             console.log('alert: email DB save not working.')
             console.log(error)
@@ -299,7 +310,7 @@ export async function emailWeeklySummary(user, weekdatacomparison, weekdata, are
         weekdata: weekdata,
         enddate: longdatestring(weekdata.endday),
         areapercentages: areapercent,
-        weekcomparison: weekdatacomparison,
+        weekdatacomparison: weekdatacomparison,
         datetime: (new Date()).toString(),
         focusicon: FOCUS_ICON_URL,
         pathurl: APP_PATH_URL,
