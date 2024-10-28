@@ -174,9 +174,10 @@ export async function sessiontrack(
     const ipaddress = getipaddress(req)
     var isBot = false
     try {
-        isBot = botips.some(rx => rx.test(ipaddress));
+        isBot = botips.find(rx => rx.test(ipaddress)) !== undefined;
+        log({message: {ipaddress, isBot}}) 
     } catch (error) {
-        log({message: {ipaddress, botips, error}})  
+        log({message: {ipaddress, error}})  
     }
 
     if (session) {
