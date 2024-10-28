@@ -949,7 +949,8 @@ export const resolvers = {
                 })
                 .then(async insight => {
                     try {
-                        const newfileid = await shareFileToUser({req, fileid: insight.fileids[0], userid: targetUser._id.toString()})
+                        let newfileid = null
+                        if (insight.fileids) newfileid = await shareFileToUser({req, fileid: insight.fileids[0], userid: targetUser._id.toString()})
 
                         //save shared insight to be accessed.
                         let interactionid = (await newIx({
