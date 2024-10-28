@@ -948,70 +948,78 @@ export const resolvers = {
                     _id: new ObjectId(args.insightid)
                 })
                 .then(async insight => {
+                    try {
+                        const newfileid = await shareFileToUser({req, fileid: insight.fileids[0], userid: targetUser._id.toString()})
 
-                    const newfileid = await shareFileToUser({req, fileid: insight.fileids[0], userid: targetUser._id.toString()})
+                        //save shared insight to be accessed.
+                        let interactionid = (await newIx({
+                            from: currentUser._id.toString(),
+                            to: targetUser._id.toString(),
+                            type: 'share insight email', 
+                            insightid: args.insightid, 
+                            profileid: getprofileid(req.session),
+                            fileid: newfileid,
+                            message: args.shareNote
+                        })).insertedId.toString()
 
-                    //save shared insight to be accessed.
-                    let interactionid = (await newIx({
-                        from: currentUser._id.toString(),
-                        to: targetUser._id.toString(),
-                        type: 'share insight email', 
-                        insightid: args.insightid, 
-                        profileid: getprofileid(req.session),
-                        fileid: newfileid,
-                        message: args.shareNote
-                    })).insertedId.toString()
+                        
 
-                    
-
-                    return Insights.insertOne({
-                        sharedfrom: getuserid(req.session),
-                        userid: targetUser._id.toString(),
-                        status: 'newshared',
-                        datetimeshared: new Date(),
-                        email: args.targetUser,
-                        datecreated: insight.datecreated,
-                        answer: insight.answer,
-                        fileids: newfileid ? [newfileid] : null
-                    })
-                    .then(result => {
-                        Insights.findOne({_id: new ObjectId(result.insertedId)})
-                        .then(() => { 
-                            //save interaction to track
-                            try {
-                                var ctalink;
-                                if(targetUser.state === 'verified'){
-                                    // Existing verified user
-                                    ctalink = `?sharedinsights=active`
-                                } else {
-                                    // Existing but unverified user
-                                    ctalink = `?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`
+                        return Insights.insertOne({
+                            sharedfrom: getuserid(req.session),
+                            userid: targetUser._id.toString(),
+                            status: 'newshared',
+                            datetimeshared: new Date(),
+                            email: args.targetUser,
+                            datecreated: insight.datecreated,
+                            answer: insight.answer,
+                            fileids: newfileid ? [newfileid] : null
+                        })
+                        .then(result => {
+                            Insights.findOne({_id: new ObjectId(result.insertedId)})
+                            .then(() => { 
+                                //save interaction to track
+                                try {
+                                    var ctalink;
+                                    if(targetUser.state === 'verified'){
+                                        // Existing verified user
+                                        ctalink = `?sharedinsights=active`
+                                    } else {
+                                        // Existing but unverified user
+                                        ctalink = `?page=verify&user=${targetUser._id}&code=${targetUser.code}&sharedinsights=active`
+                                    }
+                                    shareInsightEmail(
+                                        insight,
+                                        currentUser,
+                                        targetUser,
+                                        args.shareNote,
+                                        ctalink,
+                                        interactionid,
+                                        newfileid
+                                    )
+                                }catch (error) {
+                                    log("failed to send shared insights email - " + error)
                                 }
-                                shareInsightEmail(
-                                    insight,
-                                    currentUser,
-                                    targetUser,
-                                    args.shareNote,
-                                    ctalink,
-                                    interactionid,
-                                    newfileid
-                                )
-                            }catch (error) {
-                                log("failed to send shared insights email - " + error)
+                            })
+
+                            return {
+                                success: true,
+                                message: 'Insight shared'
                             }
                         })
-
-                        return {
-                            success: true,
-                            message: 'Insight shared'
-                        }
-                    })
-                    .catch(err => {
+                        .catch(err => {
+                            log(err.message)
+                            return {
+                                success: false,
+                                message: err.message
+                            }
+                        })
+                    } catch (error) {
+                        log(error)
                         return {
                             success: false,
-                            message: err.message
+                            message: error
                         }
-                    })
+                    }
                 })
             }
         },
