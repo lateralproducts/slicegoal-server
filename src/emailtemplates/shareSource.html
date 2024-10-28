@@ -2,36 +2,48 @@
 <html>
 
 <body>
-    <table style="border-collapse: separate; border-spacing: 10px;">
+    <table style="border-collapse: separate; border-spacing: 10px; max-width: 600px; margin: 0 auto;">
         <tr>
-            <td>
-                <div style="border: solid 0.2px #ECEDF2; border-radius: 3px; padding: 5px;">
-                    <div style="font-size: 14px;">
+            <td align="center">
+                <div style="font-size: 1em;">{{ sharerName }} ({{ sharerEmail }}) shared this insight with you.</div>
+            </td>
+        </tr>
+        <tr>
+            {{#shareNote}}
+            <td align="center">
+                <div style="margin-top: 10px; font-size: 1.2em; display:flex; white-space: pre-wrap;">"{{ shareNote }}"</div>
+            </td>
+            {{/shareNote}}
+        </tr>
+        <tr>
+            <td> 
+                <div style="border: dashed 1px rgb(148, 148, 151); border-radius: 3px; padding: 5px;">
+                    <div style="font-size: 1.2em;">
                         {{ sourceText }}
                     </div>
-                    <div style="font-size: 10px; font-weight: 700;">
+                    <div style="font-size: 1em; font-weight: 700;">
                         {{ sourceType }}
                     </div>
-                    <div style="font-size: 10px;">
+                    {{#sourceLink}}
+                    <div style="font-size: 0.8em;">
                         {{ sourceLink }}
                     </div>
-                    <div style="margin-top: 10px; font-size: 8px; display:flex; white-space: pre-wrap;">
-                        {{ shareNote }}
-                    </div>
+                    {{/sourceLink}}
                 </div>
             </td>
         </tr>
-        <tr style="height:10px">
-        </tr>
         <tr>
-            <img width="100" src="{{ logopath }}" />
+            <td class="button" align="center" style="height: 50px;">
+                <a class="link" style="margin-top: 20px; font-size:14px; font-weight: 700; border: none; text-decoration: none; color: #f2f2f2; border-radius: 7px; padding: 9px 14px 9px 14px; background-color: #1e4088;"
+                    href="{{ acceptLink }}" class="button">Save Source</a>
+            </td>
         </tr>
+        <img src='{{pixelpath}}?ix={{interactionid}}'/>
         <tr>
-            <div style="font-size: 10px;">
-                {{ sharerName }} ({{ sharerEmail }}) shared this source with you.
-            </div>
+            <td align="center">
+                <img width="100" src="{{ logopath }}" />
+            </td>
         </tr>
     </table>
 </body>
-<img src='{{pixelpath}}?ix={{interactionid}}'/>
 </html>
