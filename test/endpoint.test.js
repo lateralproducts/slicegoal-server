@@ -7,6 +7,10 @@ jest.mock('../src/database', () => ({
     Get: jest.fn(),
 }));
 
+jest.mock('../src/logging', () => ({
+    log: jest.fn(),
+}));
+
 jest.mock('node-schedule', () => ({
     scheduleJob: jest.fn(),
 }));
