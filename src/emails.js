@@ -348,12 +348,12 @@ export async function emailDailyMorning({user, mission, tasks, goals}) {
     let to = user.email
     let cta = {prompt: "Add a mission for your day.", button: 'Add mission'}
     let emailtasks = [] //tasks.length > 0 ? tasks : null
-    let subject = 'Good morning! - ' + longdatestring(new Date())
+    let subject = 'Good morning! - ' + longdatestring(startOfDayTZ({datetime: new Date(), timezoneOffset: 11}))
     let email = Mustache.render(dailymorning, {
         date: longdatestring(new Date()),
         username: user.firstname ? ' ' + user.firstname : '', //using space in front here to manage formatting.
         mission: mission,
-        tasks: emailtasks,
+        tasks: tasks,
         goals: goals.length > 0 ? goals : null,
         cta: cta,
         datetime: (new Date()).toString(),
