@@ -174,10 +174,10 @@ async function sendEmail(to, subject, email, attachments, retryid) {
 export async function reSendEmail() {
     const db = await DbConnection.Get()
     const Emails = db.collection('emails')
-    var emails = await Emails.find({response:{$exists: false}}).toArray()
+    var emails = await Emails.find({response:{$exists: false}, retries: {$lt: 2}}).toArray()
     emails.map(email => {
         sendEmail(email.to, email.subject, email.html, email.attachments, email._id)
-        Emails.updateOne({_id: email._id}, {$set: {response: 'retried'}})
+        Emails.updateOne({_id: email._id}, {$set: {response: 'retried'}}, {$inc: {retries: 1}})
     })
 }
 
