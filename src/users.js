@@ -326,15 +326,22 @@ export const resolvers = {
             let user = await Users.findOne({
                 code: args.code
             })
-            if(!user) return triggererror('Verify details not found. You can try and reset password again.')
+            if(!user) {
+                log({type: 'security', message: 'Verify details not found.'})
+                sessiontrack(req, args, 'app', 'verify', 'verify details not found.')
+                return triggererror('Verify details not found. You can try and reset password again.')
+            }
 
             if(user.lastreset){
                 let validdate = new Date() //valid to reset for 24 hours.
                 validdate.setDate(user.lastreset.getDate() + 1)
                 if(validdate < new Date()){
+                    log({type: 'security', message: 'Expired link.'})
+                    sessiontrack(req, args, 'app', 'verify', 'expired link')
                     return triggererror("Your link has expired. Please try and reset again.")
                 }
             }else if (user.state !== 'new') {
+                log({type: 'security', message: 'Already registered.'})
                 sessiontrack(req, args, 'app', 'verify', 'already registered')
                 return triggererror(
                     "Your account didn't verify. If you've signed up before, try logging in.",
@@ -368,15 +375,25 @@ export const resolvers = {
             const Users = db.collection('users')
 
             //don't allow someone to try and reset without a code.
-            if(!args.code) return triggererror('Reset details not found. Please try and reset your password again.')
+            if(!args.code) {
+                sessiontrack(req, args, 'app', 'setPasswod', 'no code')
+                log({type: 'security', message: '1. Reset details not found.'})
+                return triggererror('Reset details not found. Please try and reset your password again.')
+            }
             
             let user = await Users.findOne({ codecreated: args.codedate, code: args.code })
-            if(!user) return triggererror('Reset details not found. Please try and reset your password again.')
+            if(!user) {
+                sessiontrack(req, args, 'app', 'setPasswod', 'no user found')
+                log({type: 'security', message: '2. Reset details not found.'})
+                return triggererror('Reset details not found. Please try and reset your password again.')
+            }
 
             if(user.lastreset){
                 let validdate = new Date() //valid to reset for 24 hours.
                 validdate.setDate(user.lastreset.getDate() + 1)
                 if(validdate < new Date()){
+                    sessiontrack(req, args, 'app', 'setPasswod', 'code not valid anymore')
+                    log({type: 'security', message: '3. Reset details not found.'})
                     return triggererror('Reset details not found. Please try and reset your password again.')
                 }
             }
@@ -417,6 +434,7 @@ export const resolvers = {
                     if((user.incorrecttries < 6 || user.incorrecttries === undefined) && user.state == 'verified'){
                         return await login(user, args, req)
                     } else {
+                        log({type: 'security', message: 'failed to login - too many incorrect tries or not verified'})
                         sessiontrack(req, args, 'app', 'login-failed', 'failed - too many incorrect tries or not verified', 'email')
                         await Users.updateOne(
                             { _id: new ObjectId(user._id) },
@@ -471,6 +489,7 @@ export const resolvers = {
         
             if (ipprofile) {
                 if (ipprofile.block === true) {
+                    log({type: 'security', message: 'failed to sign up - blocked IP address'})
                     sessiontrack(
                         req,
                         args,
@@ -513,19 +532,20 @@ export const resolvers = {
         
             //possibly threatening checks
         
-            if (ipaddress.length > 15) { //if created more than 15 accounts block.
+            if (ipaddress.length > 5) { //if created more than 5 accounts block.
                 sessiontrack(
                     req,
                     args,
                     'app',
                     'signup',
-                    'failed, 15 account limit, blocking',
+                    'failed, 5 account limit, blocking',
                 )
                 IPAddresses.insertOne({
                     ip: getipaddress(req),
                     block: true,
-                    reason: 'account limit at 15'
+                    reason: 'account limit at 5'
                 })
+                log({type: 'security', message: 'failed to create account - 5 accounts created from the same IP address'})
                 return triggererror(
                     'An error occured.', //don't be descriptive with error in case malicious
                 )
