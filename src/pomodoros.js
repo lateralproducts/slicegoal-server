@@ -6,6 +6,7 @@ import { checkTask, createRepeatTask } from './tasks'
 import { triggererror } from './graphqlserver';
 import { getareatree } from './areas'
 import { calculateWeekAreaPercentages } from './reporting'
+import { log } from './logging'
 //let pjson = require('../package.json')
 
 export const typeDefs = `
@@ -430,9 +431,7 @@ export async function activityrecord({
 export async function taskaggregate({minutes, pomoid, treetasks}) {
     //future development: check/aggregate parent tasks.
     if (!pomoid || !treetasks) { //must have all fields
-        console.log('taskaggregate error - missing fields')
-        console.log('treetasks: ' + treetasks)
-        console.log('pomoid: ' + pomoid)
+        log('taskaggregate error - missing fields')
         return
     }
     
@@ -456,9 +455,7 @@ export async function taskaggregate({minutes, pomoid, treetasks}) {
 export async function goalaggregate({treegoals, minutes, pomoid}) {
     //future development: check/aggregate parent tasks.
     if ( !minutes || !pomoid) { //must have all fields
-        console.log('goalaggregate error - missing fields')
-        console.log('mins: ' + minutes)
-        console.log('pomoid: ' + pomoid)
+        log('goalaggregate error - missing fields')
         return
     }
     const goaltree = await getgoaltree({treegoals})
@@ -503,9 +500,7 @@ export async function areaaggregate({
     try {
         //future development: check/aggregate parent tasks.
         if ((!treeareas) || !pomoid) { //must have all fields
-            console.log('areaaggregate error - missing fields')
-            console.log('areas: ' + treeareas)
-            console.log('pomoid: ' + pomoid)
+            log('areaaggregate error - missing fields')
             return
         }
         let areatree = await getareatree({areas: treeareas, req})
@@ -690,8 +685,7 @@ export async function areaaggregate({
             )
         })
     } catch (e) {
-        console.log('error in areaaggregate')
-        console.log(e)
+        log({message: {'function': 'areaaggregate', error: e}})
     }
 }
 

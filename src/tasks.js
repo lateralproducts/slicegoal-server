@@ -6,6 +6,7 @@ import { getprofileid } from './users'
 import { activityrecord } from './pomodoros';
 import { date2str, startOfDay, daylater, startOfDayTZ, endOfDayTZ } from '../util/functions';
 import { attachAreas } from './sources';
+import { log } from './logging';
 //import { activityrecord } from './pomodoros'
 
 export const schema = `
@@ -105,9 +106,6 @@ export const resolvers = {
 
             const starttimeTZ = startOfDayTZ({datetime, timezoneOffset: -11}) //setting to offset Melbourne TZ +11
             const endtimeTZ = endOfDayTZ({datetime, timezoneOffset: -11}) //setting to offset Melbourne TZ +11
-            /* console.log(datetime)
-            console.log(starttimeTZ)
-            console.log(endtimeTZ) */
 
             if(args.complete === false) {
                 query.$or = [ //only return if complete not equal to true (or doesn't exist)
@@ -432,7 +430,7 @@ export const resolvers = {
                 else {return []}
             }
              catch (error) {
-                console.log(error)
+                log(error)
                 return []
             }
         },
@@ -795,7 +793,7 @@ export const resolvers = {
             
             const db = await DbConnection.Get()
             const result = await TaskLinks.deleteMany({profileid: getprofileid(req.session), parenttask: parenttaskid, subtask: subtaskid})
-            console.log(result)
+            log(result)
             return true
         }, */
         //removeTaskParentLinks(subtaskid: String!): Boolean
@@ -804,7 +802,7 @@ export const resolvers = {
             const db = await DbConnection.Get()
             
             const result = await TaskLinks.deleteMany({profileid: getprofileid(req.session), subtask: subtaskid})
-            console.log(result)
+            log(result)
             return true
         }, */
 

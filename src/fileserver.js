@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb'
 import { triggererror } from './graphqlserver';
 import { getprofileid, getuserid } from './users'
 import { getUploadLinkFromAWS, getReadLinkfromAWS, copyS3File } from './storage'
+import { log } from './logging';
 
 export const schema = `
     type FileUploadLink {
@@ -167,10 +168,6 @@ export async function shareFileToUser({req, fileid, userid}) {
 
 export async function copyFileToProfile({req, fileid, profileid}) {
     try {
-        console.log('copyFileToProfile')
-        console.log(fileid)
-        console.log(profileid)
-        console.log(req.session)
         if (profileid){
             const db = await DbConnection.Get()
             const Files = db.collection('files')
@@ -191,14 +188,12 @@ export async function copyFileToProfile({req, fileid, profileid}) {
 
             const result = await Files.insertOne(newfile)
             copyS3File({fromfileid: fileid, fromfolder: getuserid(req.session), tofileid: result.insertedId.toString(), tofolder: profileid})
-            console.log('copyFileToProfile result')
-            console.log(result.insertedId.toString())
             return result.insertedId.toString()
         } else {
             throw Error('User not found.')
         }
     } catch (error) {
-        console.log(error)
+        log(error)
     }
 }
 

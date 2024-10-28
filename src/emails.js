@@ -6,6 +6,7 @@ import DbConnection from './database'
 import { newIx } from './interactions'
 import { date2str, longdatestring } from '../util/functions'
 import { sendSESEmail } from './awsemail';
+import { log } from 'console'
 //not 100% sure why it works loading in emails.js for environment variables.
 //environment variables not accessible here when it's loaded in start.js, but loaded here, they're available in start.js.
 //may need to revisit when breaking up into more modules.
@@ -141,10 +142,10 @@ async function sendEmail(to, subject, email, attachments, retryid) {
                     transporter.sendMail(mailOptions, function(error, info) {
                         if (error) {
                             mailOptions.error = error
-                            console.log('email error: ' + error)
+                            log('email error: ' + error)
                         } else {
                             mailOptions.response = info.response
-                            console.log('email sent: ' + info.response)
+                            log('email sent: ' + info.response)
                         }
                         mailOptions.triggered = new Date()
                         resolve(mailOptions)
@@ -161,8 +162,8 @@ async function sendEmail(to, subject, email, attachments, retryid) {
         try {
             Emails.insertOne(mailOptions)
         } catch (error) { 
-            console.log('alert: email DB save not working.')
-            console.log(error)
+            log('alert: email DB save not working.')
+            log(error)
         } //record DB record of email send response.
         return response
     } return 'no email address'
@@ -416,7 +417,7 @@ export async function signupEmailFunnel(funnelpackage, name, email){
                 {upsert: true}
             )
         } catch (error) {
-            console.log("error creating funnel email schedule " + error)
+            log("error creating funnel email schedule " + error)
         }
     })
 }
@@ -489,8 +490,8 @@ export async function emailFunnel(
         }] : null 
         sendEmail(to, subject, email, attachments)
     } catch (error) {
-        console.log('funnel email failed to send -> ' +  toemail + ' ' + name + ' ' + funnelpackage + ' ' + emailstep)
-        console.log(error)
+        log('funnel email failed to send -> ' +  toemail + ' ' + name + ' ' + funnelpackage + ' ' + emailstep)
+        log(error)
     }
 }
 
@@ -537,7 +538,7 @@ export async function shareInsightEmail(
     newfileid
     ) { 
         const sharerName = `${sharer.firstname} ${sharer.lastname || ''}`
-        const subject = `Insight from ${sharerName.trim()}${insight.answer ? ': ' + insight.answer.substring(0,15) : null}...`
+        const subject = `Insight from ${sharerName.trim()}${insight.answer ? ': ' + insight.answer.substring(0,15).replaceAll("(?:\\n|\\r)", "") : null}...`
         const email = Mustache.render(shareInsightTemplate, {
             insightPrompt: insight.prompt,
             insightText: insight.answer,

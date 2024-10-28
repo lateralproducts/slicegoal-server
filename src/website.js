@@ -10,6 +10,7 @@ import {
 import { validateemail, botips } from '../util/functions';
 import { createreport } from './reporting';
 import { triggererror } from './graphqlserver';
+import { log } from './logging';
 
 export const typeDefs = `   
     extend type Mutation {
@@ -34,7 +35,7 @@ export const resolvers = {
             //actioninfo: pass parameters (like wheel name, etc)
             //abconfig: pass parameter to log for A/B testing
             //pagetrack: if loading a webpage with a unique identifer, to track over sessions
-            //if(args.actioninfo) console.log(args.actioninfo)
+            //if(args.actioninfo) log(args.actioninfo)
             sessiontrack(
                 req,
                 args,
@@ -89,7 +90,7 @@ export const resolvers = {
                 await LateralProducts.insertOne(args)
                 //save request in DB
             } catch (error) {
-                console.log(error)
+                log(error)
             }
 
             return true
@@ -141,7 +142,7 @@ async function offeraction(args) {
                 return triggererror('Sorry, we can\'t find that offer.')
         }
     } catch (error){
-        console.log(error)
+        log(error)
     }
 }
 
@@ -175,9 +176,7 @@ export async function sessiontrack(
     try {
         isBot = botips.some(rx => rx.test(ipaddress));
     } catch (error) {
-        console.log(ipaddress)
-        console.log(botips)
-        console.log(error)
+        log({message: {ipaddress, botips, error}})  
     }
 
     if (session) {
@@ -265,7 +264,7 @@ export function querytojson(search) {
         .replace(/&/g, '","')
         .replace(/=/g, '":"')
     } catch (error) {
-        console.log('replace function error')
+        log('querytojson replace function error')
         return error
     }
 
@@ -277,7 +276,7 @@ export function querytojson(search) {
         )
         return json
     } catch (error) {
-        console.log('decodeURI function error')
+        log('decodeURI function error')
         return error
     }
 }

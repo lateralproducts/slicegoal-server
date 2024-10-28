@@ -5,6 +5,8 @@ import { ObjectId } from 'mongodb';
 import { wheelidfromprofileid } from './areas';
 import { getGoals } from './goals';
 
+import { log } from './logging'
+
 export async function createreport(to,fromdate,todate){
     const db = await DbConnection.Get()
     const Sessions = db.collection('sessions')
@@ -238,7 +240,7 @@ export function calculateDeltaAndPercentageDelta(currentData, previousData) {
     const structuredData = [];
     keys.forEach(key => {
         const isNegative = delta[key[0]] < 0;
-        //if(isNegative) console.log('key' + key)
+        //if(isNegative) log('key' + key)
         structuredData.push({
             value: currentData[key[0]] || 0,
             delta: (isNegative?"":"+") + delta[key[0]], //a plus sign for positive deltas

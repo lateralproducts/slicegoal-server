@@ -1,3 +1,5 @@
+import { log } from './logging';
+
 // Load the AWS SDK for Node.js
 var AWS = require('aws-sdk');
 // Set the region 
@@ -12,7 +14,7 @@ export async function sendSESEmail(mailOptions, handleResponse){
       mailOptions.response = data.MessageId
       handleResponse(mailOptions);
     }).catch(function(err) {
-      console.log(err,err.stack)
+      log(err.stack)
       mailOptions.error = err.stack
       handleResponse(mailOptions);
     });

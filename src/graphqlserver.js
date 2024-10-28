@@ -85,6 +85,7 @@ import { resolvers as chatResolvers } from './chat'
 import { resolvers as peopleResolvers } from './people'
 import { getfile } from './storage'
 import './schedules'
+import { log } from './logging'
 let pjson = require('../package.json')
 var path = require('path')
  
@@ -98,9 +99,9 @@ const app = express()
 
 //upload()
 
-console.log('server version: ' + pjson.version)
-console.log('environment: ' + process.env.NODE_ENV)
-console.log(new Date())
+log({type: 'info', message: 'server version: ' + pjson.version})
+log({type: 'info', message: 'environment: ' + process.env.NODE_ENV})
+log({type: 'info', message: new Date()})
 
 // context
 const context = req => ({
@@ -223,7 +224,7 @@ export const graphql = async() => {
 
 
         /* function loggingMiddleware(req, res, next) {
-          console.log("ip:", ip);
+          log("ip:", ip);
           next();
         }
         app.use(loggingMiddleware); */
@@ -251,7 +252,7 @@ export const graphql = async() => {
 
         // start server
         app.listen(opts, () => {
-            console.log(`Server is running on http://localhost:${opts.port}${opts.endpoint}`)
+            log({type: 'info', message: `Server is running on http://localhost:${opts.port}${opts.endpoint}`})
         }) 
 
         // file server
@@ -259,8 +260,6 @@ export const graphql = async() => {
             // here you can use your way to get the path dir ..  
             //const pathDir = path.join(__dirname, "files/slicegoallong.png"); //using local files
             //res.sendFile(pathDir);
-            if(req.session.user) console.log(req.session.user.firstname)
-            console.log("ip address - " + getipaddress(req))
 
             const filename = path.basename(req.path);
             const item = req.query
@@ -270,10 +269,13 @@ export const graphql = async() => {
                 getfile(filename, res)
                 if(item.ix) {
                     updateIx(item.ix,'seen','open','email', getipaddress(req))
-                    //console.log('slicegoal image accessed - ' + item.ix)
+                    log({type: 'info', message: 'slicegoal image accessed - ' + item.ix})
+                    return
                 }
             } else {
                 if(!item.ix) {
+                    if(req.session.user) log(req.session._id)
+                    log("failed file read at ip address: " + getipaddress(req))
                     res.send({ 'error': 'Unauthorized' })
                     res.status(401).json({ error: 'Unauthorized' })
                     return
@@ -294,7 +296,7 @@ export const graphql = async() => {
         }) // ✔️🚀
 
     } catch (e) {
-        console.log(e)
+        log(e)
     }
 }
 

@@ -13,6 +13,7 @@ import { linkInsightTask } from './tasks'
 import { copyFileToProfile, getPreviews, getfileid, shareFileToUser } from './fileserver';
 import { activityrecord } from './pomodoros';
 import { copyS3File } from './storage';
+import { log } from './logging';
 
 export const typeDefs = `
 
@@ -360,7 +361,7 @@ export const resolvers = {
                 }
                 else return await Insights.find(insightquery).limit(20).sort({datecreated: -1}).toArray()
             } catch (error) {
-                console.log(error)
+                log(error)
                 return []
             }
         },
@@ -868,9 +869,7 @@ export const resolvers = {
                 if (insight.fileids) { //copy any files to profile
                     let newfileids = []
                     for (let fileid of insight.fileids) {
-                        console.log(fileid)
                         let newfileid = await copyFileToProfile({req, fileid: fileid, profileid: args.profileid})
-                        console.log(newfileid)
                         newfileids.push(newfileid)
                     }
                     insight.fileids = newfileids
@@ -998,7 +997,7 @@ export const resolvers = {
                                     newfileid
                                 )
                             }catch (error) {
-                                console.log("failed to send shared insights email - " + error)
+                                log("failed to send shared insights email - " + error)
                             }
                         })
 
@@ -1230,6 +1229,6 @@ async function createinsight(newinsight, req) {
         }
         return result.insertedId.toString()
     } catch (error) {
-        console.log(error)
+        log(error)
     }
 }

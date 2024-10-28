@@ -4,6 +4,7 @@ import { getprofileid, getuserid, getwheelid, updateUserOnboarding } from './use
 import DbConnection from './database'
 import { date2str, getuiversion } from '../util/functions'
 import { activityrecord } from './pomodoros'
+import { log } from './logging';
 let pjson = require('../package.json')
 
 export const typeDefs = `
@@ -497,7 +498,7 @@ export async function creategoal(newgoal, req) {
             return result.insertedId
         })
     } catch (error) {
-        console.log(error)
+        log(error)
     }
 }
 

@@ -3,6 +3,7 @@ import DbConnection from './database'
 import { getprofileid } from './users'
 import { attachAreas } from './sources'
 import { triggererror } from './graphqlserver'
+import { log } from './logging'
 
 export const schema = `
     type Person {
@@ -67,7 +68,7 @@ export const resolvers = {
                 const result = await db.collection('people').findOne({ _id: new ObjectId(personid), profileid })
                 return result
             } catch (error) {
-                console.log(error)
+                log(error)
                 return triggererror(`Failed to get person by ID`)
             }
         },
@@ -79,7 +80,7 @@ export const resolvers = {
                 const result = await db.collection('people').find({ profileid }).sort({lasttagged: -1, created: -1}).toArray()
                 return result
             } catch (error) {
-                console.log(error)
+                log(error)
                 return triggererror(`Failed to get all people.`)
             }
         }
@@ -97,7 +98,7 @@ export const resolvers = {
                 return tags
             }
              catch (error) {
-                console.log(error)
+                log(error)
                 return []
             }
         }
@@ -115,7 +116,7 @@ export const resolvers = {
                 attachAreas(areatags, {personid: personid}, profileid, req) 
                 return true
             } catch (error) {
-                console.log(error)
+                log(error)
                 return triggererror('Failed to create person')
             }
         } else { 
@@ -136,7 +137,7 @@ export const resolvers = {
                 attachAreas(areatags, {personid: personid}, profileid, req) 
                 return true
             } catch (error) {
-                console.log(error)
+                log(error)
                 return triggererror(`Failed to update person.`)
             }
         },
@@ -149,7 +150,7 @@ export const resolvers = {
                 await db.collection('people').findOneAndDelete({ _id: new ObjectId(id), profileid })
                 return true
             } catch (error) {
-                console.log(error)
+                log(error)
                 return triggererror(`Failed to delete person.`)
             }
         }

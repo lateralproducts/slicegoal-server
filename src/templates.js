@@ -5,7 +5,7 @@ import DbConnection from './database'
 import { getprofileid } from './users'
 import { linksubtask } from './tasks'
 import { activityrecord } from './pomodoros'
-//import { activityrecord } from './pomodoros'
+import { log } from './logging'
 
 export const schema = `
     type Template {
@@ -127,6 +127,7 @@ export const resolvers = {
                     }).toArray()} else return []
                 }
                  catch (error) {
+                    log(error)
                     return []
                 }
         },
@@ -302,7 +303,7 @@ export const resolvers = {
             
             const db = await DbConnection.Get()
             const result = await TemplateLinks.deleteMany({profileid: getprofileid(req.session), parenttemplate: parenttemplateid, subtemplate: subtemplateid})
-            console.log(result)
+            log(result)
             return true
         }, */
         // removeTemplateParentLinks(subtemplateid: String!): Boolean

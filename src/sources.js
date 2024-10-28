@@ -9,6 +9,7 @@ import { shareSourceEmail } from './emails'
 import { linkSourceTask } from './tasks'
 import { getPreviews } from './fileserver'
 import { activityrecord } from './pomodoros';
+import { log } from './logging';
 
 export const typeDefs = `
 
@@ -189,7 +190,7 @@ export const resolvers = {
                 return tags
             }
              catch (error) {
-                console.log(error)
+                log(error)
                 return []
             }
         },
@@ -367,7 +368,7 @@ export const resolvers = {
                                     )
                                 }
                             }catch (error) {
-                                console.log("failed to send shared sources email - " + error)
+                                log("failed to send shared sources email - " + error)
                             }
                         })
 

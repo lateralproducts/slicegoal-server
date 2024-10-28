@@ -5,6 +5,7 @@ import DbConnection from './database'
 import { getWeekNumber, getWeekYear, getuiversion } from '../util/functions'
 import { getuserid, getprofileid, getwheelid, getname, updateUserOnboarding, getipaddress } from './users'
 import { sessiontrack } from './website'
+import { log } from './logging';
 let pjson = require('../package.json')
 
 /*
@@ -252,7 +253,7 @@ export const resolvers = {
             if (searchresult.length < 1) return await Wheels.find({global: true})
                 .sort({ templateorder: -1 })
                 .toArray()
-                
+
             return searchresult
         },
         areas: async(_, {wheelid, search, limit=0}, { req }) => {
@@ -971,11 +972,9 @@ export const resolvers = {
                 const AreaLinks = db.collection('arealinks')
                 const Tags = db.collection('insighttags')
                 const Profiles = db.collection('profiles')
-                console.log(areas)
                 const foundareas = await Areas.find({ name: {$in: areas}, wheelid: wheelid}).toArray() //profileid not stored on area.
 
                 const profile = await Profiles.findOne({wheel: wheelid, user: getuserid(req.session)})
-                console.log(profile)
                 const profileid = profile._id.toString()
                 foundareas.map(async area => {
                     let newperson = new Object()
@@ -983,7 +982,6 @@ export const resolvers = {
                     if(area.definition) newperson.notes = area.definition
                     if(area.created) newperson.created = area.created
                     newperson.profileid = profileid
-                    console.log(newperson)
 
                     const res = await People.insertOne(newperson)
                     const personid = res.insertedId.toString()
@@ -1245,7 +1243,7 @@ export async function logareaclick(_id, navdirection, req) {
             )
         }
     } catch (error) {
-        console.log(error)
+        log(error)
     }
 }
 
@@ -1340,7 +1338,6 @@ export async function getareatree({areas, req}) {
         if (newareas.includes(startareaid)) {
             //if root area reached, stop building tree.
             checkareas = []
-            //console.log("got to start area")
         }
         else checkareas = newareas
     }
@@ -1450,6 +1447,5 @@ export async function wheelidfromprofileid({ profileid }) {
     const Profiles = db.collection('profiles')
 
     const profile = await Profiles.findOne({ _id: new ObjectId(profileid) })
-    console.log(profile)
     return profile.wheel
 }

@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { triggererror } from "./graphqlserver"
+import { log } from "./logging"
 
 const s3config = {
     signatureVersion: 'v4',
@@ -46,7 +47,7 @@ export async function getUploadLinkFromAWS(file){
         const signedUrl = await getSignedUrl(s3Client, putcommand, requestheader)
         return signedUrl
     } catch (err) {
-        console.log("Error creating presigned URL for upload.", err);
+        log("Error creating presigned URL for upload.", err);
         return triggererror("Error creating presigned URL for upload.")
     }
 }
@@ -59,7 +60,7 @@ export async function getReadLinkfromAWS(file){
         const signedGetUrl = await getSignedUrl(s3Client, getcommand, requestheader)
         return signedGetUrl
     } catch (err) {
-        console.log("Error creating presigned URL for read.", err);
+        log("Error creating presigned URL for read.", err);
         return triggererror("Error creating presigned URL for read.")
     }
 }
@@ -73,7 +74,6 @@ export async function copyS3File({ fromfileid, fromfolder, tofileid, tofolder })
         Key: `${tofolder}/${tofileid}` // the new location
     });
     await s3Client.send(copyCommand);
-    console.log('file copied')
 };
 
 export async function getfile(file,res){

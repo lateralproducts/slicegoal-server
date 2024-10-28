@@ -17,6 +17,7 @@ let pjson = require('../package.json')
 import DbConnection from './database'
 import { setLastAccessedView } from './areas';
 import { longdatestring } from '../util/functions';
+import { log } from './logging';
 
 //import { verifier } from "google-id-token-verifier";
 const { OAuth2Client } = require('google-auth-library')
@@ -780,13 +781,11 @@ export const resolvers = {
             if (req.session.googleToken)
                 try {
                     await oAuth2Client.revokeToken(req.session.googleToken)
-                    console.log('revoked')
                 } catch (error) {
-                    console.log(error)
+                    log(error)
                 }
             delete req.session.user
             req.session.destroy()
-            console.log('logged out, session destroyed')
             return true
         },
 

@@ -1,5 +1,6 @@
 import DbConnection from './database'
 import { ObjectId } from 'mongodb' 
+import { log } from './logging'
 
 export const typeDefs = `
   extend type Query {
@@ -53,7 +54,7 @@ export async function newIx({from, to, type, message, insightid, sourceid, filei
         
         return await Interactions.insertOne(ix)
     } catch (error) {
-        console.log(error)
+        log(error)
     }
 }
 
@@ -79,10 +80,9 @@ export async function updateIx(ixid, status, action, channel, ip){
             },
             {upsert: true} //if the interaction doesn't already exist, create it.
         )
-        console.log(result)
         return (result !== null)
     } catch (error) {
-        console.log("error logging ix update - " + error)
+        log("error logging ix update - " + error)
     }
 }
 
@@ -94,7 +94,7 @@ export async function getIxFile(ixid){
         if (interaction) return interaction.to + '/' + interaction.fileid
         else return null
     } catch (error) {
-        console.log("error logging ix update - " + error)
+        log("error logging ix update - " + error)
     }
 }
 
