@@ -320,8 +320,8 @@ export const resolvers = {
             const searchareanames = parseAndCombine(inputlist).slice(0, 20)
 
             var optRegexp = [];
-            searchareanames.forEach(function(opt){
-                optRegexp.push(  new RegExp(opt, "i") );
+            searchareanames.forEach(function(tag){
+                optRegexp.push(  new RegExp("^" + tag + "$", 'i') );
             });
 
             query.name = { $in: optRegexp }
