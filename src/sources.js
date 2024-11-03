@@ -69,7 +69,7 @@ export const resolvers = {
                 query.profileid = getprofileid(req.session)
                 query.area = {$in: tags}
                 query.sourceid = {$ne: null}
-                searchtags = await Tags.find(query).limit(10).sort({accessedit: -1}).toArray()
+                searchtags = await Tags.find(query).sort({accessedit: -1}).toArray()
             }
             if (tags && searchtags.length === 0) return []
 
