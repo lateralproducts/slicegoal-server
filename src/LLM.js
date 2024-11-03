@@ -1,5 +1,6 @@
 
 import axios from 'axios'
+import { log } from './logging'
 const openai_key = process.env.OPENAI_API_KEY
 
 export const queryLLMtags = async (text) => {
@@ -33,7 +34,7 @@ export const queryLLMtags = async (text) => {
         const messageContent = response.data.choices[0].message.content;
         return messageContent;
     } catch (error) {
-        console.error('Error with OpenAI API:', error.message);
+        log({type: 'error', source: 'queryLLMtags', message: error.message});
         res.status(500).json({ error: 'Failed to fetch response from OpenAI', details: error.message });
     }
 }

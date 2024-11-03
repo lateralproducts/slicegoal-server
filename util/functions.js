@@ -193,7 +193,7 @@ export function parseAndCombine(text) {
 
         return combinedArray;
     } catch (error) {
-        log({source: "parseAndCombine:",type: 'error', message: error});
+        log({source: "parseAndCombine:", type: 'error', message: error});
         return []; // Return an empty array if there’s an error
     }
 }

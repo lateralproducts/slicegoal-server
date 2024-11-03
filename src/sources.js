@@ -70,7 +70,6 @@ export const resolvers = {
                 query.area = {$in: tags}
                 query.sourceid = {$ne: null}
                 searchtags = await Tags.find(query).limit(10).sort({accessedit: -1}).toArray()
-                log(searchtags)
             }
             if (tags && searchtags.length === 0) return []
 
