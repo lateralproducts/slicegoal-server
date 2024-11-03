@@ -16,9 +16,10 @@ async function getWebpageTitle(url) {
     try {
         const response = await axios.get(url)
         const $ = cheerio.load(response.data)
+        log($)
         return $('title').text()
     } catch (error) {
-        //console.error('Error fetching webpage:', error)
+        console.error('Error fetching webpage:', error)
         return "No Title"
     }
 }
@@ -335,7 +336,7 @@ export const resolvers = {
                     SourceTags.insertOne(newsourcetag)
                 })
             } catch (error) {
-                console.log(error)
+                log(error)
                 return triggererror('error updating area to source')
             }
 

@@ -2,10 +2,11 @@ import { ObjectId } from 'mongodb'
 import { triggererror } from './graphqlserver';
 
 import DbConnection from './database'
-import { getWeekNumber, getWeekYear, getuiversion } from '../util/functions'
+import { getWeekNumber, getWeekYear, getuiversion, parseAndCombine } from '../util/functions'
 import { getuserid, getprofileid, getwheelid, getname, updateUserOnboarding, getipaddress } from './users'
 import { sessiontrack } from './website'
 import { log } from './logging';
+import { queryLLMtags } from './LLM';
 let pjson = require('../package.json')
 
 /*
@@ -24,6 +25,7 @@ export const typeDefs = `
         profiles: [Profile]
         area(_id: String!, navdirection: String, readdate: String): Area
         areas (wheelid: String, readdate: String, search: String, limit: Int): [Area]
+        suggestareatags(search: String): [Area]
         arealinks(areaid: String): [AreaLink]
         ranktimes(areaId: String): [RankTime]
         lastranktime(areaId: String): RankTime
@@ -306,6 +308,38 @@ export const resolvers = {
             } else {
                 return triggererror('No area id provided')
             }
+        },
+        suggestareatags: async(_, { search }, { req }) => {
+            const db = await DbConnection.Get()
+            const Areas = db.collection('areas')
+            const query = new Object()
+            query.wheelid = getwheelid(req.session)
+            
+            const inputlist = await queryLLMtags(search)
+            console.log('inputlist', inputlist)
+            const searchareanames = parseAndCombine(inputlist).slice(0, 20)
+
+            var optRegexp = [];
+            searchareanames.forEach(function(opt){
+                optRegexp.push(  new RegExp(opt, "i") );
+            });
+
+            query.name = { $in: optRegexp }
+            let tags = await Areas.find(query).toArray()
+
+            //where one of the area names is not in the areas array. Add it to the tags array as {name: 'name'}.
+            searchareanames.map(name => {
+                const capitalizedName = name
+                .split(/([^\w]+)/) // Split by any non-word character, but keep the separators
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
+                .join(''); // Join it all back together
+                
+                if (!tags.find(area => area.name.toLowerCase() === name.toLowerCase())) {
+                    tags.push({name: capitalizedName});
+                }
+            });
+
+            return tags
         },
         areatree: async(_, { areaid }, { req }) => {
             const areatree = await getareatree({areas:[areaid], req})

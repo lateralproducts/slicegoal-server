@@ -1,3 +1,5 @@
+import { log } from "../src/logging"
+
 export function getuiversion(session) {
     if (session.user) return session.user.uiversion
     else return 'test'
@@ -176,3 +178,22 @@ const months = [
     'November',
     'December'
 ]
+
+
+export function parseAndCombine(text) {
+    try {
+        // Replace single quotes with double quotes to make it valid JSON
+        const jsonString = text.replace(/'/g, '"');
+
+        // Match all text inside square brackets and parse them as JSON arrays
+        const arrays = jsonString.match(/\[.*?\]/gs).map(str => JSON.parse(str));
+        
+        // Flatten the arrays into a single array
+        const combinedArray = [].concat(...arrays);
+
+        return combinedArray;
+    } catch (error) {
+        log({source: "parseAndCombine:",type: 'error', message: error});
+        return []; // Return an empty array if there’s an error
+    }
+}
