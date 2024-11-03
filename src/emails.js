@@ -4,7 +4,7 @@ const nodemailer = require('nodemailer')
 
 import DbConnection from './database'
 import { newIx } from './interactions'
-import { date2str, longdatestring } from '../util/functions'
+import { date2str, longdatestring, startOfDayTZ } from '../util/functions'
 import { sendSESEmail } from './awsemail';
 import { log } from 'console'
 //not 100% sure why it works loading in emails.js for environment variables.
@@ -347,7 +347,7 @@ export async function emailDailySummary(user, daydatacomparison, daydata, areape
 export async function emailDailyMorning({user, mission, tasks, goals}) {
     let to = user.email
     let cta = {prompt: "Add a mission for your day.", button: 'Add mission'}
-    let emailtasks = [] //tasks.length > 0 ? tasks : null
+    //let emailtasks = [] //tasks.length > 0 ? tasks : null
     let subject = 'Good morning! - ' + longdatestring(startOfDayTZ({datetime: new Date(), timezoneOffset: 11}))
     let email = Mustache.render(dailymorning, {
         date: longdatestring(new Date()),
