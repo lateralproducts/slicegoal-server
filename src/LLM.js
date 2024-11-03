@@ -16,13 +16,36 @@ export const queryLLMtags = async (text) => {
     This is the text: 
     `
 
+    let chain = `
+    Give me a list of words that are tenses and versions and abstractions for each these words:
+    Limit to 5 new words per word.
+    
+    Return all results in a single array like this ['item1'] with no extra formatting.
+    Respond with a single combined list of all the tags to a SINGLE list array. And human readable.
+
+    `
+
     try {
+        const response1 = await axios.post('https://api.openai.com/v1/chat/completions', 
+        {
+            model: "gpt-3.5-turbo",
+            messages: [
+                { role: "user", content: prompt + text }, 
+                //{ role: "user", content: text },
+            ]
+        },{
+            headers: {
+                'Authorization': `Bearer ${openai_key}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
         const response = await axios.post('https://api.openai.com/v1/chat/completions', 
         {
             model: "gpt-3.5-turbo",
             messages: [
-                { role: "system", content: prompt }, 
-                { role: "user", content: text }
+                { role: "system", content: chain },
+                { role: "user", content: response1.data.choices[0].message.content },
             ]
         },{
             headers: {

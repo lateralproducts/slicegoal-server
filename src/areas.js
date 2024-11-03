@@ -317,7 +317,7 @@ export const resolvers = {
             
             const inputlist = await queryLLMtags(search)
             console.log('inputlist', inputlist)
-            const searchareanames = parseAndCombine(inputlist).slice(0, 20)
+            const searchareanames = parseAndCombine(inputlist)
 
             var optRegexp = [];
             searchareanames.forEach(function(tag){
@@ -339,7 +339,7 @@ export const resolvers = {
                 }
             });
 
-            return tags
+            return tags.slice(0, 30)
         },
         areatree: async(_, { areaid }, { req }) => {
             const areatree = await getareatree({areas:[areaid], req})
