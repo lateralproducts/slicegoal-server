@@ -91,18 +91,13 @@ export const resolvers = {
         taskpomodoros: async(_, { taskId }, { req }) => {
             
             const db = await DbConnection.Get()
-            const Tasks = db.collection('tasks')
-
-            //const task = await Tasks.findOne({_id: new ObjectId(taskId)})
-
-            let taskids = []
-            //if (task.subtasks) taskids = task.subtasks
-            taskids.push(taskId) //add parent taskid.
 
             const Pomodoros = db.collection('pomodoros') 
             return await Pomodoros.find(
                 {
-                    task: { $in: taskids },
+                    task: taskId,
+                    highlight: {$ne: true},
+                    impression: {$ne: true},
                     profileid: getprofileid(req.session) //need to update DB and mutations/queries to use profileid.
                 },
                 { sort: { date: -1 } },
