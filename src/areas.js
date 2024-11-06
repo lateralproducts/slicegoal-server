@@ -328,7 +328,7 @@ export const resolvers = {
             let tags = await Areas.find(query).toArray()
 
             //where one of the area names is not in the areas array. Add it to the tags array as {name: 'name'}.
-            searchareanames.map(name => {
+            /* searchareanames.map(name => {
                 const capitalizedName = name
                 .split(/([^\w]+)/) // Split by any non-word character, but keep the separators
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
@@ -337,9 +337,9 @@ export const resolvers = {
                 if (!tags.find(area => area.name.toLowerCase() === name.toLowerCase())) {
                     tags.push({name: capitalizedName});
                 }
-            });
+            }); */
 
-            return tags.slice(0, 30)
+            return tags //.slice(0, 30)
         },
         areatree: async(_, { areaid }, { req }) => {
             const areatree = await getareatree({areas:[areaid], req})
