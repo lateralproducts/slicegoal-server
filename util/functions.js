@@ -70,6 +70,11 @@ export const startOfDayTZ = ({datetime, timezoneOffset}) => {
     else return null
 }
 
+export function gettzdate({date, offset}) {
+    date.setHours(date.getHours() + offset);
+    return date;
+}
+
 export const endOfDayTZ = ({datetime, timezoneOffset}) => {
     if (datetime)
     return new Date(
