@@ -34,7 +34,7 @@ export const typeDefs = `
 
   extend type Query {
       isLoggedin (url: String, timezoneoffset: Int): User
-      getConnectedUsers: [User]
+      getConnections: [Connection]
       onboarding: Onboarding
       preferences: Preferences
   }
@@ -98,6 +98,11 @@ export const schema = `
     _id: String
     name: String
   }
+
+  type Connection {
+    _id: String
+    friend: User
+  }
 `
 
 export const resolvers = {
@@ -145,23 +150,24 @@ export const resolvers = {
                 return null
             }
         },
-        getConnectedUsers: async(_, __, { req }) => {
+        getConnections: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Community = db.collection('community')
             const Users = db.collection('users')
 
             const community = await Community.find(
-                {user: getuserid(req.session)}
+                {user: getuserid(req.session)}, { sort: { datetimeupdated: -1 } }
             )
             .toArray()
 
-            const user_ids = community.map(connection => {
-                return new ObjectId(connection.friend)
-            })
-            return await Users.find(
-                {_id: {$in: user_ids}}
-            ).toArray()
-
+            return community
+        }
+    },
+    Connection: {
+        friend: async(parent, __, { req }) => {
+            const db = await DbConnection.Get()
+            const Users = db.collection('users')
+            return await Users.findOne({ _id: new ObjectId(parent.friend) })
         }
     },
     User: {
