@@ -1,6 +1,6 @@
 import DbConnection from './database'
 import { emailDailyMorning, emailDailySummary, emailStats, emailWeeklySummary } from './emails'
-import { botips, getEndDateFromWeek, getStartDateFromWeek, gettzdate, getWeekNumber, getWeekYear, ignoreips, startOfDay, startOfDayTZ } from '../util/functions';
+import { botips, getEndDateFromWeek, getStartDateFromWeek, gettzdate, getWeekNumber, getWeekYear, ignoreips, shiftTZ, startOfDay, startOfDayTZ } from '../util/functions';
 import { ObjectId } from 'mongodb';
 import { wheelidfromprofileid } from './areas';
 import { getGoals } from './goals';
@@ -142,16 +142,17 @@ export async function dailymorningemail() {
     const Profiles = db.collection('profiles')
     const Tasks = db.collection('tasks')
 
-    let today = new Date()
-
     const userids = ["64d6a5338fe6f205016bc8b1", "5d2adcf120f52b0d7d7faba0"]
     userids.map(async(userid) => {
         const user = await Users.findOne({_id: new ObjectId(userid)})
         if (user){
+            //set date to query.
+            const date = startOfDay(shiftTZ({datetime: new Date(), timezoneOffset: 11}))
+
             const profiles = await Profiles.find({user: userid}).toArray()
             const profileid = profiles[0]._id.toString() //change this later.
-            const mission = await Missions.findOne({profileid: profileid, date: startOfDay(gettzdate({datetime: today, timezoneOffset: 11}))})
-            const tasks = await Tasks.find({profileid: profileid, starttime: startOfDay(gettzdate({datetime: today, timezoneOffset: 11}))}).toArray()
+            const mission = await Missions.findOne({profileid: profileid, date: date})
+            const tasks = await Tasks.find({profileid: profileid, starttime: date}).toArray()
             const goals = await getGoals({profileid: profileid}) //top level goals
             emailDailyMorning({user, mission, tasks, goals})
         }
