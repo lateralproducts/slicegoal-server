@@ -39,18 +39,18 @@ schedule.scheduleJob({ minute: 10 }, async function() { //Every hour at 10 mins 
     //ranknudge(); //holding off sending these messages again for a little bit.
 }) */
 
-schedule.scheduleJob({ hour: 11, minute: 21}, function() {
+schedule.scheduleJob({ dayOfWeek: 0, hour: 14, minute: 0}, function() {
     //summary once a week
-    //set to UTC time for server 22 UTC = 8am Melbourne Time. dayOfWeek: 0, hour: 22, minute: 0 is 8am Monday in Melbourne
+    //set to UTC time for server 22 UTC = 8am Melbourne Time. dayOfWeek: 0, hour: 14, minute: 0 is 12am Monday, Melbourne time
     weeklysummaryemail(); //holding off sending these messages again for a little bit.
 })
 
-schedule.scheduleJob({ hour: 17, minute: 18}, function() { //7:30 UTC = 5:30pm Sydney Time
+schedule.scheduleJob({ hour: 7, minute: 30}, function() { //7:30 UTC = 5:30pm Sydney Time
     //daily summary email
     dailyafternoonemail(); 
 })
 
-schedule.scheduleJob({ hour: 18, minute: 6}, function() { //18:30 UTC = 6:30am Sydney Time
+schedule.scheduleJob({hour: 18, minute: 30}, function() { //18:30 UTC = 6:30am Sydney Time
     //daily summary email
     dailymorningemail(); 
 })

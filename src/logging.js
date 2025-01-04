@@ -6,7 +6,7 @@ export async function log(args) {
         const Logging = db.collection('logging')
 
         if(args && args.message) {
-            if (args.type === 'console') {
+            if (args.type === 'console' || args.type === 'info') {
                 console.log(args.message)
             }
             

@@ -71,8 +71,12 @@ export const startOfDayTZ = ({datetime, timezoneOffset}) => {
 }
 
 export function gettzdate({date, offset}) {
-    date.setHours(date.getHours() + offset);
-    return date;
+    if (date){
+        let hours = date.getHours()
+        date.setHours(hours + offset);
+        return date;
+    }
+    else return null
 }
 
 export const endOfDayTZ = ({datetime, timezoneOffset}) => {

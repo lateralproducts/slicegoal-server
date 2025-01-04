@@ -98,7 +98,6 @@ const app = express()
 //import resolvers
 
 //upload()
-
 log({type: 'info', message: 'server version: ' + pjson.version})
 log({type: 'info', message: 'environment: ' + process.env.NODE_ENV})
 log({type: 'info', message: new Date()})
