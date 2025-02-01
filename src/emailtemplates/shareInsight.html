@@ -1,5 +1,60 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <style>
+        a {cursor: pointer;}
+        .negative {
+            color: red !important;
+            padding-left: 5px;
+        }
+        .positive {
+            color: green;
+            padding-left: 5px;
+        }
+        .flex {
+            display: flex;
+        }
+        .primary-button {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            text-decoration-color: white;
+            font-weight: 700;
+            font-family: 'Karla', Arial, Verdana, sans-serif;
+            font-size:12px;
+            border: none;
+            text-decoration: none;
+            color: white !important;
+            border-radius: 30px;
+            padding: 7px 12px 7px 12px;
+            background-color: #27D0FC;
+            display: inline-block;
+        }
+        .secondary-button {
+            margin-bottom: 20px;
+            text-decoration-color: grey;
+            font-weight: 700;
+            font-family: 'Karla', Arial, Verdana, sans-serif;
+            font-size:12px;
+            border: solid 2px #27D0FC;
+            text-decoration: none;
+            color: grey !important;
+            border-radius: 30px;
+            padding: 7px 12px 7px 12px;
+            background-color: white;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .primary-button {
+                color: white;
+                background-color: #27D0FC;
+            }
+            .secondary-button {
+                border: solid 2px #27D0FC;
+                color: grey;
+            }
+        }
+    </style>
+</head> 
 
 <body>
     <table style="border-collapse: separate; border-spacing: 10px; max-width: 600px; margin: 0 auto;">
@@ -30,8 +85,12 @@
         </tr>
         <tr>
             <td class="button" align="center" style="height: 50px;">
-                <a class="link" style="margin-top: 20px; font-size:14px; font-weight: 700; border: none; text-decoration: none; color: #f2f2f2; border-radius: 7px; padding: 9px 14px 9px 14px; background-color: #1e4088;"
-                    href="{{ acceptLink }}" class="button">Save Insight</a>
+                <a  
+                    class="primary-button"
+                    href="{{ acceptLink }}"
+                >
+                    Save Insight
+                </a>
             </td>
         </tr>
         <img src='{{pixelpath}}?ix={{interactionid}}'/>
