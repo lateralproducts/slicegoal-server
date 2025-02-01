@@ -23,10 +23,10 @@
             font-size:12px;
             border: none;
             text-decoration: none;
-            color: white !important;
+            color: rgb(238, 231, 231) !important;
             border-radius: 30px;
             padding: 7px 12px 7px 12px;
-            background-color: #27D0FC;
+            background-color: #27D0FC !important;
             display: inline-block;
         }
         .secondary-button {
@@ -42,11 +42,14 @@
             padding: 7px 12px 7px 12px;
             background-color: white;
         }
+       
+        .body .gmail-screen { background:#27D0FC; mix-blend-mode:screen; }
+        .body .gmail-difference { background:#27D0FC; mix-blend-mode:difference; }
 
         @media (prefers-color-scheme: dark) {
             .primary-button {
-                color: white;
-                background-color: #27D0FC;
+                color: rgb(238, 231, 231) !important;
+                background-color: #27D0FC !important;
             }
             .secondary-button {
                 border: solid 2px #27D0FC;
@@ -99,6 +102,9 @@
                 <img width="100" src="{{ logopath }}" />
             </td>
         </tr>
+        <p style="color: #ffffff;">
+            <span class="gmail-screen"><span class="gmail-difference">I am white text</span></span>
+        </p>
     </table>
 </body>
 </html>
