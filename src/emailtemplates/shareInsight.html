@@ -43,19 +43,9 @@
             background-color: white;
         }
        
-        u + .body .gmail-screen { background:#27D0FC; mix-blend-mode:screen; }
-        u + .body .gmail-difference { background:#27D0FC; mix-blend-mode:difference; }
+        u + .body .gmail-blend-screen { background:#000; mix-blend-mode:screen; }
+		u + .body .gmail-blend-difference { background:#000; mix-blend-mode:difference; }
 
-        @media (prefers-color-scheme: dark) {
-            .primary-button {
-                color: rgb(238, 231, 231) !important;
-                background-color: #27D0FC !important;
-            }
-            .secondary-button {
-                border: solid 2px #27D0FC;
-                color: grey;
-            }
-        }
     </style>
 </head> 
 
@@ -97,11 +87,15 @@
             </td>
         </tr>
         <tr>
-            <td class="button" align="center" style="height: 50px;">
-                <p style="color: #ffffff;">
-                    <span class="gmail-screen"><span class="gmail-difference">I am white text</span></span>
-                </p>
-            </td>
+            <td>
+				<div style="background:#27D0FC; background-image:linear-gradient(#27D0FC,#27D0FC); border-radius: 30px;">
+					<div class="gmail-blend-screen">
+						<div class="gmail-blend-difference">
+							<a href="{{ acceptLink }}" style="margin:0; padding:1em; font-family: 'Karla', Arial, Verdana, sans-serif; color:#fff; text-align:center;">Save Insight</a>
+						</div>
+					</div>
+				</div>
+			</td>
         </tr>
         <img src='{{pixelpath}}?ix={{interactionid}}'/>
         <tr>
