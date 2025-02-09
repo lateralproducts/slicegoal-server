@@ -107,10 +107,6 @@ const newSessionLead = fs
     .readFileSync(__dirname + '/emailtemplates/newLeadSession.html')
     .toString()
 
-const testDarkmode = fs  
-    .readFileSync(__dirname + '/emailtemplates/testdarkmode.html')
-    .toString()
-
 let funnelpackage1 = {emails: [
     {subject: 'Bad Habits Are Costing You Your Life', template: 'email1', day: 1}, //CTA - Click webpage (or download) about stats on bad habits (and habits?).
     {subject: 'Your Ideal Future', template: 'email2', day: 2}, //CTA - Take this survey 
@@ -555,10 +551,7 @@ export async function shareInsightEmail(
             shareNote: shareNote,
             interactionid: interactionid
         })
-        await sendEmail(receiver.email, subject, email)
-
-        const email2 = Mustache.render(testDarkmode)
-        return await sendEmail(receiver.email, subject, email2)
+        return await sendEmail(receiver.email, subject, email)
     }
 
 export async function shareSourceEmail( 
