@@ -482,6 +482,8 @@ export const resolvers = {
         },
 
         signup: async(_, args, { req }) => {
+            return triggererror('Signup failed.') //blocking signups for now.
+
             //This is publicly accessible
             const db = await DbConnection.Get()
             const IPAddresses = db.collection('ipaddresses')
@@ -662,6 +664,7 @@ export const resolvers = {
                 emailuser = user.value
             }
             else {
+                return triggererror('Email not found.')
                 let newuser = {
                     email: args.email.toLowerCase(),
                     firstname: args.firstname,
