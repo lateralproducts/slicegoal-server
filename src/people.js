@@ -23,7 +23,7 @@ export const schema = `
 export const typeDefs = `
     extend type Query {
         getPersonById(personid: String!): Person
-        getAllPeople: [Person]
+        getAllPeople(search: String): [Person]
         personInsights(personid: String!): [InsightTag]
         personSources(personid: String!): [InsightTag]
     }
@@ -73,11 +73,12 @@ export const resolvers = {
             }
         },
 
-        getAllPeople: async(_, args, { req }) => {
+        getAllPeople: async(_, { search }, { req }) => {
+            console.log(`getAllPeople: ${search}`)
             try {
                 const db = await DbConnection.Get()
                 const profileid = await getprofileid(req.session)
-                const result = await db.collection('people').find({ profileid }).sort({lasttagged: -1, created: -1}).toArray()
+                const result = await db.collection('people').find({ profileid, name: new RegExp(search, 'i')}).sort({lasttagged: -1, created: -1}).toArray()
                 return result
             } catch (error) {
                 log(error)
