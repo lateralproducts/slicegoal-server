@@ -125,7 +125,7 @@ export const resolvers = {
                     _id: new ObjectId(getuserid(req.session))
                 })
                 if(!user.onboarding || !user.onboarding.show){
-                    if(!user.preferences) {return {rightsidebar: 'goals'}}
+                    if(!user.preferences) {return {rightsidebar: 'insights'}}
                     else {return user.preferences}
                 }
                 if (user.onboarding.goal === 'active') {return {rightsidebar: 'goals'}}
