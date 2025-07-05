@@ -8,12 +8,12 @@ import { pushNotification } from './push'
 
 let schedule = require('node-schedule')
 
-schedule.scheduleJob({ hour: 20, minute: 30}, function() { //15:00 UTC = 2:00am/1:00am, 20:30 UTC = 7:30am/6:30am Sydney/Melbourne time
+schedule.scheduleJob({ hour: 21, minute: 54}, function() { //15:00 UTC = 2:00am/1:00am, 20:30 UTC = 7:30am/6:30am Sydney/Melbourne time
     pushNotification(
         'fJ7odiluI04AsQVnke5sSz:APA91bHj7xytmfiuBxjm7cvcfADVGgdrs8mhrHPfJvhnVbbj34C0rNrrHHxlBReyRuYYtjO-SczSxYvkdfno5zsvSGuO1UuZkQMMlYOSS4C1I7Urh_YF-1M',
         'The Early Bird',
         'Get a head start on today\'s tasks!',
-        {data: '/app?rh=tasks&tnav=daytasklist'}
+        {url: '?rh=tasks&tnav=priority'}
     )
 })
 
