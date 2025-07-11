@@ -1,6 +1,6 @@
 import DbConnection from '../src/database'
 import axios from 'axios'
-import { getprofileid } from '../src/users'
+//import { getprofileid } from '../src/users'
 import { triggererror } from '../src/graphqlserver'
 import { log } from '../src/logging'
 import { ObjectId } from 'mongodb'
@@ -305,13 +305,13 @@ export const resolvers = {
         } */
         updateAreaToSource: async(parent, args, { req }) => {
             
-            if (args.profileid !== getprofileid(req.session)) return triggererror('Wrong profile')
+            //if (args.profileid !== getprofileid(req.session)) return triggererror('Wrong profile')
 
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const Sources = db.collection('sources')
             const InsightTags = db.collection('insighttags')
-            const SourceTags = db.collection('sourcetags')
+            //const SourceTags = db.collection('sourcetags')
             //prod profileid = '5d2adcf120f52b0d7d7faba0'
             
             try {
