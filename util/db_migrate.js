@@ -10,6 +10,7 @@ const cheerio = require("cheerio")
 export const typeDefs = `
     extend type Mutation {
         migrateLinkInsights: Boolean
+        updateAreaToSource(areaid: String, resource: String, profileid: String): Boolean
     }`
 
 async function getWebpageTitle(url) {
@@ -95,7 +96,7 @@ export const resolvers = {
                     }
                 }
             })
-        }
+        },
         /* deleteAllOldTags: async(_, __, { req }) => {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
@@ -275,7 +276,6 @@ export const resolvers = {
             GoalTimes.updateMany({}, { $rename: { userid: 'profileid' } })
             return true
         } */
-        //updateAreaToSource(areaid: String, resource: String, profileid: String): Boolean
         /* updateTaskLinks: async(parent, args, { req }) => {
             const db = await DbConnection.Get()
             const Tasks = db.collection('tasks')
@@ -298,7 +298,7 @@ export const resolvers = {
                 })
             return true
         } */
-        /* updateAreaToSource: async(parent, args, { req }) => {
+        updateAreaToSource: async(parent, args, { req }) => {
             
             if (args.profileid !== getprofileid(req.session)) return triggererror('Wrong profile')
 
@@ -344,7 +344,7 @@ export const resolvers = {
             await Areas.deleteOne({_id: new ObjectId(args.areaid)})
             
             return true
-        } */
+        }
     }
 }
 
