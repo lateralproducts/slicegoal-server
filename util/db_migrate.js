@@ -1,5 +1,10 @@
 import DbConnection from '../src/database'
 import axios from 'axios'
+import { getprofileid } from '../src/users'
+import { triggererror } from '../src/graphqlserver'
+import { log } from '../src/logging'
+import { ObjectId } from 'mongodb'
+
 const cheerio = require("cheerio")
 //import { ObjectId } from 'mongodb'
 //import { triggererror } from '../src/graphqlserver'
@@ -312,6 +317,7 @@ export const resolvers = {
             try {
                 const Area = await Areas.findOne({_id: new ObjectId(args.areaid)});
 
+                if (!Area) return triggererror('Area not found')
                 let newsource = {
                     profileid: args.profileid,
                     name: Area.name,
@@ -324,19 +330,28 @@ export const resolvers = {
                 let newsourceid = source.insertedId.toString()
 
                 const insighttags = await InsightTags.find({area: args.areaid}).toArray();
+
                 insighttags.map(insighttag => {
-                    let newsourcetag = {
-                        sourceid: newsourceid,
-                        resourceid: insighttag.insightid,
-                        datetime: insighttag.datecreated,
-                        note: insighttag.notes,
-                        profileid: args.profileid,
-                        resourcetype: "insight"
-                    }
-                    SourceTags.insertOne(newsourcetag)
+                    InsightTags.updateOne(
+                        {
+                            sourceid: newsourceid,
+                            insightid: insighttag.insightid,
+                            profileid: args.profileid
+                        },
+                        {$set: {
+                            notes: insighttag.notes,
+                            updated: new Date()
+                        },
+                        $setOnInsert: {
+                            datecreated: new Date()
+                        }},
+                        {upsert: true}
+                    )
                 })
+
             } catch (error) {
                 log(error)
+                console.log(error)
                 return triggererror('error updating area to source')
             }
 
