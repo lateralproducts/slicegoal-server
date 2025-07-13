@@ -51,6 +51,8 @@ export const typeDefs = `
     recordAreaHighlight(insightid: String!, areaids: [String!]): Boolean
     recordSourceHighlight(insightid: String!, sourceids: [String!]): Boolean
     recordPersonHighlight(insightid: String!, peopleids: [String!]): Boolean
+
+    createSourceInsightWatch(answer: String!, page: String): Spaced
   }
 `
 
@@ -848,12 +850,29 @@ export const resolvers = {
                             insightid: insertedId, 
                             profileid: getprofileid(req.session)
                         })
-                        .then(() => {
-                            return {_id: insertedId}
-                        })
                     }
                     if (args.taskid) {
                         linkInsightTask(args.taskid,insertedId, req)
+                    }
+                    return {_id: insertedId}
+                })
+        },
+        createSourceInsightWatch: async(_, args, { req }) => {
+            //insight and page. Source set on session with 'query session'
+            args.uiversion = 'ioswatch'
+            args.datecreated = args.datetime ? new Date(args.datetime) : new Date() //time set from client argument
+            args.lastedited = args.datetime ? new Date(args.datetime) : new Date() //time set from client argument
+
+            return await createinsight(args, req)
+                .then(insertedId => {
+                    activityrecord({req, newinsight: true, insightid: insertedId})
+
+                    if (req.session.sourceid) {
+                        attachSources({
+                            sources: [{_id: req.session.sourceid, notes: args.page}], 
+                            insightid: insertedId, 
+                            profileid: getprofileid(req.session)
+                        })
                     }
                     return {_id: insertedId}
                 })

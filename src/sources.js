@@ -82,6 +82,8 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Sources = db.collection('sources')
 
+            req.session.sourceid = sourceid
+
             let query = new Object()
             query.profileid = getprofileid(req.session)
             query._id = new ObjectId(sourceid)
