@@ -26,7 +26,8 @@ export const typeDefs = `
     spaced(areas: [AreaId]): FilteredSpaced
     newsharedinsights: Int
     getSharedInsights: SharedInsightList
-  }
+    swipeinsights(areas: [AreaId], search: String, sources: [SourceTagIn], people: [PersonInput], leastread: Boolean): Insight
+  } 
 
   extend type Mutation {
     createInsight(datetime: String, profileid: String, prompt: String, fileids: [String], answer: String, areatags: [AreaTagIn], sources: [SourceTagIn], people: [PersonInput], taskid: String): Spaced
@@ -367,6 +368,138 @@ export const resolvers = {
                 return []
             }
         },
+        swipeinsights: async(_, {areas, sources, people, search, leastread}, {req}) => {
+            console.log('swipeinsights', areas, sources, people, search, leastread)
+            //swipe = true means most highlighted insight again. 
+            //swipe = false means return insight with least impressions.
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+            const InsightTags = db.collection('insighttags')
+
+            let insightquery = new Object()
+            
+            if (areas && areas.length > 0){
+                let querytags = new Object()
+                querytags.area = {$in: [...areas.map(area => {return area._id})]}
+                querytags.profileid = getprofileid(req.session)
+
+                let insighttags = await InsightTags.find(
+                    querytags,
+                    { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
+                )
+                .toArray()
+
+                // Get array of all UNIQUE insight ids for found tags
+                let insightids = [...new Set(insighttags.map(tag => {
+                    return tag.insightid
+                }))]
+
+                // Make sure insights are tagged to EVERY area
+                const filteredinsights = insightids.filter(insightid => {
+                    return areas.every(area => {
+                        return insighttags.some(tag => 
+                            tag.insightid === insightid && tag.area === area._id
+                        )
+                    })
+                })
+
+                const insightobjids = filteredinsights.map(insightid => {return new ObjectId(insightid)})
+                insightquery._id = {$in: insightobjids}
+            }
+
+            if (sources && sources.length > 0){
+                let querytags = new Object()
+                querytags.sourceid = {$in: [...sources.map(source => {return source._id})]}
+                querytags.profileid = getprofileid(req.session)
+
+                let insighttags = await InsightTags.find(
+                    querytags,
+                    { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
+                )
+                .toArray()
+
+                if (insighttags.length > 0) {
+                    // Get array of all UNIQUE insight ids for found tags
+                    let insightids = [...new Set(insighttags.map(tag => {
+                        return tag.insightid
+                    }))]
+
+                    // Make sure insights are tagged to EVERY area
+                    const filteredinsights = insightids.filter(insightid => {
+                        return sources.every(source => {
+                            return insighttags.some(tag => 
+                                tag.insightid === insightid && tag.sourceid === source._id
+                            )
+                        })
+                    })
+
+                    const insightobjids = filteredinsights.map(insightid => {return new ObjectId(insightid)})
+                    insightquery._id = {$in: insightobjids}
+                } else return []
+            }
+
+            if (people && people.length > 0){
+                let querytags = new Object()
+                querytags.personid = {$in: [...people.map(person => {return person._id})]}
+                querytags.profileid = getprofileid(req.session)
+
+                let insighttags = await InsightTags.find(
+                    querytags,
+                    { sort: { datecreated: -1 } }, //return reverse chron. Last insight created at top of list.
+                ).toArray()
+
+                if (insighttags.length > 0) {
+                    // Get array of all UNIQUE insight ids for found tags
+                    let insightids = [...new Set(insighttags.map(tag => {
+                        return tag.insightid
+                    }))]
+
+                    // Make sure insights are tagged to EVERY area
+                    const filteredinsights = insightids.filter(insightid => {
+                        return people.every(person => {
+                            return insighttags.some(tag => 
+                                tag.insightid === insightid && tag.personid === person._id
+                            )
+                        })
+                    })
+
+                    const insightobjids = filteredinsights.map(insightid => {return new ObjectId(insightid)})
+                    insightquery._id = {$in: insightobjids}
+                } else return []
+            }
+
+            if (search !== '' && search !== null){
+                insightquery.$or = [
+                    { answer: new RegExp(search, 'i') },
+                    { prompt: new RegExp(search, 'i') }
+                ]
+            }
+            insightquery.profileid = getprofileid(req.session)
+
+            console.log('insightquery', insightquery)
+
+            if (leastread === true)  {
+                insightquery.$or = [{lastimpression: {$lt: startOfDay(new Date())}}, {lastimpression: {$exists: false}}]
+
+                // Create a list of insights alternating between lastimpression and datecreated 
+                const insightlist1 = await Insights.find(insightquery)
+                    .sort({ lastimpression: 1, datecreated: 1 })
+                    .limit(1)
+                    .toArray()
+                    .then(results => results[0])
+
+                return insightlist1
+            } else {
+                const insightlist2 = await Insights.find(insightquery)
+                    .sort({ highlights: -1, lastimpression: -1 })
+                    .limit(1)
+                    .toArray()
+                    .then(results => results[0])
+
+                return insightlist2
+            }
+        },
+        // TODO: This is not used anywhere.
         insightList: async(_, {page}, { req }) => {
             
             const db = await DbConnection.Get()
