@@ -490,6 +490,7 @@ export const resolvers = {
 
                 return insightlist1
             } else {
+                insightquery.lastimpression = {$lt: startOfDay(new Date())}
                 const insightlist2 = await Insights.find(insightquery)
                     .sort({ highlights: -1, lastimpression: -1 })
                     .limit(1)
