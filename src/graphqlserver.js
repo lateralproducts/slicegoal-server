@@ -313,22 +313,18 @@ export const graphql = async() => {
         
                     // 🔓 Parse URL-encoded form data manually
                     const body = querystring.parse(data);
-        
                     console.log('Parsed code:', body.code);
-                    console.log('Parsed code_verifier:', body.code_verifier);
         
-                    if (body.code && body.code_verifier) {
+                    if (body.code) {
                         try {
                             const response = await axios.post('https://accounts.spotify.com/api/token', new URLSearchParams({
                                 grant_type: 'authorization_code',
                                 code: body.code,
                                 redirect_uri: spotify_redirect_uri,
-                                client_id: spotify_client_id,
-                                client_secret: spotify_client_secret,
-                                code_verifier: body.code_verifier
                             }).toString(), {
                                 headers: {
-                                    'Content-Type': 'application/x-www-form-urlencoded'
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'Authorization': 'Basic ' + Buffer.from(spotify_client_id + ':' + spotify_client_secret).toString('base64')
                                 }
                             });
         
