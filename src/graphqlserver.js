@@ -6,10 +6,14 @@ import { applyMiddleware } from 'graphql-middleware'
 
 import RedisStore from "connect-redis"
 import {createClient} from "redis"
+import axios from 'axios'
 
 process.env.TZ = 'UTC' //set server timezone to UTC
 
 const redis_db = `${process.env.REDIS_DB}`
+const spotify_redirect_uri = `${process.env.SPOTIFY_REDIRECT_URI}`
+const spotify_client_id = `${process.env.SPOTIFY_CLIENT_ID}`
+const spotify_client_secret = `${process.env.SPOTIFY_CLIENT_SECRET}`
 
 
 // Initialize client.
@@ -292,6 +296,52 @@ export const graphql = async() => {
                 //check that there is a valid session before giving access to any files.
             }
 
+        }) // ✔️🚀
+
+        // spotify token validation
+        
+        app.post('/api/spotify/token/', async (req, res, next) => {
+
+            let data = '';
+            req.on('data', chunk => {
+                data += chunk;
+            });
+
+            req.on('end', async () => {
+                try {
+                    console.log('Raw body:', data);
+                    const body = JSON.parse(data);
+                    console.log('Parsed JSON:', body);
+
+                    if (body.code && body.code_verifier) {
+                        try {
+                            const response = await axios.post('https://accounts.spotify.com/api/token', new URLSearchParams({
+                                grant_type: 'authorization_code',
+                                code: body.code,
+                                redirect_uri: spotify_redirect_uri,
+                                client_id: spotify_client_id,
+                                client_secret: spotify_client_secret,
+                                code_verifier: body.code_verifier
+                            }).toString(), {
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded'
+                                }
+                            });
+
+                            // ✅ Only respond once
+                            return res.status(200).json(response.data);
+                        } catch (error) {
+                            console.error('Token swap failed', error.response ? error.response.data : error.message);
+                            return res.status(500).json({ error: 'Token swap failed' });
+                        }
+                    } else {
+                        return res.status(400).json({ error: 'Invalid JSON body' });
+                    }
+                } catch (err) {
+                    console.error('❌ JSON parse error:', err.message);
+                    return res.status(400).json({ error: 'Invalid JSON body' });
+                }
+            });
         }) // ✔️🚀
 
     } catch (e) {
