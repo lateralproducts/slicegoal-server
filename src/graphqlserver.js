@@ -314,7 +314,8 @@ export const graphql = async() => {
                     // 🔓 Parse URL-encoded form data manually
                     const body = querystring.parse(data);
         
-                    console.log('Parsed form data:', body);
+                    console.log('Parsed code:', body.code);
+                    console.log('Parsed code_verifier:', body.code_verifier);
         
                     if (body.code && body.code_verifier) {
                         try {
@@ -339,6 +340,26 @@ export const graphql = async() => {
                     } else {
                         return res.status(400).json({ error: 'Missing code or code_verifier' });
                     }
+                } catch (err) {
+                    console.error('❌ Parse error:', err.message);
+                    return res.status(400).json({ error: 'Invalid body format' });
+                }
+            });
+        });
+
+        app.post('/api/spotify/refresh_token/', async (req, res) => {
+            let data = '';
+            req.on('data', chunk => {
+                data += chunk;
+            });
+        
+            req.on('end', async () => {
+                try {
+                    console.log('Raw body:', data);
+                    // 🔓 Parse URL-encoded form data manually
+                    const body = querystring.parse(data);
+                    console.log(body)
+                    return res.status(200).json({ error: 'Not implemented yet' });
                 } catch (err) {
                     console.error('❌ Parse error:', err.message);
                     return res.status(400).json({ error: 'Invalid body format' });
