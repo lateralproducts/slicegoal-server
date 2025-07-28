@@ -327,7 +327,8 @@ export const graphql = async() => {
                                     'Authorization': 'Basic ' + Buffer.from(spotify_client_id + ':' + spotify_client_secret).toString('base64')
                                 }
                             });
-        
+
+                            console.log(response.data)
                             return res.status(200).json(response.data);
                         } catch (error) {
                             console.error('❌ Token swap failed', error.response ? error.response.data : error.message);
