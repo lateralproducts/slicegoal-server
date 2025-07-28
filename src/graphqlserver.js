@@ -3,6 +3,7 @@ import session from 'express-session'
 import { createServer, GraphQLYogaError } from '@graphql-yoga/node'
 import { makeExecutableSchema } from '@graphql-tools/schema'
 import { applyMiddleware } from 'graphql-middleware'
+import querystring from 'querystring';
 
 import RedisStore from "connect-redis"
 import {createClient} from "redis"
@@ -299,20 +300,22 @@ export const graphql = async() => {
         }) // ✔️🚀
 
         // spotify token validation
-        
-        app.post('/api/spotify/token/', async (req, res, next) => {
-
+        app.post('/api/spotify/token/', async (req, res) => {
             let data = '';
+        
             req.on('data', chunk => {
                 data += chunk;
             });
-
+        
             req.on('end', async () => {
                 try {
                     console.log('Raw body:', data);
-                    const body = JSON.parse(data);
-                    console.log('Parsed JSON:', body);
-
+        
+                    // 🔓 Parse URL-encoded form data manually
+                    const body = querystring.parse(data);
+        
+                    console.log('Parsed form data:', body);
+        
                     if (body.code && body.code_verifier) {
                         try {
                             const response = await axios.post('https://accounts.spotify.com/api/token', new URLSearchParams({
@@ -327,22 +330,21 @@ export const graphql = async() => {
                                     'Content-Type': 'application/x-www-form-urlencoded'
                                 }
                             });
-
-                            // ✅ Only respond once
+        
                             return res.status(200).json(response.data);
                         } catch (error) {
-                            console.error('Token swap failed', error.response ? error.response.data : error.message);
+                            console.error('❌ Token swap failed', error.response ? error.response.data : error.message);
                             return res.status(500).json({ error: 'Token swap failed' });
                         }
                     } else {
-                        return res.status(400).json({ error: 'Invalid JSON body' });
+                        return res.status(400).json({ error: 'Missing code or code_verifier' });
                     }
                 } catch (err) {
-                    console.error('❌ JSON parse error:', err.message);
-                    return res.status(400).json({ error: 'Invalid JSON body' });
+                    console.error('❌ Parse error:', err.message);
+                    return res.status(400).json({ error: 'Invalid body format' });
                 }
             });
-        }) // ✔️🚀
+        });
 
     } catch (e) {
         log(e)
