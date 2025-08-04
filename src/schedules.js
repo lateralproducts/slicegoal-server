@@ -15,10 +15,20 @@ console.log(
       : 'no schedule loaded'
 );
 
+if (schedule && schedule.scheduledJobs && typeof schedule.scheduledJobs === 'object') {
+    for (const jobName in schedule.scheduledJobs) {
+      if (schedule.scheduledJobs[jobName]?.cancel) {
+        schedule.scheduledJobs[jobName].cancel();
+        console.log(`❌ Canceled job: ${jobName}`);
+      }
+    }
+} else {
+    console.log('⚠️ No scheduled jobs to cancel');
+}
+
 const hard_coded_userids = ["6710df4f6ba00c0666607a8d", "5d2adcf120f52b0d7d7faba0"] //a8d is dev, ba0 is prod
 
-schedule.scheduleJob({ minute: 20}, async function() { //15:00 UTC = 2:00am/1:00am, 20:30 UTC = 7:30am/6:30am Sydney/Melbourne time
-    console.log('push notification test')
+schedule.scheduleJob('Task Nudge Push Notification', { minute: 44}, async function() { //15:00 UTC = 2:00am/1:00am, 20:30 UTC = 7:30am/6:30am Sydney/Melbourne time
     //push notification
     //if there are tasks scheduled for today, send 1st task in list to the user, and link to day tasks.
     //if there are no tasks scheduled for today, send a push notification to the user to check in on their past tasks.
