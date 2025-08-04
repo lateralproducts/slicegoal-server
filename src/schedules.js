@@ -8,13 +8,16 @@ import { pushNotification } from './push'
 
 let schedule = require('node-schedule')
 
-console.log('✅ Node app started');
-console.log('📋 Active jobs:', Object.keys(schedule.scheduledJobs));
+console.log(
+    '📋 Active jobs:',
+    schedule && schedule.scheduledJobs
+      ? Object.keys(schedule.scheduledJobs)
+      : 'no schedule loaded'
+);
 
 const hard_coded_userids = ["6710df4f6ba00c0666607a8d", "5d2adcf120f52b0d7d7faba0"] //a8d is dev, ba0 is prod
 
 schedule.scheduleJob({ minute: 20}, async function() { //15:00 UTC = 2:00am/1:00am, 20:30 UTC = 7:30am/6:30am Sydney/Melbourne time
-    console.log('📋 Active jobs:', Object.keys(schedule.scheduledJobs));
     console.log('push notification test')
     //push notification
     //if there are tasks scheduled for today, send 1st task in list to the user, and link to day tasks.
