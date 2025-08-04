@@ -28,7 +28,7 @@ if (schedule && schedule.scheduledJobs && typeof schedule.scheduledJobs === 'obj
 
 const hard_coded_userids = ["6710df4f6ba00c0666607a8d", "5d2adcf120f52b0d7d7faba0"] //a8d is dev, ba0 is prod
 
-schedule.scheduleJob('Task Nudge Push Notification', { minute: 10}, async function() { //15:00 UTC = 2:00am/1:00am, 20:30 UTC = 7:30am/6:30am Sydney/Melbourne time
+schedule.scheduleJob('Task Nudge Push Notification', { hour: 20, minute: 30}, async function() { //15:00 UTC = 2:00am/1:00am, 20:30 UTC = 7:30am/6:30am Sydney/Melbourne time
     //push notification
     //if there are tasks scheduled for today, send 1st task in list to the user, and link to day tasks.
     //if there are no tasks scheduled for today, send a push notification to the user to check in on their past tasks.
@@ -62,19 +62,17 @@ schedule.scheduleJob('Task Nudge Push Notification', { minute: 10}, async functi
         const tasks = await Tasks.find(query).toArray()
 
         if (tasks.length > 0) {
-            console.log('scheduled task')
             pushNotification(
                 'fJ7odiluI04AsQVnke5sSz:APA91bHj7xytmfiuBxjm7cvcfADVGgdrs8mhrHPfJvhnVbbj34C0rNrrHHxlBReyRuYYtjO-SczSxYvkdfno5zsvSGuO1UuZkQMMlYOSS4C1I7Urh_YF-1M',
-                'Your tasks for today!',
-                `${tasks[0].title}`,
+                'Your tasks for today',
+                `1st task: ${tasks[0].title}`,
                 {url: '?rh=tasks&tnav=daytasklist'}
             )
         } else {
-            console.log('no scheduled task')
             pushNotification(
                 'fJ7odiluI04AsQVnke5sSz:APA91bHj7xytmfiuBxjm7cvcfADVGgdrs8mhrHPfJvhnVbbj34C0rNrrHHxlBReyRuYYtjO-SczSxYvkdfno5zsvSGuO1UuZkQMMlYOSS4C1I7Urh_YF-1M',
-                'No tasks scheduled for today',
-                'Do you need to reschedule past tasks?',
+                'Scheduled some tasks for today!',
+                'Reschedule your past tasks...',
                 {url: '?rh=tasks&tnav=past'}
             )
         }
@@ -112,17 +110,13 @@ schedule.scheduleJob({hour: 21, minute: 30}, async function() { //15:00 UTC = 2:
                 {snooze: {$lt: new Date()}}
             ]}
         ]
-        console.log(query)
-        console.log(starttime)
-        console.log(endtime)
         const tasks = await Tasks.find(query).toArray()
-        console.log(tasks)
 
         if (tasks.length > 0) {
             pushNotification(
                 'fJ7odiluI04AsQVnke5sSz:APA91bHj7xytmfiuBxjm7cvcfADVGgdrs8mhrHPfJvhnVbbj34C0rNrrHHxlBReyRuYYtjO-SczSxYvkdfno5zsvSGuO1UuZkQMMlYOSS4C1I7Urh_YF-1M',
                 `${tasks[0].title}`,
-                'Start the timer!',
+                'Click to start the timer',
                 {url:  `?rh=timer&taskid=${tasks[0]._id}`}
             )
         }
@@ -137,28 +131,32 @@ schedule.scheduleJob({day: 1, hour: 24, minute: 0}, function() { //15:00 UTC = 2
     pushNotification(
         'fJ7odiluI04AsQVnke5sSz:APA91bHj7xytmfiuBxjm7cvcfADVGgdrs8mhrHPfJvhnVbbj34C0rNrrHHxlBReyRuYYtjO-SczSxYvkdfno5zsvSGuO1UuZkQMMlYOSS4C1I7Urh_YF-1M',
         'Wheel Check In',
-        'How is your wheel going?',
+        'Review your wheel ranks',
         {url: '?rh=wheel'}
     )
 })
 
 schedule.scheduleJob({hour: 23, minute: 0}, function() { //15:00 UTC = 2:00am/1:00am, 20:30 UTC = 7:30am/6:30am Sydney/Melbourne time
+    //23:00 UTC = 9:00am/8:00am Sydney/Melbourne time
+    //push notification.
+    //Send a reminder to check in on the priority list.
     pushNotification(
         'fJ7odiluI04AsQVnke5sSz:APA91bHj7xytmfiuBxjm7cvcfADVGgdrs8mhrHPfJvhnVbbj34C0rNrrHHxlBReyRuYYtjO-SczSxYvkdfno5zsvSGuO1UuZkQMMlYOSS4C1I7Urh_YF-1M',
-        'Check in on your priority list',
-        'How is your wheel going?',
+        'Your priorities',
+        'Prioritise your tasks',
         {url: '?rh=tasks&tnav=priority'}
     )
 })
 
 schedule.scheduleJob({day: 1, hour: 24, minute: 0}, function() { //15:00 UTC = 2:00am/1:00am, 20:30 UTC = 7:30am/6:30am Sydney/Melbourne time
+    //day 1, hour 24, minute 0 is 10am Monday in Melbourne time
     //push notification.
     //Send a weekly reminder to check in on the goals.
     //This should really check to see if there are any goals. If not, prompt to create a goal.
     pushNotification(
         'fJ7odiluI04AsQVnke5sSz:APA91bHj7xytmfiuBxjm7cvcfADVGgdrs8mhrHPfJvhnVbbj34C0rNrrHHxlBReyRuYYtjO-SczSxYvkdfno5zsvSGuO1UuZkQMMlYOSS4C1I7Urh_YF-1M',
-        'Check in on your goals',
-        'These still your high priority goals?',
+        'Your goals',
+        'Check your goals are on track',
         {url: '?rh=goals'}
     )
 })
