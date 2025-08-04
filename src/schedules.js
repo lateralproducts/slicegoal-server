@@ -17,10 +17,10 @@ console.log(
 
 if (schedule && schedule.scheduledJobs && typeof schedule.scheduledJobs === 'object') {
     for (const jobName in schedule.scheduledJobs) {
-      if (schedule.scheduledJobs[jobName].cancel === 'function') {
+      //if (schedule.scheduledJobs[jobName].cancel === 'function') {
         schedule.scheduledJobs[jobName].cancel();
         console.log(`❌ Canceled job: ${jobName}`);
-      }
+      //}
     }
 } else {
     console.log('⚠️ No scheduled jobs to cancel');
