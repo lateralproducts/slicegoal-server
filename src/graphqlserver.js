@@ -198,7 +198,7 @@ const graphQLServer = createServer({
             // mutate, don't replace
             req.session.user = user
             const view = await getCurrentView(req)
-            await setView(view._id.toString(), req)
+            if (view) await setView(view.id.toString(), req)
             // (optional) persist immediately so Set-Cookie is sent
             await new Promise((r, j) => req.session.save(err => (err ? j(err) : r())))
           } else {
