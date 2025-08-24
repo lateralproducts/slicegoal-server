@@ -38,9 +38,9 @@ import { Queries } from './schema/queries'
 import { Mutations } from './schema/mutations'
 import { merge } from 'lodash'
 import { getIxFile, updateIx } from './interactions'
-import { getipaddress } from './users'
+import { getCurrentView, getipaddress, getprofileid } from './users'
 import { schema as userSchema } from './users'
-import { schema as areaSchema } from './areas'
+import { schema as areaSchema, setView } from './areas'
 import { schema as insightSchema } from './insights'
 import { schema as goalSchema } from './goals'
 import { schema as tagSchema } from './tags'
@@ -91,6 +91,7 @@ import { resolvers as peopleResolvers } from './people'
 import { getfile } from './storage'
 import './schedules'
 import { log } from './logging'
+import { getBearerClaimsFromContext, getuserbysub } from './auth'
 let pjson = require('../package.json')
 var path = require('path')
  
@@ -178,8 +179,46 @@ export const schemaWithMiddleware = applyMiddleware(schema, authMiddleWareInput)
 
 const graphQLServer = createServer({
     schema: schemaWithMiddleware,
-    graphiql: false
-});
+    graphiql: false,
+    context: async ({ req, res }) => {
+      // Build the per-request context first
+      const ctx = { req, res }
+  
+      // Use the cookie session if present; otherwise create a request-scoped store
+      const sess = req.session ? req.session : (ctx.session = {}) // DO NOT assign req.session = {}
+
+      if (sess && sess.user == null) {
+        // ✅ Pass the right object to your jose helper
+        const claims = await getBearerClaimsFromContext({ req }) // or getBearerClaimsFromContext(ctx)
+        if (claims && claims.sub) {
+          const user = await getuserbysub(claims.sub)
+          //const profile = user ? await getprofileid(user.id) : null
+  
+          if (req.session) {
+            // mutate, don't replace
+            req.session.user = user
+            const view = await getCurrentView(req)
+            await setView(view._id.toString(), req)
+            // (optional) persist immediately so Set-Cookie is sent
+            await new Promise((r, j) => req.session.save(err => (err ? j(err) : r())))
+          } else {
+            // JWT-only path (no cookie session): keep it on ctx for this request
+            ctx.session.user = user
+            //ctx.session.profile = profile
+          }
+  
+          ctx.auth0 = {
+            sub: claims.sub,
+            scope: claims.scope,
+            permissions: claims.permissions,
+            exp: claims.exp,
+          }
+        }
+      }
+  
+      return ctx
+    },
+  })
 
 // List of query names that can be accessed by unauthenticated users
 const unauthenticatedQueries = [
@@ -198,10 +237,9 @@ const unauthenticatedQueries = [
 ];
 
 async function authMiddleWareInput(resolve, root, args, context, info) {
-    
     //using root to check if the query is a root query (from the client) or a nested query/resolver. The query from the client doesn't have a root attached.
     if (!root && !unauthenticatedQueries.includes(info.fieldName)){
-        if (!context.req.session || !context.req.session.user) return triggererror('Invalid Session')
+        if ((!context.req.session && !context.req.session.user)) return triggererror('Invalid Session')
         //what about introducing a check on the profile too? For profile specific requests.
     }
     return resolve(root, args, context)

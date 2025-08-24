@@ -1382,10 +1382,10 @@ export async function getareatree({areas, req}) {
 export async function setView(viewid, req) {
     const db = await DbConnection.Get()
     const Views = db.collection('views')
-    const Users = db.collection('users')
+    //const Users = db.collection('users')
     const Profiles = db.collection('profiles')
 
-    const user = await Users.findOne({ _id: new ObjectId(req.session.user._id) })
+    //const user = await Users.findOne({ _id: new ObjectId(req.session.user._id) })
 
     //set wheel, view, and profile to the context.
     let query = new Object()

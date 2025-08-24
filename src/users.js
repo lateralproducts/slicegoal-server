@@ -15,7 +15,7 @@ import { sessiontrack } from './website'
 
 let pjson = require('../package.json')
 import DbConnection from './database'
-import { setLastAccessedView } from './areas';
+//import { setLastAccessedView } from './areas';
 import { longdatestring } from '../util/functions';
 import { log } from './logging';
 
@@ -186,20 +186,7 @@ export const resolvers = {
             return await Views.find(query).toArray()
         },
         currentview: async(_, __, { req }) => {
-            const db = await DbConnection.Get()
-            const Views = db.collection('views')
-            let query = new Object()
-            let userid = getuserid(req.session)
-
-            if (userid) {
-                query.user = userid
-            } else {
-                return null
-            }
-
-            const view = await Views.findOne(query, { sort: { lastaccessed: -1 } })
-            req.session.view = view //set the session view as well, especially for mobile and watch.
-            return  view
+            return await getCurrentView(req)
         }
     },
     Mutation: {
@@ -1044,3 +1031,19 @@ export const updateUserOnboarding = async (userId, onboarding) => {
     return updatedUser.value;
 };
 
+export async function getCurrentView(req) {
+    const db = await DbConnection.Get()
+    const Views = db.collection('views')
+    let query = new Object()
+    let userid = getuserid(req.session)
+
+    if (userid) {
+        query.user = userid
+    } else {
+        return null
+    }
+
+    const view = await Views.findOne(query, { sort: { lastaccessed: -1 } })
+    req.session.view = view //set the session view as well, especially for mobile and watch.
+    return view
+}
