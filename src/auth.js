@@ -28,7 +28,7 @@ export async function getBearerClaimsFromContext(context) {
       audience: AUDIENCE,
       clockTolerance: '5s',
     })
-
+    console.log('🔎 JWT claims:', payload)
     return payload
   } catch (err) {
     console.log('JWT verify failed:', err.code || err.message)
