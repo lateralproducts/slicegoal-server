@@ -187,7 +187,7 @@ const graphQLServer = createServer({
       // Use the cookie session if present; otherwise create a request-scoped store
       const sess = req.session ? req.session : (ctx.session = {}) // DO NOT assign req.session = {}
 
-      if (sess && sess.user == null) {
+      if (sess.user == null) {
         // ✅ Pass the right object to your jose helper
         const claims = await getBearerClaimsFromContext({ req }) // or getBearerClaimsFromContext(ctx)
         if (claims && claims.sub) {
