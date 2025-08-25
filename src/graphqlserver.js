@@ -181,50 +181,49 @@ const graphQLServer = createServer({
     schema: schemaWithMiddleware,
     graphiql: false,
     context: async ({ req, res }) => {
-      // Build the per-request context first
-      const ctx = { req, res }
-  
-      // Use the cookie session if present; otherwise create a request-scoped store
-      const sess = req.session ? req.session : (ctx.session = {}) // DO NOT assign req.session = {}
-
-      if (sess.user == null) {
+        // Build the per-request context first
+        const ctx = { req, res }
+    
+        // Use the cookie session if present; otherwise create a request-scoped store
+        const sess = req.session ? req.session : (ctx.session = {}) // DO NOT assign req.session = {}
+      
         console.log('🔎 bearer claim check')
         // ✅ Pass the right object to your jose helper
         const claims = await getBearerClaimsFromContext({ req }) // or getBearerClaimsFromContext(ctx)
         if (claims && claims.sub) {
-          console.log('🔎 bearer claim found')
-          const user = await getuserbysub(claims.sub)
-          //const profile = user ? await getprofileid(user.id) : null
-  
-          if (req.session) {
+            console.log('🔎 bearer claim found')
+            const user = await getuserbysub(claims.sub)
+            //const profile = user ? await getprofileid(user.id) : null
+
+            if (req.session) {
             // mutate, don't replace
             req.session.user = user
             const view = await getCurrentView(req)
             if (view) await setView(view.id.toString(), req)
             // (optional) persist immediately so Set-Cookie is sent
             await new Promise((r, j) => req.session.save(err => (err ? j(err) : r())))
-          } else {
+            } else {
             // JWT-only path (no cookie session): keep it on ctx for this request
             ctx.session.user = user
             const view = await getCurrentView(ctx)
             if (view) await setView(view.id.toString(), ctx)
             //ctx.session.profile = profile
-          }
-  
-          ctx.auth0 = {
+            }
+
+            ctx.auth0 = {
             sub: claims.sub,
             scope: claims.scope,
             permissions: claims.permissions,
             exp: claims.exp,
-          }
+            }
         }
         else {
-          console.log('🔎 bearer claim not found')
+            console.log('🔎 bearer claim not found')
         }
-      }
-      console.log('🔎 ctx:', ctx)
-  
-      return ctx
+
+        console.log('🔎 ctx:', ctx)
+    
+        return ctx
     },
   })
 
