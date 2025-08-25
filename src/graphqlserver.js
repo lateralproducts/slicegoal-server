@@ -217,6 +217,7 @@ const graphQLServer = createServer({
           }
         }
       }
+      console.log('🔎 ctx:', ctx)
   
       return ctx
     },
