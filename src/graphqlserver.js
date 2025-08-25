@@ -188,9 +188,11 @@ const graphQLServer = createServer({
       const sess = req.session ? req.session : (ctx.session = {}) // DO NOT assign req.session = {}
 
       if (sess.user == null) {
+        console.log('🔎 bearer claim check')
         // ✅ Pass the right object to your jose helper
         const claims = await getBearerClaimsFromContext({ req }) // or getBearerClaimsFromContext(ctx)
         if (claims && claims.sub) {
+          console.log('🔎 bearer claim found')
           const user = await getuserbysub(claims.sub)
           //const profile = user ? await getprofileid(user.id) : null
   
@@ -215,6 +217,9 @@ const graphQLServer = createServer({
             permissions: claims.permissions,
             exp: claims.exp,
           }
+        }
+        else {
+          console.log('🔎 bearer claim not found')
         }
       }
       console.log('🔎 ctx:', ctx)
