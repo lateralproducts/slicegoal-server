@@ -1037,6 +1037,8 @@ export async function getCurrentView(req) {
     let query = new Object()
     let userid = getuserid(req.session)
 
+    console.log('🔎 getCurrentView userid:', userid)
+
     if (userid) {
         query.user = userid
     } else {

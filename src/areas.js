@@ -1386,6 +1386,7 @@ export async function setView(viewid, req) {
     const Profiles = db.collection('profiles')
 
     //const user = await Users.findOne({ _id: new ObjectId(req.session.user._id) })
+    if (!viewid) return triggererror('View not found')
 
     //set wheel, view, and profile to the context.
     let query = new Object()

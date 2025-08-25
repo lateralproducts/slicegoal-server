@@ -204,6 +204,8 @@ const graphQLServer = createServer({
           } else {
             // JWT-only path (no cookie session): keep it on ctx for this request
             ctx.session.user = user
+            const view = await getCurrentView(ctx)
+            if (view) await setView(view.id.toString(), ctx)
             //ctx.session.profile = profile
           }
   
