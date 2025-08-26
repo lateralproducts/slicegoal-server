@@ -1482,5 +1482,9 @@ export async function wheelidfromprofileid({ profileid }) {
     const Profiles = db.collection('profiles')
 
     const profile = await Profiles.findOne({ _id: new ObjectId(profileid) })
+    if (!profile) {
+        log('Profile not found for wheelidfromprofileid')
+        return null
+    }
     return profile.wheel
 }
