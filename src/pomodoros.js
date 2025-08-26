@@ -22,6 +22,7 @@ export const typeDefs = `
 
     extend type Mutation {
         savePomodoro(notes: String, taskid: String, datetime: String, minutes: Int, checked: Boolean, alreadydone: Boolean, repeat: Boolean): Boolean!
+        saveNote(note: String): Boolean!
     }
 `
 
@@ -291,6 +292,15 @@ export const resolvers = {
                 activityrecord({taskid: args.taskid, req: req, notes: 'This task copied as a repeat task.', copied: true})
             }
             return true
+        },
+        saveNote: async(root, args, { req }) => {
+            const db = await DbConnection.Get()
+            const Pomodoros = db.collection('pomodoros')
+            const note = await Pomodoros.insertOne({notes: args.note, profileid: getprofileid(req.session), created: new Date(), date: new Date(), userid: getuserid(req.session)})
+            //if note saved successful return true.
+            //else return false.
+            if (note) return true
+            else return false
         }
     },
     
