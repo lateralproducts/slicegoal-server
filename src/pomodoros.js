@@ -118,7 +118,9 @@ export const resolvers = {
 
             query.$and = [
                     {'date': {$gte: start}},
-                    {'date': {$lt: end}}
+                    {'date': {$lt: end}},
+                    {'notes': {$ne: null}},
+                    {'notes': {$ne: ''}}
                 ]
 
             return await Pomodoros.find(query).sort({date: -1}).toArray()
