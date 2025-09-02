@@ -122,7 +122,7 @@ export async function dailyafternoonemail() {
                     daily.date = yesterday
         
                     const wheelid = await wheelidfromprofileid({profileid: daily.profileid})
-        
+                    if (!wheelid) return null
                     const areapercentages = await calculateWeekAreaPercentages({wheelid: wheelid, userid: daily.userid, week: getWeekNumber(yesterday), year: getWeekYear(yesterday)})
                     const areapercent = areapercentages.map(area => {return { area: area.name, focus: area.focus, percentage: area.percentage }})
                     return {daydatacomparison, daily, areapercent}
@@ -277,6 +277,8 @@ export async function calculateWeekAreaPercentages({wheelid, userid, week, year}
 
     const wheel = await Wheels.findOne({_id: new ObjectId(wheelid)})
 
+    if (!wheel) return []
+    if (!wheel.startarea) return []
     const query = {
         rootarea: wheel.startarea.toString(), //using parent ID from Area object on Graph. No need for global boolean on AreaLink for now.
         wheelid: wheelid
