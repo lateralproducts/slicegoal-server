@@ -185,13 +185,15 @@ const graphQLServer = createServer({
         const ctx = { req, res }
     
         // Use the cookie session if present; otherwise create a request-scoped store
-        const sess = req.session ? req.session : (ctx.session = {}) // DO NOT assign req.session = {}
+        if (!req.session) {
+            ctx.session = {} // Create request-scoped session for JWT-only requests
+        }
       
-        console.log('🔎 bearer claim check')
+        //console.log('🔎 bearer claim check')
         // ✅ Pass the right object to your jose helper
         const claims = await getBearerClaimsFromContext({ req }) // or getBearerClaimsFromContext(ctx)
         if (claims && claims.sub) {
-            console.log('🔎 bearer claim found')
+            //console.log('🔎 bearer claim found')
             const user = await getuserbysub(claims.sub)
             //const profile = user ? await getprofileid(user.id) : null
 
@@ -217,12 +219,6 @@ const graphQLServer = createServer({
             exp: claims.exp,
             }
         }
-        else {
-            console.log('🔎 bearer claim not found')
-        }
-
-        console.log('🔎 ctx:', ctx)
-    
         return ctx
     },
   })
@@ -246,7 +242,8 @@ const unauthenticatedQueries = [
 async function authMiddleWareInput(resolve, root, args, context, info) {
     //using root to check if the query is a root query (from the client) or a nested query/resolver. The query from the client doesn't have a root attached.
     if (!root && !unauthenticatedQueries.includes(info.fieldName)){
-        if ((!context.req.session && !context.req.session.user)) return triggererror('Invalid Session')
+        const sessionUser = (context.req.session && context.req.session.user) || (context.session && context.session.user)
+        if (!sessionUser) return triggererror('Invalid Session')
         //what about introducing a check on the profile too? For profile specific requests.
     }
     return resolve(root, args, context)
@@ -325,7 +322,6 @@ export const graphql = async() => {
                 if(!item.ix) {
                     if(req.session.user) log(req.session._id)
                     log("failed file read at ip address: " + getipaddress(req))
-                    res.send({ 'error': 'Unauthorized' })
                     res.status(401).json({ error: 'Unauthorized' })
                     return
                 } else {
@@ -333,8 +329,8 @@ export const graphql = async() => {
                     if (interactionexist) {
                         const ixfilename = await getIxFile(item.ix)
                         getfile(ixfilename, res)
+                        return
                     }else {
-                        res.send({ 'error': 'Unauthorized' })
                         res.status(401).json({ error: 'Unauthorized' })
                         return
                     }
