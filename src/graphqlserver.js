@@ -198,27 +198,28 @@ const graphQLServer = createServer({
             //const profile = user ? await getprofileid(user.id) : null
 
             if (req.session) {
-            // mutate, don't replace
-            req.session.user = user
-            const view = await getCurrentView(req)
-            if (view) await setView(view._id.toString(), req)
-            // (optional) persist immediately so Set-Cookie is sent
-            await new Promise((r, j) => req.session.save(err => (err ? j(err) : r())))
+                // mutate, don't replace
+                req.session.user = user
+                const view = await getCurrentView(req)
+                if (view) await setView(view._id.toString(), req)
+                // (optional) persist immediately so Set-Cookie is sent
+                await new Promise((r, j) => req.session.save(err => (err ? j(err) : r())))
             } else {
-            // JWT-only path (no cookie session): keep it on ctx for this request
-            ctx.session.user = user
-            const view = await getCurrentView(ctx)
-            if (view) await setView(view.id.toString(), ctx)
-            //ctx.session.profile = profile
+                // JWT-only path (no cookie session): keep it on ctx for this request
+                ctx.session.user = user
+                const view = await getCurrentView(ctx)
+                if (view) await setView(view.id.toString(), ctx)
+                //ctx.session.profile = profile
             }
 
             ctx.auth0 = {
-            sub: claims.sub,
-            scope: claims.scope,
-            permissions: claims.permissions,
-            exp: claims.exp,
+                sub: claims.sub,
+                scope: claims.scope,
+                permissions: claims.permissions,
+                exp: claims.exp,
             }
         }
+       
         return ctx
     },
   })
@@ -240,6 +241,7 @@ const unauthenticatedQueries = [
 ];
 
 async function authMiddleWareInput(resolve, root, args, context, info) {
+    console.log('🔎 middleware - info:', info.fieldName)
     //using root to check if the query is a root query (from the client) or a nested query/resolver. The query from the client doesn't have a root attached.
     if (!root && !unauthenticatedQueries.includes(info.fieldName)){
         const sessionUser = (context.req.session && context.req.session.user) || (context.session && context.session.user)
@@ -376,6 +378,7 @@ export const graphql = async() => {
                             return res.status(500).json({ error: 'Token swap failed' });
                         }
                     } else {
+                        console.log('❌ Missing code or code_verifier')
                         return res.status(400).json({ error: 'Missing code or code_verifier' });
                     }
                 } catch (err) {

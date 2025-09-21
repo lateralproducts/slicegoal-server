@@ -83,6 +83,7 @@ export async function getfile(file,res){
         Bucket: s3bucket
     }, (err, data) => {
         if (err) {
+            console.log('❌ Error getting file:', err)
             return res.send({ 'error': err }) //could send local error image
         }
         if (file === 'pixel.png') {

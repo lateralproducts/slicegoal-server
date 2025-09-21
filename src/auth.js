@@ -18,7 +18,7 @@ export async function getBearerClaimsFromContext(context) {
   const token = getBearer(context.req)
   if (!token || !/^[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+$/.test(token)) {
     // (optional) console.debug('Non-JWT or missing bearer token')
-    console.log('Non-JWT or missing bearer token')
+    //console.log('Non-JWT or missing bearer token')
     return null
   }
 
@@ -28,10 +28,10 @@ export async function getBearerClaimsFromContext(context) {
       audience: AUDIENCE,
       clockTolerance: '5s',
     })
-    console.log('🔎 JWT claims:', payload)
+    //console.log('🔎 JWT claims:', payload)
     return payload
   } catch (err) {
-    console.log('JWT verify failed:', err.code || err.message)
+    //console.log('JWT verify failed:', err.code || err.message)
     // (optional) console.debug('JWT verify failed:', err.code || err.message)
     return null
   }
