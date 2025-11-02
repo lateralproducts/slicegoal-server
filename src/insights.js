@@ -54,6 +54,7 @@ export const typeDefs = `
     recordPersonHighlight(insightid: String!, peopleids: [String!]): Boolean
 
     createSourceInsightWatch(answer: String!, page: String): Spaced
+    createSourceInsightPhone(answer: String!, source: String, spotifyId: String, page: String): Spaced
   }
 `
 
@@ -994,6 +995,26 @@ export const resolvers = {
         createSourceInsightWatch: async(_, args, { req }) => {
             //insight and page. Source set on session with 'query session'
             args.uiversion = 'ioswatch'
+            args.datecreated = args.datetime ? new Date(args.datetime) : new Date() //time set from client argument
+            args.lastedited = args.datetime ? new Date(args.datetime) : new Date() //time set from client argument
+
+            return await createinsight(args, req)
+                .then(insertedId => {
+                    activityrecord({req, newinsight: true, insightid: insertedId})
+
+                    if (req.session.sourceid) {
+                        attachSources({
+                            sources: [{_id: req.session.sourceid, notes: args.page}], 
+                            insightid: insertedId, 
+                            profileid: getprofileid(req.session)
+                        })
+                    }
+                    return {_id: insertedId}
+                })
+        },
+        createSourceInsightPhone: async(_, args, { req }) => {
+            //insight and page. Source set on session with 'query session'
+            args.uiversion = 'iosphone'
             args.datecreated = args.datetime ? new Date(args.datetime) : new Date() //time set from client argument
             args.lastedited = args.datetime ? new Date(args.datetime) : new Date() //time set from client argument
 
