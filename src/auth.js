@@ -16,6 +16,7 @@ function getBearer(req) {
 
 export async function getBearerClaimsFromContext(context) {
   const token = getBearer(context.req)
+  console.log('🔎 token:', token)
   if (!token || !/^[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+$/.test(token)) {
     // (optional) console.debug('Non-JWT or missing bearer token')
     console.log('Non-JWT or missing bearer token')
