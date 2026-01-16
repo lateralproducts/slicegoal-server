@@ -54,6 +54,7 @@ import { schema as recapSchema } from './recaps'
 import { schema as fileserverSchema } from './fileserver'
 import { schema as chatSchema } from './chat'
 import { schema as peopleSchema } from './people'
+import { schema as searchSchema } from './search'
 import { typeDefs as userQueryMutation } from './users'
 import { typeDefs as areaQueryMutation } from './areas'
 import { typeDefs as insightQueryMutation } from './insights'
@@ -71,6 +72,7 @@ import { typeDefs as recapQueryMutation } from './recaps'
 import { typeDefs as fileserverQueryMutation } from './fileserver'
 import { typeDefs as chatQueryMutation } from './chat'
 import { typeDefs as peopleQueryMutation } from './people'
+import { typeDefs as searchQueryMutation } from './search'
 import { resolvers as userResolvers } from './users'
 import { resolvers as areaResolvers } from './areas'
 import { resolvers as insightResolvers } from './insights'
@@ -88,6 +90,7 @@ import { resolvers as recapResolvers } from './recaps'
 import { resolvers as fileserverResolvers } from './fileserver'
 import { resolvers as chatResolvers } from './chat'
 import { resolvers as peopleResolvers } from './people'
+import { resolvers as searchResolvers } from './search'
 import { getfile } from './storage'
 import './schedules'
 import { log } from './logging'
@@ -134,6 +137,7 @@ export const schema = makeExecutableSchema({
         fileserverSchema,
         chatSchema,
         peopleSchema,
+        searchSchema,
 
         paymentQueryMutation,
         userQueryMutation,
@@ -151,7 +155,8 @@ export const schema = makeExecutableSchema({
         recapQueryMutation,
         fileserverQueryMutation,
         chatQueryMutation,
-        peopleQueryMutation
+        peopleQueryMutation,
+        searchQueryMutation
         //could combine the Schema and QueryMutation defs.
     ],
     resolvers: merge(
@@ -171,7 +176,8 @@ export const schema = makeExecutableSchema({
         recapResolvers,
         fileserverResolvers,
         chatResolvers,
-        peopleResolvers
+        peopleResolvers,
+        searchResolvers
     )
 })
 
