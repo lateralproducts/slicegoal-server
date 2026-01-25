@@ -148,6 +148,7 @@ export const resolvers = {
                 
                 if (taskOrConditions.length > 0) {
                     taskQuery.$or = taskOrConditions
+                    taskQuery.complete = { $ne: true }
                 }
                 
                 result.tasks = await Tasks.find(taskQuery)
