@@ -10,3 +10,4 @@ test-results.xml
 *-*.log
 .DS_Store
 .env.development
+.env.*

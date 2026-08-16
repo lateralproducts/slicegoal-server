@@ -7,6 +7,7 @@ Helping people focus on the right things at the right time for the best results.
 For Local Development
 
 You need to start Mongodb for Local development
+mongod --dbpath "$HOME/.local/var/mongodb" --logpath "$HOME/.local/var/log/mongod.log" --fork
 
 ```
 yarn develop - this starts the server with nodemon which means you can run diagnostics
