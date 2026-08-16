@@ -1,0 +1,154 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Run tests
+        run: yarn test
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Build
+        run: yarn build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: |
+            dist/
+            node_modules/
+          retention-days: 1
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: publish
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+
+      - name: Setup SSH key
+        run: |
+          echo "$SCHRADER_LAPTOP" > SchraderLaptop.pem
+          chmod 600 SchraderLaptop.pem
+        env:
+          SCHRADER_LAPTOP: ${{ secrets.SCHRADER_LAPTOP }}
+
+      - name: Verify SSH connection
+        run: |
+          ssh -tt -i "SchraderLaptop.pem" -o StrictHostKeyChecking=no \
+            ec2-user@$AWS_SERVER_IP \
+            "hostname && echo \"$(date) connected!\" > connection.txt"
+        env:
+          AWS_SERVER_IP: ${{ secrets.AWS_SERVER_IP }}
+
+      - name: Deploy files to server
+        run: |
+          echo "Deploying to Production..."
+          rsync -e "ssh -i SchraderLaptop.pem -o StrictHostKeyChecking=no" \
+            -ru --delete ./ \
+            ec2-user@$AWS_SERVER_IP:/home/ec2-user/strategyserver/
+          rsync -e "ssh -i SchraderLaptop.pem -o StrictHostKeyChecking=no" \
+            -ru --delete ./src/emailtemplates \
+            ec2-user@$AWS_SERVER_IP:/home/ec2-user/strategyserver/dist/
+          rsync -e "ssh -i SchraderLaptop.pem -o StrictHostKeyChecking=no" \
+            -ru --delete ./src/files \
+            ec2-user@$AWS_SERVER_IP:/home/ec2-user/strategyserver/dist/
+        env:
+          AWS_SERVER_IP: ${{ secrets.AWS_SERVER_IP }}
+
+      - name: Restart pm2 with environment
+        run: |
+          ssh -i SchraderLaptop.pem -T -o StrictHostKeyChecking=no \
+            ec2-user@$AWS_SERVER_IP \
+            "cd /home/ec2-user/strategyserver/ && \
+            PAYMENT_API_ENV='$PAYMENT_API_ENV' \
+            PAYMENT_API_KEY='$PAYMENT_API_KEY' \
+            PAYMENT_API_PASS='$PAYMENT_API_PASS' \
+            PAYMENT_MONTHLY_COST='$PAYMENT_MONTHLY_COST' \
+            PAYMENT_REDIRECT_URL='$PAYMENT_REDIRECT_URL' \
+            COPY_WHEELOFLIFE='$COPY_WHEELOFLIFE' \
+            NOTIFICATION_EMAIL='$NOTIFICATION_EMAIL' \
+            FEEDBACK_EMAIL='$FEEDBACK_EMAIL' \
+            MONGODB_URL='$MONGODB_URL' \
+            MONGODB_DB='$MONGODB_DB' \
+            MONGODB_USR='$MONGODB_USR' \
+            MONGODB_PWD='$MONGODB_PWD' \
+            GOOGLE_CLIENTID='$GOOGLE_CLIENTID' \
+            PATH_URL='$PATH_URL' \
+            EMAILCLIENT_USR='$EMAILCLIENT_USR' \
+            AWS_ACCESS_KEY_ID='$AWS_ACCESS_KEY_ID' \
+            AWS_SECRET_ACCESS_KEY='$AWS_SECRET_ACCESS_KEY' \
+            AWS_DEFAULT_REGION='$AWS_DEFAULT_REGION' \
+            AWS_BUCKET='$AWS_BUCKET' \
+            REDIS_DB='$REDIS_DB' \
+            OPENAI_API_KEY='$OPENAI_API_KEY' \
+            FIREBASE_SERVICE_ACCOUNT_KEY_JSON='$FIREBASE_SERVICE_ACCOUNT_KEY_JSON' \
+            SPOTIFY_CLIENT_ID='$SPOTIFY_CLIENT_ID' \
+            SPOTIFY_CLIENT_SECRET='$SPOTIFY_CLIENT_SECRET' \
+            SPOTIFY_REDIRECT_URI='$SPOTIFY_REDIRECT_URI' \
+            pm2 restart index --update-env"
+          echo "new version placed on server and started"
+        env:
+          AWS_SERVER_IP: ${{ secrets.AWS_SERVER_IP }}
+          PAYMENT_API_ENV: ${{ secrets.PAYMENT_API_ENV }}
+          PAYMENT_API_KEY: ${{ secrets.PAYMENT_API_KEY }}
+          PAYMENT_API_PASS: ${{ secrets.PAYMENT_API_PASS }}
+          PAYMENT_MONTHLY_COST: ${{ secrets.PAYMENT_MONTHLY_COST }}
+          PAYMENT_REDIRECT_URL: ${{ secrets.PAYMENT_REDIRECT_URL }}
+          COPY_WHEELOFLIFE: ${{ secrets.COPY_WHEELOFLIFE }}
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+          FEEDBACK_EMAIL: ${{ secrets.FEEDBACK_EMAIL }}
+          MONGODB_URL: ${{ secrets.MONGODB_URL }}
+          MONGODB_DB: ${{ secrets.MONGODB_DB }}
+          MONGODB_USR: ${{ secrets.MONGODB_USR }}
+          MONGODB_PWD: ${{ secrets.MONGODB_PWD }}
+          GOOGLE_CLIENTID: ${{ secrets.GOOGLE_CLIENTID }}
+          PATH_URL: ${{ secrets.PATH_URL }}
+          EMAILCLIENT_USR: ${{ secrets.EMAILCLIENT_USR }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
+          REDIS_DB: ${{ secrets.REDIS_DB }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FIREBASE_SERVICE_ACCOUNT_KEY_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY_JSON }}
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_REDIRECT_URI: ${{ secrets.SPOTIFY_REDIRECT_URI }}
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f SchraderLaptop.pem
