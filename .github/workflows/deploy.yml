@@ -58,6 +58,15 @@ jobs:
         with:
           name: build
 
+      - name: Verify compiled server
+        run: |
+          if [ ! -f dist/index.js ]; then
+            echo "dist/index.js missing after artifact download"
+            find . -name index.js -print
+            exit 1
+          fi
+          ls -la dist/index.js
+
       - name: Setup SSH key
         env:
           DEPLOY_KEY: ${{ secrets.SCHRADER_LAPTOP }}
@@ -94,11 +103,14 @@ jobs:
             -ru --delete --exclude node_modules --exclude .git --exclude '.env*' ./ \
             ec2-user@$AWS_SERVER_IP:/home/ec2-user/strategyserver/
           rsync -e "ssh -i SchraderLaptop.pem -o StrictHostKeyChecking=no" \
-            -ru --delete ./src/emailtemplates \
+            -ru ./src/emailtemplates \
             ec2-user@$AWS_SERVER_IP:/home/ec2-user/strategyserver/dist/
           rsync -e "ssh -i SchraderLaptop.pem -o StrictHostKeyChecking=no" \
-            -ru --delete ./src/files \
+            -ru ./src/files \
             ec2-user@$AWS_SERVER_IP:/home/ec2-user/strategyserver/dist/
+          ssh -i SchraderLaptop.pem -o StrictHostKeyChecking=no \
+            ec2-user@$AWS_SERVER_IP \
+            "test -f /home/ec2-user/strategyserver/dist/index.js"
         env:
           AWS_SERVER_IP: ${{ secrets.AWS_SERVER_IP }}
 
