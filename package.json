@@ -7,7 +7,7 @@
         "babel-version": "babel --version",
         "develop": "NODE_ENV=development nodemon --inspect --exec babel-node src/index.js",
         "developtest": "NODE_ENV=test nodemon --inspect --exec babel-node src/index.js",
-        "start": "NODE_ENV=development nodemon --inspect --exec babel-node src/index.js",
+        "start": "NODE_ENV=production node dist/index.js",
         "nm-version": "nodemon -v",
         "build": "babel -d dist/ src/ && cp -R src/emailtemplates dist/",
         "test": "NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest --detectOpenHandles",
@@ -15,7 +15,8 @@
         "release-minor": "yarn version --minor --message",
         "release-major": "yarn version --major --message",
         "lint": "eslint --ext .js --ignore-path .gitignore .",
-        "lintfix": "eslint --fix --ext .js --ignore-path .gitignore ."
+        "lintfix": "eslint --fix --ext .js --ignore-path .gitignore .",
+        "postinstall": "patch-package"
     },
     "author": "Daniel Schrader <daniel@lateralproducts.com> (https://www.slicegoal.com/app)",
     "license": "ISC",
@@ -47,7 +48,6 @@
         "express": "^4.14.0",
         "express-session": "^1.17.3",
         "firebase-admin": "^13.3.0",
-        "google-auth-library": "^4.2.5",
         "graphql": "^14.4.2",
         "graphql-middleware": "^6.1.35",
         "graphql-server-express": "^0.4.3",
@@ -64,6 +64,7 @@
         "nodemailer": "^6.7.7",
         "nodemon": "^1.18.3",
         "number-is-nan": "^3.0.0",
+        "patch-package": "^8.0.0",
         "redis": "^4.6.7",
         "sinon": "^15.2.0"
     }

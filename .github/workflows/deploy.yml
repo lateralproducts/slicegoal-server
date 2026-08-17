@@ -43,9 +43,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build
-          path: |
-            dist/
-            node_modules/
+          path: dist/
           retention-days: 1
 
   deploy:
@@ -93,7 +91,7 @@ jobs:
         run: |
           echo "Deploying to Production..."
           rsync -e "ssh -i SchraderLaptop.pem -o StrictHostKeyChecking=no" \
-            -ru --delete ./ \
+            -ru --delete --exclude node_modules --exclude .git --exclude '.env*' ./ \
             ec2-user@$AWS_SERVER_IP:/home/ec2-user/strategyserver/
           rsync -e "ssh -i SchraderLaptop.pem -o StrictHostKeyChecking=no" \
             -ru --delete ./src/emailtemplates \
@@ -108,33 +106,42 @@ jobs:
         run: |
           ssh -i SchraderLaptop.pem -T -o StrictHostKeyChecking=no \
             ec2-user@$AWS_SERVER_IP \
-            "cd /home/ec2-user/strategyserver/ && \
-            PAYMENT_API_ENV='$PAYMENT_API_ENV' \
-            PAYMENT_API_KEY='$PAYMENT_API_KEY' \
-            PAYMENT_API_PASS='$PAYMENT_API_PASS' \
-            PAYMENT_MONTHLY_COST='$PAYMENT_MONTHLY_COST' \
-            PAYMENT_REDIRECT_URL='$PAYMENT_REDIRECT_URL' \
-            COPY_WHEELOFLIFE='$COPY_WHEELOFLIFE' \
-            NOTIFICATION_EMAIL='$NOTIFICATION_EMAIL' \
-            FEEDBACK_EMAIL='$FEEDBACK_EMAIL' \
-            MONGODB_URL='$MONGODB_URL' \
-            MONGODB_DB='$MONGODB_DB' \
-            MONGODB_USR='$MONGODB_USR' \
-            MONGODB_PWD='$MONGODB_PWD' \
-            GOOGLE_CLIENTID='$GOOGLE_CLIENTID' \
-            PATH_URL='$PATH_URL' \
-            EMAILCLIENT_USR='$EMAILCLIENT_USR' \
-            AWS_ACCESS_KEY_ID='$AWS_ACCESS_KEY_ID' \
-            AWS_SECRET_ACCESS_KEY='$AWS_SECRET_ACCESS_KEY' \
-            AWS_DEFAULT_REGION='$AWS_DEFAULT_REGION' \
-            AWS_BUCKET='$AWS_BUCKET' \
-            REDIS_DB='$REDIS_DB' \
-            OPENAI_API_KEY='$OPENAI_API_KEY' \
-            FIREBASE_SERVICE_ACCOUNT_KEY_JSON='$FIREBASE_SERVICE_ACCOUNT_KEY_JSON' \
-            SPOTIFY_CLIENT_ID='$SPOTIFY_CLIENT_ID' \
-            SPOTIFY_CLIENT_SECRET='$SPOTIFY_CLIENT_SECRET' \
-            SPOTIFY_REDIRECT_URI='$SPOTIFY_REDIRECT_URI' \
-            pm2 restart index --update-env"
+            "export NVM_DIR=\"\$HOME/.nvm\" && \
+            . \"\$NVM_DIR/nvm.sh\" && \
+            nvm install 20 && \
+            nvm alias default 20 && \
+            nvm use 20 && \
+            cd /home/ec2-user/strategyserver/ && \
+            yarn install --frozen-lockfile && \
+            export NODE_ENV=production \
+              PAYMENT_API_ENV='$PAYMENT_API_ENV' \
+              PAYMENT_API_KEY='$PAYMENT_API_KEY' \
+              PAYMENT_API_PASS='$PAYMENT_API_PASS' \
+              PAYMENT_MONTHLY_COST='$PAYMENT_MONTHLY_COST' \
+              PAYMENT_REDIRECT_URL='$PAYMENT_REDIRECT_URL' \
+              COPY_WHEELOFLIFE='$COPY_WHEELOFLIFE' \
+              NOTIFICATION_EMAIL='$NOTIFICATION_EMAIL' \
+              FEEDBACK_EMAIL='$FEEDBACK_EMAIL' \
+              MONGODB_URL='$MONGODB_URL' \
+              MONGODB_DB='$MONGODB_DB' \
+              MONGODB_USR='$MONGODB_USR' \
+              MONGODB_PWD='$MONGODB_PWD' \
+              GOOGLE_CLIENTID='$GOOGLE_CLIENTID' \
+              PATH_URL='$PATH_URL' \
+              EMAILCLIENT_USR='$EMAILCLIENT_USR' \
+              AWS_ACCESS_KEY_ID='$AWS_ACCESS_KEY_ID' \
+              AWS_SECRET_ACCESS_KEY='$AWS_SECRET_ACCESS_KEY' \
+              AWS_DEFAULT_REGION='$AWS_DEFAULT_REGION' \
+              AWS_BUCKET='$AWS_BUCKET' \
+              REDIS_DB='$REDIS_DB' \
+              OPENAI_API_KEY='$OPENAI_API_KEY' \
+              FIREBASE_SERVICE_ACCOUNT_KEY_JSON='$FIREBASE_SERVICE_ACCOUNT_KEY_JSON' \
+              SPOTIFY_CLIENT_ID='$SPOTIFY_CLIENT_ID' \
+              SPOTIFY_CLIENT_SECRET='$SPOTIFY_CLIENT_SECRET' \
+              SPOTIFY_REDIRECT_URI='$SPOTIFY_REDIRECT_URI' && \
+            pm2 delete index && \
+            pm2 start dist/index.js --name index --interpreter \$(nvm which 20) && \
+            pm2 save"
           echo "new version placed on server and started"
         env:
           AWS_SERVER_IP: ${{ secrets.AWS_SERVER_IP }}

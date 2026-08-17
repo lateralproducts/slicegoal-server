@@ -18,14 +18,11 @@ import DbConnection from './database'
 //import { setLastAccessedView } from './areas';
 import { longdatestring } from '../util/functions';
 import { log } from './logging';
+import { createRemoteJWKSet, jwtVerify } from 'jose'
 
-//import { verifier } from "google-id-token-verifier";
-const { OAuth2Client } = require('google-auth-library')
-
-let googleclientId = `${process.env.GOOGLE_CLIENTID}`
-const oAuth2Client = new OAuth2Client({
-    clientId: googleclientId
-})
+const googleclientId = `${process.env.GOOGLE_CLIENTID}`
+const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com']
+const GOOGLE_JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'))
 
 const PASSWORD_MAX_LENGTH = 64
 const PASSWORD_MIN_LENGTH = 8
@@ -682,22 +679,19 @@ export const resolvers = {
             //This is publicly accessible, used for signup too.
             const db = await DbConnection.Get()
             const Users = db.collection('users')
-            const client = await oAuth2Client
 
             //Google certificates queried here: https://www.googleapis.com/oauth2/v3/certs
 
             try {
-                const ticket = await client.verifyIdToken({
-                    idToken: args.token,
-                    audience: args.googleid, //clientid
-                });
-                if (ticket.payload) {
-                    const payload = ticket.payload
-                    args.email = payload.email
-                    args.firstname = payload.given_name
-                    args.lastname = payload.family_name
-                    args.googleid = payload.sub
-                }
+                const { payload } = await jwtVerify(args.token, GOOGLE_JWKS, {
+                    issuer: GOOGLE_ISSUERS,
+                    audience: args.googleid || googleclientId,
+                    clockTolerance: '5s',
+                })
+                args.email = payload.email
+                args.firstname = payload.given_name
+                args.lastname = payload.family_name
+                args.googleid = payload.sub
             } catch (message) {
                 sessiontrack(req, args, 'app', 'login-failed', message,'google')
                 return triggererror('Error authenticating with google.')
@@ -796,7 +790,11 @@ export const resolvers = {
             )
             if (req.session.googleToken)
                 try {
-                    await oAuth2Client.revokeToken(req.session.googleToken)
+                    await fetch('https://oauth2.googleapis.com/revoke', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `token=${encodeURIComponent(req.session.googleToken)}`,
+                    })
                 } catch (error) {
                     log(error)
                 }
