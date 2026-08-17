@@ -13,7 +13,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: yarn
 
       - name: Install dependencies
@@ -30,7 +30,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: yarn
 
       - name: Install dependencies
@@ -108,10 +108,9 @@ jobs:
             ec2-user@$AWS_SERVER_IP \
             "export NVM_DIR=\"\$HOME/.nvm\" && \
             . \"\$NVM_DIR/nvm.sh\" && \
-            nvm install 20 && \
-            nvm alias default 20 && \
-            nvm use 20 && \
-            (command -v yarn >/dev/null || npm install -g yarn@1.22.22) && \
+            nvm install 24 && \
+            nvm alias default 24 && \
+            nvm use 24 && \
             cd /home/ec2-user/strategyserver/ && \
             yarn install --frozen-lockfile && \
             export NODE_ENV=production \
@@ -140,8 +139,8 @@ jobs:
               SPOTIFY_CLIENT_ID='$SPOTIFY_CLIENT_ID' \
               SPOTIFY_CLIENT_SECRET='$SPOTIFY_CLIENT_SECRET' \
               SPOTIFY_REDIRECT_URI='$SPOTIFY_REDIRECT_URI' && \
-            pm2 delete index && \
-            pm2 start dist/index.js --name index --interpreter \$(nvm which 20) && \
+            (pm2 delete index || true) && \
+            pm2 start dist/index.js --name index --interpreter \$(nvm which 24) && \
             pm2 save"
           echo "new version placed on server and started"
         env:
