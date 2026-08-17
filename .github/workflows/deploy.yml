@@ -57,6 +57,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build
+          path: dist
 
       - name: Verify compiled server
         run: |
