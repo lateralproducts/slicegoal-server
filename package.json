@@ -9,7 +9,7 @@
         "developtest": "NODE_ENV=test nodemon --inspect --exec babel-node src/index.js",
         "start": "NODE_ENV=development nodemon --inspect --exec babel-node src/index.js",
         "nm-version": "nodemon -v",
-        "build": "babel -d dist/ src/ .env.* && cp -R src/emailtemplates dist/",
+        "build": "babel -d dist/ src/ && cp -R src/emailtemplates dist/",
         "test": "NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest --detectOpenHandles",
         "release-patch": "yarn version --patch --message",
         "release-minor": "yarn version --minor --message",
