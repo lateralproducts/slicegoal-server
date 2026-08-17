@@ -61,15 +61,29 @@ jobs:
           name: build
 
       - name: Setup SSH key
-        run: |
-          echo "$SCHRADER_LAPTOP" > SchraderLaptop.pem
-          chmod 600 SchraderLaptop.pem
         env:
-          SCHRADER_LAPTOP: ${{ secrets.SCHRADER_LAPTOP }}
+          DEPLOY_KEY: ${{ secrets.SCHRADER_LAPTOP }}
+        run: |
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "Secret SCHRADER_LAPTOP is empty. Add the full private key (BEGIN/END lines included) under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          # GitHub secrets often drop the trailing newline; OpenSSH 10 then fails with
+          # "error in libcrypto: unsupported". Strip CR and expand literal \n if needed.
+          printf '%s\n' "$DEPLOY_KEY" | tr -d '\r' > SchraderLaptop.pem
+          if [ "$(wc -l < SchraderLaptop.pem)" -le 2 ]; then
+            awk '{ gsub(/\\n/, "\n") } 1' SchraderLaptop.pem > SchraderLaptop.pem.tmp
+            mv SchraderLaptop.pem.tmp SchraderLaptop.pem
+          fi
+          chmod 600 SchraderLaptop.pem
+          if ! ssh-keygen -y -f SchraderLaptop.pem >/dev/null; then
+            echo "OpenSSH could not parse SCHRADER_LAPTOP. Re-paste the key as a multiline secret, including -----BEGIN / -----END lines, with a newline after END."
+            exit 1
+          fi
 
       - name: Verify SSH connection
         run: |
-          ssh -tt -i "SchraderLaptop.pem" -o StrictHostKeyChecking=no \
+          ssh -i SchraderLaptop.pem -o StrictHostKeyChecking=no \
             ec2-user@$AWS_SERVER_IP \
             "hostname && echo \"$(date) connected!\" > connection.txt"
         env:
