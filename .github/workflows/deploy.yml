@@ -111,6 +111,8 @@ jobs:
             nvm install 24 && \
             nvm alias default 24 && \
             nvm use 24 && \
+            (command -v yarn >/dev/null || npm install -g yarn@1.22.22) && \
+            (command -v pm2 >/dev/null || npm install -g pm2) && \
             cd /home/ec2-user/strategyserver/ && \
             yarn install --frozen-lockfile && \
             export NODE_ENV=production \
