@@ -55,6 +55,8 @@ export const typeDefs = `
 
     createSourceInsightWatch(answer: String!, page: String): Spaced
     createSourceInsightPhone(answer: String!, source: String, spotifyId: String, page: String): Spaced
+
+    snoozeSwipe(insightid: String!, until: String): Boolean
   }
 `
 
@@ -75,6 +77,7 @@ export const schema = `
         sources: [Source]
         areas: [Area]
         people: [Person]
+        snoozedSwipe: String
     }
     type SharedInsightList {
         numberOfInsights: Int
@@ -332,6 +335,12 @@ export const resolvers = {
                 if (swipe)  {
                     insightquery.$or = [{lastimpression: {$lt: startOfDay(new Date())}}, {lastimpression: {$exists: false}}]
 
+                    // Exclude insights snoozed for swipe (forever or until a future date)
+                    insightquery.$nor = [
+                        { snoozedSwipe: 'forever' },
+                        { snoozedSwipe: { $gt: new Date() } }
+                    ]
+
                     // Create a list of insights alternating between lastimpression and datecreated 
                     const insightlist1 = await Insights.find(insightquery)
                         .sort({ lastimpression: 1, datecreated: 1 })
@@ -476,6 +485,12 @@ export const resolvers = {
                 ]
             }
             insightquery.profileid = getprofileid(req.session)
+
+            // Exclude insights snoozed for swipe (forever or until a future date)
+            insightquery.$nor = [
+                { snoozedSwipe: 'forever' },
+                { snoozedSwipe: { $gt: new Date() } }
+            ]
 
             console.log('insightquery', insightquery)
 
@@ -1269,6 +1284,16 @@ export const resolvers = {
                     $inc: { highlights: 1 },
                     $set: { lasthighlighted: new Date() } 
                 }
+            )
+            return (result !== null)
+        },
+        snoozeSwipe: async(_, { insightid, until }, { req }) => {
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+            const snoozedSwipe = until ? new Date(until) : 'forever'
+            const result = await Insights.updateOne(
+                { _id: new ObjectId(insightid), profileid: getprofileid(req.session) },
+                { $set: { snoozedSwipe } }
             )
             return (result !== null)
         }
