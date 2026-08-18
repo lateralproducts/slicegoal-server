@@ -6,7 +6,7 @@ import { getuiversion, startOfDay } from '../util/functions'
 import { getprofileid, getuserid, getwheelid } from './users'
 import DbConnection from './database'
 import { createUserConnection } from './community'
-import { attachSources } from './sources'
+import { attachSources, getSnoozedSourceInsightIds } from './sources'
 import { newIx } from './interactions'
 import { shareInsightEmail } from './emails'
 import { linkInsightTask } from './tasks'
@@ -342,6 +342,8 @@ export const resolvers = {
                         { snoozedSwipe: { $gt: new Date() } }
                     ]
 
+                    await excludeSnoozedSourceInsights(insightquery, getprofileid(req.session))
+
                     // Create a list of insights alternating between lastimpression and datecreated 
                     const insightlist1 = await Insights.find(insightquery)
                         .sort({ lastimpression: 1, datecreated: 1 })
@@ -492,6 +494,8 @@ export const resolvers = {
                 { snoozedSwipe: 'forever' },
                 { snoozedSwipe: { $gt: new Date() } }
             ]
+
+            await excludeSnoozedSourceInsights(insightquery, getprofileid(req.session))
 
             console.log('insightquery', insightquery)
 
@@ -1358,6 +1362,27 @@ export const resolvers = {
             )
             return (result !== null)
         }
+    }
+}
+
+async function excludeSnoozedSourceInsights(insightquery, profileid) {
+    const snoozedInsightIds = await getSnoozedSourceInsightIds(profileid)
+    if (!snoozedInsightIds.length) return
+
+    const excludeIds = snoozedInsightIds.map(id => new ObjectId(id))
+    if (insightquery._id && insightquery._id.$in) {
+        insightquery._id.$nin = [...(insightquery._id.$nin || []), ...excludeIds]
+    } else if (insightquery._id && insightquery._id.$nin) {
+        insightquery._id.$nin = [...insightquery._id.$nin, ...excludeIds]
+    } else if (insightquery._id) {
+        insightquery.$and = [
+            ...(insightquery.$and || []),
+            { _id: insightquery._id },
+            { _id: { $nin: excludeIds } }
+        ]
+        delete insightquery._id
+    } else {
+        insightquery._id = { $nin: excludeIds }
     }
 }
 

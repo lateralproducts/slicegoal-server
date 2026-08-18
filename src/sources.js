@@ -31,6 +31,8 @@ export const typeDefs = `
 
         createSourcePersonTag(sourceid: String!, person: PersonInput): Boolean
         deleteSourcePersonTag(sourceid: String!, personid: String!): Boolean
+
+        snoozeSourceSwipe(sourceid: String!, until: String!): Boolean
     }
 `
 
@@ -46,6 +48,7 @@ export const schema = `
         url: String
         tags: [InsightTag]
         filedetails: [FilePreview]
+        snoozedSwipe: String
     }
 
     input SourceTagIn {
@@ -404,8 +407,41 @@ export const resolvers = {
                 }
             )
             return true
+        },
+        snoozeSourceSwipe: async function(_, { sourceid, until }, { req }) {
+            const db = await DbConnection.Get()
+            const Sources = db.collection('sources')
+            const snoozedSwipe = new Date(until)
+            if (isNaN(snoozedSwipe.getTime())) return false
+            const result = await Sources.updateOne(
+                { _id: new ObjectId(sourceid), profileid: getprofileid(req.session) },
+                { $set: { snoozedSwipe } }
+            )
+            return result.matchedCount === 1
         }
     }
+}
+
+export async function getSnoozedSourceInsightIds(profileid) {
+    const db = await DbConnection.Get()
+    const Sources = db.collection('sources')
+    const InsightTags = db.collection('insighttags')
+
+    const snoozedSources = await Sources.find({
+        profileid,
+        snoozedSwipe: { $gt: new Date() }
+    }).toArray()
+
+    if (!snoozedSources.length) return []
+
+    const snoozedSourceIds = snoozedSources.map(source => source._id.toString())
+    const tags = await InsightTags.find({
+        profileid,
+        sourceid: { $in: snoozedSourceIds },
+        insightid: { $ne: null }
+    }).toArray()
+
+    return [...new Set(tags.map(tag => tag.insightid).filter(Boolean))]
 }
 
 export async function attachSources({sources, insightid, profileid}) {
