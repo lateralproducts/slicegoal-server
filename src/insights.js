@@ -33,6 +33,7 @@ export const typeDefs = `
     createInsight(datetime: String, profileid: String, prompt: String, fileids: [String], answer: String, areatags: [AreaTagIn], sources: [SourceTagIn], people: [PersonInput], taskid: String): Spaced
     updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, fileids: [String], sources: [SourceTagIn]): Spaced 
     removeInsight(insightid: String!): Boolean
+    convertInsightToSource(insightid: String!, prompt: String, answer: String, fileids: [String]): Source
     
     pinInsight(insightid: String!, areaid: String, sourceid: String, setpinned: Boolean, resourcetype: String): Boolean
 
@@ -1104,6 +1105,66 @@ export const resolvers = {
                 }
             } else {
                 return triggererror("Insight not found")
+            }
+        },
+        convertInsightToSource: async(_, { insightid, prompt, answer, fileids }, { req }) => {
+            const db = await DbConnection.Get()
+            const Insights = db.collection('insights')
+            const Sources = db.collection('sources')
+            const Tags = db.collection('insighttags')
+            const Profiles = db.collection('profiles')
+            const Spaced = db.collection('spaced')
+
+            const insight = await Insights.findOne({ _id: new ObjectId(insightid) })
+            if (!insight) {
+                return triggererror('Insight not found')
+            }
+
+            const profile = await Profiles.findOne({ _id: new ObjectId(insight.profileid) })
+            if (!profile || profile.user !== getuserid(req.session)) {
+                return triggererror('Unauthorised Insight Convert')
+            }
+
+            const sourceName = (answer !== undefined && answer !== null ? answer : insight.answer)
+            if (!sourceName) {
+                return triggererror('Insight has no content to convert')
+            }
+
+            const sourceNotes = (prompt !== undefined && prompt !== null ? prompt : insight.prompt)
+            const sourceFileids = fileids !== undefined ? fileids : insight.fileids
+
+            const inserted = await Sources.insertOne({
+                profileid: insight.profileid,
+                datetime: insight.datecreated || new Date(),
+                accessedit: new Date(),
+                name: sourceName,
+                notes: sourceNotes || undefined,
+                fileids: sourceFileids
+            })
+            const sourceid = inserted.insertedId.toString()
+            activityrecord({req, newsource: true})
+
+            await Tags.updateMany(
+                {
+                    insightid: insightid,
+                    $or: [
+                        { area: { $exists: true, $ne: null } },
+                        { personid: { $exists: true, $ne: null } },
+                        { taskid: { $exists: true, $ne: null } }
+                    ]
+                },
+                {
+                    $set: { sourceid: sourceid },
+                    $unset: { insightid: '' }
+                }
+            )
+            await Tags.deleteMany({ insightid: insightid })
+            await Spaced.deleteMany({ insightid: insightid })
+            await Insights.deleteOne({ _id: new ObjectId(insightid) })
+
+            return {
+                _id: sourceid,
+                name: sourceName
             }
         },
         shareInsight: async(_, args, { req }) => {
