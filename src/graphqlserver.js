@@ -186,6 +186,26 @@ export const schemaWithMiddleware = applyMiddleware(schema, authMiddleWareInput)
 const graphQLServer = createServer({
     schema: schemaWithMiddleware,
     graphiql: false,
+    // graphql@14 validation/parse errors omit `.extensions`. Yoga then crashes with
+    // "Cannot set properties of undefined (setting 'http')" instead of the real message.
+    plugins: [
+        {
+            onParse() {
+                return ({ result }) => {
+                    if (result instanceof Error && !result.extensions) result.extensions = {}
+                }
+            },
+            onValidate() {
+                return ({ valid, result }) => {
+                    if (!valid && Array.isArray(result)) {
+                        for (const error of result) {
+                            if (error && !error.extensions) error.extensions = {}
+                        }
+                    }
+                }
+            }
+        }
+    ],
     context: async ({ req, res }) => {
         // Build the per-request context first
         const ctx = { req, res }

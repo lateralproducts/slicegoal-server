@@ -31,7 +31,7 @@ export const typeDefs = `
 
   extend type Mutation {
     createInsight(datetime: String, profileid: String, prompt: String, fileids: [String], answer: String, areatags: [AreaTagIn], sources: [SourceTagIn], people: [PersonInput], taskid: String): Spaced
-    updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, fileids: [String], sources: [SourceTagIn]): Spaced 
+    updateInsight(insightid: String!, datetime: String, prompt: String, answer: String, fileids: [String], sources: [SourceTagIn]): Insight 
     removeInsight(insightid: String!): Boolean
     convertInsightToSource(insightid: String!, prompt: String, answer: String, fileids: [String]): Source
     
@@ -841,12 +841,15 @@ export const resolvers = {
             const db = await DbConnection.Get()
             const Insights = db.collection('insights')
             const Spaced = db.collection('spaced')
-            args.lastedited = new Date(args.datetime) //time set from client argument
-            let insightid = args.insightid
-            delete args.insightid
-            Insights.updateOne(
+            const insightid = args.insightid
+            const update = { lastedited: new Date(args.datetime) } //time set from client argument
+            if (args.prompt !== undefined) update.prompt = args.prompt
+            if (args.answer !== undefined) update.answer = args.answer
+            if (args.fileids !== undefined) update.fileids = args.fileids
+
+            await Insights.updateOne(
                 { _id: new ObjectId(insightid) },
-                { $set: args },
+                { $set: update },
             )
 
             if(args.sources) {
@@ -885,10 +888,7 @@ export const resolvers = {
                     Spaced.insertOne(newspaced)
                 }
             }
-            return {
-                _id: insightid,
-                message: 'insight updated'
-            }
+            return await Insights.findOne({ _id: new ObjectId(insightid) })
         },
         createInsightTag: async(_, args, { req }) => {
             
