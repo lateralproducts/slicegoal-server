@@ -265,7 +265,8 @@ export function configureMcpServer() {
 
         try {
             const contextValue = await buildAuthenticatedContext({ req, res })
-            if (!req.session || !req.session.user || !req.session.profile) {
+            const session = req.session || contextValue.session
+            if (!session || !session.user || !session.profile) {
                 jsonRpcError(res, 401, -32001, 'Unauthorized')
                 return
             }

@@ -196,14 +196,16 @@ export const schemaWithMiddleware = applyMiddleware(schema, authMiddleWareInput)
 
 export async function buildAuthenticatedContext({ req, res }) {
     const ctx = { req, res }
+    const session = req.session || {}
 
     if (!req.session) {
-        ctx.session = {}
+        ctx.session = session
     }
 
-    if (req.session && req.session.user && !req.session.profile) {
-        const currentView = req.session.view || await getCurrentView(req)
-        if (currentView) await setView(currentView._id.toString(), req)
+    if (session.user && !session.profile) {
+        const sessionRequest = req.session ? req : { session }
+        const currentView = session.view || await getCurrentView(sessionRequest)
+        if (currentView) await setView(currentView._id.toString(), sessionRequest)
     }
 
     const claims = await getBearerClaimsFromContext({ req })
@@ -221,6 +223,11 @@ export async function buildAuthenticatedContext({ req, res }) {
             if (!req.session.profile) return triggererror('View not found')
         } else {
             ctx.session.user = user
+            ctx.session.view = null
+            ctx.session.profile = null
+            const view = await getCurrentView({ session: ctx.session })
+            if (view) await setView(view._id.toString(), { session: ctx.session })
+            if (!ctx.session.profile) return triggererror('View not found')
         }
 
         ctx.auth0 = {
