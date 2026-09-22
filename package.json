@@ -32,6 +32,7 @@
         "@aws-sdk/client-s3": "^3.171.0",
         "@aws-sdk/s3-request-presigner": "^3.173.0",
         "@babel/preset-env": "^7.22.9",
+        "@modelcontextprotocol/sdk": "1.30.0",
         "aws-sdk": "^2.1023.0",
         "axios": "^1.11.0",
         "babel-jest": "^29.6.1",
@@ -66,6 +67,7 @@
         "number-is-nan": "^3.0.0",
         "patch-package": "^8.0.0",
         "redis": "^4.6.7",
-        "sinon": "^15.2.0"
+        "sinon": "^15.2.0",
+        "zod": "4.6.5"
     }
 }
