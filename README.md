@@ -44,7 +44,7 @@ The MCP endpoint reuses the existing server authentication flow.
 The endpoint is exposed as a stateless HTTP MCP server.
 
 - `POST /mcp` handles MCP JSON-RPC requests
-- `GET /mcp` and `DELETE /mcp` are rejected for now
+- `GET /mcp` and `DELETE /mcp` are handled by the streamable HTTP transport when clients use them
 
 ### Available tools
 

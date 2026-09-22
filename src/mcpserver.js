@@ -259,9 +259,17 @@ function createMcpServer(contextValue) {
 export function configureMcpServer() {
     if (mcpConfigured || !mcpEnabled()) return app
 
-    app.post(mcpEndpoint, mcpRateLimit, bodyParser.json({ type: ['application/json', 'application/*+json'] }), async(req, res) => {
+    const handleMcpRequest = async(req, res) => {
         let transport
         let server
+        let cleanedUp = false
+
+        const cleanup = async() => {
+            if (cleanedUp) return
+            cleanedUp = true
+            if (transport) await transport.close()
+            if (server) await server.close()
+        }
 
         try {
             const contextValue = await buildAuthenticatedContext({ req, res })
@@ -279,29 +287,25 @@ export function configureMcpServer() {
 
             await server.connect(transport)
             res.on('close', () => {
-                Promise.resolve()
-                    .then(async() => {
-                        if (transport) await transport.close()
-                        if (server) await server.close()
-                    })
+                if (res.writableEnded) return
+                Promise.resolve(cleanup())
                     .catch(error => log({ type: 'error', source: 'mcp', message: error.message }))
             })
             await transport.handleRequest(req, res, req.body)
+            await cleanup()
         } catch (error) {
             log({type: 'error', source: 'mcp', message: error.message})
             if (!res.headersSent) {
                 jsonRpcError(res, 500, -32603, 'Internal server error')
             }
         }
-    })
+    }
 
-    app.get(mcpEndpoint, async(req, res) => {
-        jsonRpcError(res, 405, -32000, 'Method not allowed. Use POST for this stateless MCP endpoint.')
-    })
+    app.post(mcpEndpoint, mcpRateLimit, bodyParser.json({ type: ['application/json', 'application/*+json'] }), handleMcpRequest)
 
-    app.delete(mcpEndpoint, async(req, res) => {
-        jsonRpcError(res, 405, -32000, 'Method not allowed. Use POST for this stateless MCP endpoint.')
-    })
+    app.get(mcpEndpoint, mcpRateLimit, handleMcpRequest)
+
+    app.delete(mcpEndpoint, mcpRateLimit, handleMcpRequest)
 
     mcpConfigured = true
     log({type: 'info', message: `MCP server enabled on ${mcpEndpoint}`})

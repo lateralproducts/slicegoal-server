@@ -440,9 +440,10 @@ export const configureGraphqlServer = async() => {
 
 export const startHttpServer = async() => {
     await configureGraphqlServer()
+    const host = process.env.HOST || 'localhost'
 
-    app.listen(opts.port, () => {
-        log({type: 'info', message: `Server is running on http://localhost:${opts.port}${opts.endpoint}`})
+    app.listen(opts.port, host, () => {
+        log({type: 'info', message: `Server is running on http://${host}:${opts.port}${opts.endpoint}`})
     })
 
     return app
