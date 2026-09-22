@@ -25,9 +25,11 @@ Set these environment variables before starting the server:
 ```
 ENABLE_MCP_SERVER=true
 MCP_ENDPOINT=/mcp
+MCP_RATE_LIMIT_MAX=60
 ```
 
 `MCP_ENDPOINT` is optional and defaults to `/mcp`.
+`MCP_RATE_LIMIT_MAX` is optional and defaults to 60 requests per 15 minutes per IP.
 
 ### Authentication
 

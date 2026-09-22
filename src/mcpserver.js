@@ -1,4 +1,5 @@
 import bodyParser from 'body-parser'
+import rateLimit from 'express-rate-limit'
 import { graphql as executeGraphql } from 'graphql'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
@@ -10,6 +11,12 @@ import { log } from './logging'
 let pjson = require('../package.json')
 
 const mcpEndpoint = process.env.MCP_ENDPOINT || '/mcp'
+const mcpRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: Number(process.env.MCP_RATE_LIMIT_MAX || 60),
+    standardHeaders: true,
+    legacyHeaders: false
+})
 let mcpConfigured = false
 
 function mcpEnabled() {
@@ -246,7 +253,7 @@ function createMcpServer(contextValue) {
 export function configureMcpServer() {
     if (mcpConfigured || !mcpEnabled()) return app
 
-    app.post(mcpEndpoint, bodyParser.json({ type: ['application/json', 'application/*+json'] }), async(req, res) => {
+    app.post(mcpEndpoint, mcpRateLimit, bodyParser.json({ type: ['application/json', 'application/*+json'] }), async(req, res) => {
         let transport
         let server
 
