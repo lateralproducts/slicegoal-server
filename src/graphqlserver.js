@@ -209,6 +209,7 @@ export async function buildAuthenticatedContext({ req, res }) {
     const claims = await getBearerClaimsFromContext({ req })
     if (claims && claims.sub) {
         const user = await getuserbysub(claims.sub)
+        if (!user) return triggererror('Unauthorized')
 
         if (req.session) {
             req.session.user = user

@@ -277,9 +277,13 @@ export function configureMcpServer() {
             })
 
             await server.connect(transport)
-            res.on('close', async() => {
-                if (transport) await transport.close()
-                if (server) await server.close()
+            res.on('close', () => {
+                Promise.resolve()
+                    .then(async() => {
+                        if (transport) await transport.close()
+                        if (server) await server.close()
+                    })
+                    .catch(error => log({ type: 'error', source: 'mcp', message: error.message }))
             })
             await transport.handleRequest(req, res, req.body)
         } catch (error) {
