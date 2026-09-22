@@ -212,9 +212,12 @@ export async function buildAuthenticatedContext({ req, res }) {
 
         if (req.session) {
             req.session.user = user
+            req.session.view = null
+            req.session.profile = null
             const view = await getCurrentView(req)
             if (view) await setView(view._id.toString(), req)
             await new Promise((resolve, reject) => req.session.save(err => (err ? reject(err) : resolve())))
+            if (!req.session.profile) return triggererror('View not found')
         } else {
             ctx.session.user = user
         }

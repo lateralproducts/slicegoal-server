@@ -1,14 +1,19 @@
 import bodyParser from 'body-parser'
 import rateLimit from 'express-rate-limit'
 import { graphql as executeGraphql } from 'graphql'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import * as z from 'zod/v4'
 
 import { app, buildAuthenticatedContext, schemaWithMiddleware } from './graphqlserver'
 import { log } from './logging'
 
 let pjson = require('../package.json')
+
+function getMcpSdk() {
+    return {
+        McpServer: require('@modelcontextprotocol/sdk/server/mcp.js').McpServer,
+        StreamableHTTPServerTransport: require('@modelcontextprotocol/sdk/server/streamableHttp.js').StreamableHTTPServerTransport
+    }
+}
 
 const mcpEndpoint = process.env.MCP_ENDPOINT || '/mcp'
 const mcpRateLimit = rateLimit({
@@ -60,6 +65,7 @@ async function runGraphqlTool({ query, variables, dataPath, contextValue }) {
 }
 
 function createMcpServer(contextValue) {
+    const { McpServer } = getMcpSdk()
     const server = new McpServer({
         name: 'slicegoal-server',
         version: pjson.version
@@ -89,7 +95,7 @@ function createMcpServer(contextValue) {
                         tasks { _id title description date starttime complete completed schedule }
                         insights { _id prompt answer snoozedSwipe }
                         sources { _id name notes }
-                        people { _id name created }
+                        people { _id name notes }
                     }
                 }
             `,
@@ -265,6 +271,7 @@ export function configureMcpServer() {
             }
 
             server = createMcpServer(contextValue)
+            const { StreamableHTTPServerTransport } = getMcpSdk()
             transport = new StreamableHTTPServerTransport({
                 sessionIdGenerator: undefined
             })
