@@ -310,22 +310,58 @@ export const resolvers = {
             }
         },
         suggestareatags: async(_, { search }, { req }) => {
+            // Early guards: require wheel and non-empty input
+            const wheelid = getwheelid(req.session)
+            const text = (search || '').toString().trim()
+            if (!wheelid || wheelid === 'no wheelid' || !text) return []
+
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const query = new Object()
-            query.wheelid = getwheelid(req.session)
-            
-            const inputlist = await queryLLMtags(search)
-            console.log('inputlist', inputlist)
-            const searchareanames = parseAndCombine(inputlist)
+            query.wheelid = wheelid
 
-            var optRegexp = [];
-            searchareanames.forEach(function(tag){
-                optRegexp.push(  new RegExp("^" + tag + "$", 'i') );
-            });
+            let inputlist
+            try {
+                inputlist = await queryLLMtags(text.slice(0, 2000))
+            } catch (e) {
+                return triggererror('Tag suggestions are unavailable right now')
+            }
+            const rawNames = parseAndCombine(inputlist)
+
+            const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const seen = new Set()
+            const limitedNames = []
+            for (const v of rawNames) {
+                if (typeof v !== 'string') continue
+                const t = v.trim()
+                if (!t) continue
+                const key = t.toLowerCase()
+                if (seen.has(key)) continue
+                seen.add(key)
+                limitedNames.push(t)
+                if (limitedNames.length >= 50) break
+            }
+            if (!limitedNames.length) return []
+
+            const optRegexp = limitedNames.map(tag => new RegExp("^" + escapeRegExp(tag) + "$", 'i'))
 
             query.name = { $in: optRegexp }
             let tags = await Areas.find(query).toArray()
+
+            // Sort DB results by the model's order (case-insensitive match to candidate list), then cap at 10
+            const orderIndex = new Map()
+            limitedNames.forEach((n, i) => {
+                const key = n.toLowerCase()
+                if (!orderIndex.has(key)) orderIndex.set(key, i)
+            })
+            tags.sort((a, b) => {
+                const ia = orderIndex.get((a.name || '').toLowerCase())
+                const ib = orderIndex.get((b.name || '').toLowerCase())
+                const va = ia === undefined ? Number.MAX_SAFE_INTEGER : ia
+                const vb = ib === undefined ? Number.MAX_SAFE_INTEGER : ib
+                return va - vb
+            })
+            tags = tags.slice(0, 10)
 
             //where one of the area names is not in the areas array. Add it to the tags array as {name: 'name'}.
             /* searchareanames.map(name => {
