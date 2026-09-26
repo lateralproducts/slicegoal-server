@@ -310,19 +310,40 @@ export const resolvers = {
             }
         },
         suggestareatags: async(_, { search }, { req }) => {
+            // Early guards: require wheel and non-empty input
+            const wheelid = getwheelid(req.session)
+            const text = (search || '').toString().trim()
+            if (!wheelid || !text) return []
+
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')
             const query = new Object()
-            query.wheelid = getwheelid(req.session)
-            
-            const inputlist = await queryLLMtags(search)
-            console.log('inputlist', inputlist)
-            const searchareanames = parseAndCombine(inputlist)
+            query.wheelid = wheelid
 
-            var optRegexp = [];
-            searchareanames.forEach(function(tag){
-                optRegexp.push(  new RegExp("^" + tag + "$", 'i') );
-            });
+            let inputlist
+            try {
+                inputlist = await queryLLMtags(text.slice(0, 2000))
+            } catch (e) {
+                return triggererror('Tag suggestions are unavailable right now')
+            }
+            const rawNames = parseAndCombine(inputlist)
+
+            const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const seen = new Set()
+            const limitedNames = []
+            for (const v of rawNames) {
+                if (typeof v !== 'string') continue
+                const t = v.trim()
+                if (!t) continue
+                const key = t.toLowerCase()
+                if (seen.has(key)) continue
+                seen.add(key)
+                limitedNames.push(t)
+                if (limitedNames.length >= 10) break
+            }
+            if (!limitedNames.length) return []
+
+            const optRegexp = limitedNames.map(tag => new RegExp("^" + escapeRegExp(tag) + "$", 'i'))
 
             query.name = { $in: optRegexp }
             let tags = await Areas.find(query).toArray()

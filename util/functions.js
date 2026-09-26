@@ -190,19 +190,64 @@ const months = [
 
 
 export function parseAndCombine(text) {
+    if (!text) return []
+    const source = typeof text === 'string' ? text : String(text)
+    const trimmed = source.trim()
+    if (!trimmed) return []
+    // 1) Prefer strict JSON if provided
     try {
-        // Replace single quotes with double quotes to make it valid JSON
-        const jsonString = text.replace(/'/g, '"');
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) return parsed
+    } catch {}
 
-        // Match all text inside square brackets and parse them as JSON arrays
-        const arrays = jsonString.match(/\[.*?\]/gs).map(str => JSON.parse(str));
-        
-        // Flatten the arrays into a single array
-        const combinedArray = [].concat(...arrays);
-
-        return combinedArray;
+    // 2) Fallback: find bracketed lists and extract quoted strings safely
+    try {
+        const matches = trimmed.match(/\[[\s\S]*?\]/g) || []
+        const items = []
+        for (const block of matches) {
+            // Try to JSON.parse each block directly first
+            let arr = null
+            try {
+                arr = JSON.parse(block)
+            } catch {
+                // Tolerant extraction: pull out quoted strings ('...' or "...")
+                const extracted = []
+                let i = 0
+                while (i < block.length) {
+                    const ch = block[i]
+                    if (ch === '"' || ch === "'") {
+                        const quote = ch
+                        i++
+                        let buf = ''
+                        while (i < block.length) {
+                            const c = block[i]
+                            if (c === '\\') {
+                                // keep the next char as-is (rudimentary escape handling)
+                                if (i + 1 < block.length) {
+                                    buf += block[i + 1]
+                                    i += 2
+                                    continue
+                                } else {
+                                    i++
+                                    break
+                                }
+                            }
+                            if (c === quote) { i++; break }
+                            buf += c
+                            i++
+                        }
+                        extracted.push(buf)
+                        continue
+                    }
+                    i++
+                }
+                arr = extracted
+            }
+            if (Array.isArray(arr)) items.push(...arr)
+        }
+        return items
     } catch (error) {
-        log({source: "parseAndCombine:", type: 'error', message: error});
-        return []; // Return an empty array if there’s an error
+        log({source: "parseAndCombine:", type: 'error', message: error?.message || String(error)});
+        return []
     }
 }

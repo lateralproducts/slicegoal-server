@@ -13,3 +13,8 @@ mongod --dbpath "$HOME/.local/var/mongodb" --logpath "$HOME/.local/var/log/mongo
 yarn develop - this starts the server with nodemon which means you can run diagnostics
 yarn start - start server without diagnostics
 ```
+
+Environment
+
+- OPENAI_API_KEY: Your OpenAI API key (required for tag suggestions).
+- OPENAI_TAG_MODEL: Optional. Chat model for "Suggest tags". Defaults to gpt-4o-mini unless otherwise noted in OpenAI deprecations.
