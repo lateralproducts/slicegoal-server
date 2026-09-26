@@ -198,7 +198,7 @@ export function parseAndCombine(text) {
     try {
         const parsed = JSON.parse(trimmed)
         if (Array.isArray(parsed)) return parsed
-    } catch {}
+    } catch (e) {}
 
     // 2) Fallback: find bracketed lists and extract quoted strings safely
     try {
@@ -209,7 +209,7 @@ export function parseAndCombine(text) {
             let arr = null
             try {
                 arr = JSON.parse(block)
-            } catch {
+            } catch (e) {
                 // Tolerant extraction: pull out quoted strings ('...' or "...")
                 // Limitation: this fallback treats apostrophes inside single-quoted strings literally;
                 // it does not support nested/unbalanced quotes or full JSON escaping.
@@ -249,7 +249,7 @@ export function parseAndCombine(text) {
         }
         return items
     } catch (error) {
-        log({source: "parseAndCombine:", type: 'error', message: error?.message || String(error)});
+        log({source: "parseAndCombine:", type: 'error', message: (error && error.message) || String(error)});
         return []
     }
 }

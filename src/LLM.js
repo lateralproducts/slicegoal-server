@@ -34,7 +34,7 @@ Return ONLY a strict JSON array. No prose, no code fences, no extra keys.`
                     'Authorization': `Bearer ${openai_key}`,
                     'Content-Type': 'application/json'
                 },
-                timeout: 10_000,
+                timeout: 10000,
             }
         );
 
@@ -54,18 +54,23 @@ Return ONLY a strict JSON array. No prose, no code fences, no extra keys.`
                     'Authorization': `Bearer ${openai_key}`,
                     'Content-Type': 'application/json'
                 },
-                timeout: 10_000,
+                timeout: 10000,
             }
         );
-        
-        const content1 = response1?.data?.choices?.[0]?.message?.content ?? ''
-        const content2 = response?.data?.choices?.[0]?.message?.content ?? ''
+
+        const choiceContent = (res) => {
+            const choice = res && res.data && res.data.choices && res.data.choices[0]
+            const message = choice && choice.message
+            return (message && message.content) || ''
+        }
+        const content1 = choiceContent(response1)
+        const content2 = choiceContent(response)
 
         // Prefer strict JSON if provided
         let list1 = null
         let list2 = null
-        try { const p = JSON.parse(content1); if (Array.isArray(p)) list1 = p } catch {}
-        try { const p = JSON.parse(content2); if (Array.isArray(p)) list2 = p } catch {}
+        try { const p = JSON.parse(content1); if (Array.isArray(p)) list1 = p } catch (e) {}
+        try { const p = JSON.parse(content2); if (Array.isArray(p)) list2 = p } catch (e) {}
         // Fallback to tolerant parser on any failure
         if (!Array.isArray(list1)) list1 = parseAndCombine(content1)
         if (!Array.isArray(list2)) list2 = parseAndCombine(content2)
