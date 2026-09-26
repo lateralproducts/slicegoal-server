@@ -313,7 +313,7 @@ export const resolvers = {
             // Early guards: require wheel and non-empty input
             const wheelid = getwheelid(req.session)
             const text = (search || '').toString().trim()
-            if (!wheelid || !text) return []
+            if (!wheelid || wheelid === 'no wheelid' || !text) return []
 
             const db = await DbConnection.Get()
             const Areas = db.collection('areas')

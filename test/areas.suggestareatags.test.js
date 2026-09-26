@@ -53,6 +53,7 @@ jest.mock('../src/database', () => {
 })
 
 const { queryLLMtags } = require('../src/LLM')
+const { getwheelid } = require('../src/users')
 const { resolvers } = require('../src/areas')
 
 describe('Query.suggestareatags', () => {
@@ -81,6 +82,13 @@ describe('Query.suggestareatags', () => {
 
   test('returns [] and does not call OpenAI on empty search', async () => {
     const res = await resolvers.Query.suggestareatags(null, { search: '   ' }, ctx)
+    expect(res).toEqual([])
+    expect(queryLLMtags).not.toHaveBeenCalled()
+  })
+
+  test('returns [] and does not call OpenAI when session has no wheel view', async () => {
+    getwheelid.mockReturnValueOnce('no wheelid')
+    const res = await resolvers.Query.suggestareatags(null, { search: 'text' }, ctx)
     expect(res).toEqual([])
     expect(queryLLMtags).not.toHaveBeenCalled()
   })
@@ -121,4 +129,3 @@ describe('Query.suggestareatags', () => {
     expect(res.map(r => r.name)).toEqual(expectedOrder)
   })
 })
-

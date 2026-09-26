@@ -46,6 +46,16 @@ describe('LLM.queryLLMtags (axios-level)', () => {
     expect(JSON.parse(result)).toEqual(['alpha', 'beta'])
   })
 
+  test('fallback preserves apostrophes inside single-quoted values', async () => {
+    const { queryLLMtags } = require('../src/LLM')
+    axios.post
+      .mockResolvedValueOnce(makeResp("['women\\'s health']"))
+      .mockResolvedValueOnce(makeResp("['health']"))
+
+    const result = await queryLLMtags('hello')
+    expect(JSON.parse(result)).toEqual(["women's health", 'health'])
+  })
+
   test('merge order: list1 then list2 expansions, deduped', async () => {
     const { queryLLMtags } = require('../src/LLM')
     axios.post
@@ -62,4 +72,3 @@ describe('LLM.queryLLMtags (axios-level)', () => {
     await expect(queryLLMtags('hello')).rejects.toThrow(/Failed to fetch response from OpenAI/)
   })
 })
-
