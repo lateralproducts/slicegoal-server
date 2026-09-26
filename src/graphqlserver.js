@@ -1,4 +1,5 @@
 import express from 'express'
+import bodyParser from 'body-parser'
 import session from 'express-session'
 import { createServer, GraphQLYogaError } from '@graphql-yoga/node'
 import { makeExecutableSchema } from '@graphql-tools/schema'
@@ -38,7 +39,7 @@ import { Queries } from './schema/queries'
 import { Mutations } from './schema/mutations'
 import { merge } from 'lodash'
 import { getIxFile, updateIx } from './interactions'
-import { getCurrentView, getipaddress, getprofileid } from './users'
+import { getCurrentView, getipaddress } from './users'
 import { schema as userSchema } from './users'
 import { schema as areaSchema, setView } from './areas'
 import { schema as insightSchema } from './insights'
@@ -98,7 +99,23 @@ import { getBearerClaimsFromContext, getuserbysub } from './auth'
 let pjson = require('../package.json')
 var path = require('path')
  
-const app = express()
+export const app = express()
+const opts = {
+    port: 3001,
+    endpoint: '/server',
+    cors: {
+        credentials: true,
+        preflightContinue: true,
+        origin: [
+            'https://www.slicegoal.com',
+            'https://www.slicegoal.com.au',
+            'https://www.lateralproducts.com',
+            'https://localhost:8000',
+            'https://localhost:3000'
+        ]
+    }
+}
+let routesConfigured = false
 
 //import schemas
 
@@ -110,12 +127,6 @@ const app = express()
 log({type: 'info', message: 'server version: ' + pjson.version})
 log({type: 'info', message: 'environment: ' + process.env.NODE_ENV})
 log({type: 'info', message: new Date()})
-
-// context
-const context = req => ({
-    req: req.request.body,
-    version: pjson.version
-})
 
 // server
 export const schema = makeExecutableSchema({
@@ -183,6 +194,53 @@ export const schema = makeExecutableSchema({
 
 export const schemaWithMiddleware = applyMiddleware(schema, authMiddleWareInput); //, authMiddleWareOutput - to track the output.
 
+export async function buildAuthenticatedContext({ req, res }) {
+    const ctx = { req, res }
+    const session = req.session || {}
+
+    if (!req.session) {
+        ctx.session = session
+    }
+
+    if (session.user && !session.profile) {
+        const sessionRequest = req.session ? req : { session }
+        const currentView = session.view || await getCurrentView(sessionRequest)
+        if (currentView) await setView(currentView._id.toString(), sessionRequest)
+    }
+
+    const claims = await getBearerClaimsFromContext({ req })
+    if (claims && claims.sub) {
+        const user = await getuserbysub(claims.sub)
+        if (!user) return triggererror('Unauthorized')
+
+        if (req.session) {
+            req.session.user = user
+            req.session.view = null
+            req.session.profile = null
+            const view = await getCurrentView(req)
+            if (view) await setView(view._id.toString(), req)
+            await new Promise((resolve, reject) => req.session.save(err => (err ? reject(err) : resolve())))
+            if (!req.session.profile) return triggererror('View not found')
+        } else {
+            ctx.session.user = user
+            ctx.session.view = null
+            ctx.session.profile = null
+            const view = await getCurrentView({ session: ctx.session })
+            if (view) await setView(view._id.toString(), { session: ctx.session })
+            if (!ctx.session.profile) return triggererror('View not found')
+        }
+
+        ctx.auth0 = {
+            sub: claims.sub,
+            scope: claims.scope,
+            permissions: claims.permissions,
+            exp: claims.exp
+        }
+    }
+
+    return ctx
+}
+
 const graphQLServer = createServer({
     schema: schemaWithMiddleware,
     graphiql: false,
@@ -206,48 +264,7 @@ const graphQLServer = createServer({
             }
         }
     ],
-    context: async ({ req, res }) => {
-        // Build the per-request context first
-        const ctx = { req, res }
-    
-        // Use the cookie session if present; otherwise create a request-scoped store
-        if (!req.session) {
-            ctx.session = {} // Create request-scoped session for JWT-only requests
-        }
-      
-        //console.log('🔎 bearer claim check')
-        // ✅ Pass the right object to your jose helper
-        const claims = await getBearerClaimsFromContext({ req }) // or getBearerClaimsFromContext(ctx)
-        if (claims && claims.sub) {
-            //console.log('🔎 bearer claim found')
-            const user = await getuserbysub(claims.sub)
-            //const profile = user ? await getprofileid(user.id) : null
-
-            if (req.session) {
-                // mutate, don't replace
-                req.session.user = user
-                const view = await getCurrentView(req)
-                if (view) await setView(view._id.toString(), req)
-                // (optional) persist immediately so Set-Cookie is sent
-                await new Promise((r, j) => req.session.save(err => (err ? j(err) : r())))
-            } else {
-                // JWT-only path (no cookie session): keep it on ctx for this request
-                ctx.session.user = user
-                const view = await getCurrentView(ctx)
-                if (view) await setView(view.id.toString(), ctx)
-                //ctx.session.profile = profile
-            }
-
-            ctx.auth0 = {
-                sub: claims.sub,
-                scope: claims.scope,
-                permissions: claims.permissions,
-                exp: claims.exp,
-            }
-        }
-       
-        return ctx
-    },
+    context: async({ req, res }) => buildAuthenticatedContext({ req, res })
   })
 
 // List of query names that can be accessed by unauthenticated users
@@ -277,26 +294,10 @@ async function authMiddleWareInput(resolve, root, args, context, info) {
     return resolve(root, args, context)
 }
 
-export const graphql = async() => {
+export const configureGraphqlServer = async() => {
+    if (routesConfigured) return app
+
     try {
-        
-        const opts = {
-            port: 3001,
-            endpoint: '/server',
-            cors: {
-                credentials: true,
-                preflightContinue: true,
-                origin: [
-                    'https://www.slicegoal.com',
-                    'https://www.slicegoal.com.au',
-                    'https://www.lateralproducts.com',
-                    'https://localhost:8000',
-                    'https://localhost:3000'
-                ] //your frontend url.
-            }
-        }
-
-
         /* function loggingMiddleware(req, res, next) {
           log("ip:", ip);
           next();
@@ -321,13 +322,9 @@ export const graphql = async() => {
                 }
             }),
         )
+        app.use(bodyParser.urlencoded({ extended: true }))
         // Bind GraphQL Yoga to `/server` endpoint
         app.use('/server', graphQLServer)
-
-        // start server
-        app.listen(opts, () => {
-            log({type: 'info', message: `Server is running on http://localhost:${opts.port}${opts.endpoint}`})
-        }) 
 
         // file server
         app.get('/files/*', async (req, res, next) => {
@@ -434,10 +431,25 @@ export const graphql = async() => {
             });
         });
 
+        routesConfigured = true
+        return app
     } catch (e) {
         log(e)
     }
 }
+
+export const startHttpServer = async() => {
+    await configureGraphqlServer()
+    const host = process.env.HOST || 'localhost'
+
+    app.listen(opts.port, host, () => {
+        log({type: 'info', message: `Server is running on http://${host}:${opts.port}${opts.endpoint}`})
+    })
+
+    return app
+}
+
+export const graphql = startHttpServer
 
 export function triggererror(message){
     //using the GraphQLYogaError to return to client in production.

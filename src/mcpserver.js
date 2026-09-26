@@ -1,0 +1,328 @@
+import bodyParser from 'body-parser'
+import rateLimit from 'express-rate-limit'
+import { graphql as executeGraphql } from 'graphql'
+import * as z from 'zod/v4'
+
+import { app, buildAuthenticatedContext, schemaWithMiddleware } from './graphqlserver'
+import { log } from './logging'
+
+let pjson = require('../package.json')
+
+const importModule = new Function('modulePath', 'return import(modulePath)')
+let mcpSdkPromise
+
+function loadMcpModule(modulePath) {
+    if (process.env.NODE_ENV === 'test') return Promise.resolve(require(modulePath))
+    return importModule(modulePath)
+}
+
+function getMcpSdk() {
+    if (!mcpSdkPromise) {
+        mcpSdkPromise = Promise.all([
+            loadMcpModule('@modelcontextprotocol/sdk/server/mcp.js'),
+            loadMcpModule('@modelcontextprotocol/sdk/server/streamableHttp.js')
+        ]).then(([mcpModule, transportModule]) => ({
+            McpServer: mcpModule.McpServer,
+            StreamableHTTPServerTransport: transportModule.StreamableHTTPServerTransport
+        }))
+    }
+
+    return mcpSdkPromise
+}
+
+const mcpEndpoint = process.env.MCP_ENDPOINT || '/mcp'
+const mcpRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: Number(process.env.MCP_RATE_LIMIT_MAX || 60),
+    standardHeaders: true,
+    legacyHeaders: false
+})
+let mcpConfigured = false
+
+function mcpEnabled() {
+    return process.env.ENABLE_MCP_SERVER === 'true'
+}
+
+function jsonRpcError(res, status, code, message) {
+    res.status(status).json({
+        jsonrpc: '2.0',
+        error: {
+            code,
+            message
+        },
+        id: null
+    })
+}
+
+function toolResult(name, payload) {
+    return {
+        content: [
+            {
+                type: 'text',
+                text: `${name} result:\n${JSON.stringify(payload, null, 2)}`
+            }
+        ]
+    }
+}
+
+function getGraphqlErrors(errors) {
+    return errors.map(error => error.message).join('; ')
+}
+
+async function runGraphqlTool({ query, variables, dataPath, contextValue }) {
+    const result = await executeGraphql(schemaWithMiddleware, query, null, contextValue, variables)
+
+    if (result.errors && result.errors.length) {
+        throw new Error(getGraphqlErrors(result.errors))
+    }
+
+    return result.data ? result.data[dataPath] : null
+}
+
+async function createMcpServer(contextValue) {
+    const { McpServer } = await getMcpSdk()
+    const server = new McpServer({
+        name: 'slicegoal-server',
+        version: pjson.version
+    }, {
+        capabilities: {
+            logging: {}
+        }
+    })
+
+    const annotations = {
+        readOnlyHint: true,
+        openWorldHint: false
+    }
+
+    server.registerTool('search_global', {
+        description: 'Search goals, tasks, insights, sources, and people for the authenticated SliceGoal profile.',
+        inputSchema: {
+            search: z.string().min(1).describe('Search text to match across the profile')
+        },
+        annotations
+    }, async({ search }) => {
+        const payload = await runGraphqlTool({
+            query: `
+                query SearchGlobal($search: String) {
+                    searchglobal(search: $search) {
+                        goals { _id goal description complete datetime }
+                        tasks { _id title description date starttime complete completed schedule }
+                        insights { _id prompt answer snoozedSwipe }
+                        sources { _id name notes }
+                        people { _id name notes }
+                    }
+                }
+            `,
+            variables: { search },
+            dataPath: 'searchglobal',
+            contextValue
+        })
+
+        return toolResult('search_global', payload)
+    })
+
+    server.registerTool('list_tasks', {
+        description: 'List tasks for the authenticated SliceGoal profile using the existing task query filters.',
+        inputSchema: {
+            date: z.string().optional().describe('ISO date to scope task results'),
+            scheduled: z.boolean().optional().describe('Limit to scheduled tasks'),
+            complete: z.boolean().optional().describe('Filter by completion state'),
+            today: z.string().optional().describe('ISO date used by the scheduler query'),
+            goal: z.string().optional().describe('Goal id to filter tasks'),
+            list: z.string().optional().describe('Task list mode, such as day or main'),
+            filter: z.string().optional().describe('Area filter id')
+        },
+        annotations
+    }, async args => {
+        const payload = await runGraphqlTool({
+            query: `
+                query ListTasks(
+                    $date: String
+                    $scheduled: Boolean
+                    $complete: Boolean
+                    $today: String
+                    $goal: String
+                    $list: String
+                    $filter: String
+                ) {
+                    tasks(
+                        date: $date
+                        scheduled: $scheduled
+                        complete: $complete
+                        today: $today
+                        goal: $goal
+                        list: $list
+                        filter: $filter
+                    ) {
+                        _id
+                        title
+                        description
+                        date
+                        starttime
+                        complete
+                        completed
+                        schedule
+                        snooze
+                    }
+                }
+            `,
+            variables: args,
+            dataPath: 'tasks',
+            contextValue
+        })
+
+        return toolResult('list_tasks', payload)
+    })
+
+    server.registerTool('get_task', {
+        description: 'Fetch a single task for the authenticated SliceGoal profile.',
+        inputSchema: {
+            taskid: z.string().min(1).describe('Task id')
+        },
+        annotations
+    }, async({ taskid }) => {
+        const payload = await runGraphqlTool({
+            query: `
+                query GetTask($taskid: String!) {
+                    task(taskid: $taskid) {
+                        _id
+                        title
+                        description
+                        date
+                        starttime
+                        complete
+                        completed
+                        schedule
+                        snooze
+                        dayorder
+                        listorder
+                        goalorder
+                    }
+                }
+            `,
+            variables: { taskid },
+            dataPath: 'task',
+            contextValue
+        })
+
+        return toolResult('get_task', payload)
+    })
+
+    server.registerTool('list_goals', {
+        description: 'List goals for the authenticated SliceGoal profile using the existing goal query filters.',
+        inputSchema: {
+            area: z.string().optional().describe('Area id filter'),
+            search: z.string().optional().describe('Search text for goal titles'),
+            date: z.string().optional().describe('ISO date filter'),
+            goal: z.string().optional().describe('Parent or linked goal id filter')
+        },
+        annotations
+    }, async args => {
+        const payload = await runGraphqlTool({
+            query: `
+                query ListGoals($area: String, $search: String, $date: String, $goal: String) {
+                    goals(area: $area, search: $search, date: $date, goal: $goal) {
+                        _id
+                        goal
+                        description
+                        area
+                        datetime
+                        complete
+                        date
+                    }
+                }
+            `,
+            variables: args,
+            dataPath: 'goals',
+            contextValue
+        })
+
+        return toolResult('list_goals', payload)
+    })
+
+    server.registerTool('search_insights', {
+        description: 'Search insights for the authenticated SliceGoal profile.',
+        inputSchema: {
+            search: z.string().optional().describe('Search text matched against prompt and answer'),
+            swipe: z.boolean().optional().describe('Whether to apply swipe-specific filtering')
+        },
+        annotations
+    }, async args => {
+        const payload = await runGraphqlTool({
+            query: `
+                query SearchInsights($search: String, $swipe: Boolean) {
+                    searchinsights(search: $search, swipe: $swipe) {
+                        _id
+                        prompt
+                        answer
+                        snoozedSwipe
+                    }
+                }
+            `,
+            variables: args,
+            dataPath: 'searchinsights',
+            contextValue
+        })
+
+        return toolResult('search_insights', payload)
+    })
+
+    return server
+}
+
+export function configureMcpServer() {
+    if (mcpConfigured || !mcpEnabled()) return app
+
+    const handleMcpRequest = async(req, res) => {
+        let transport
+        let server
+        let cleanedUp = false
+
+        const cleanup = async() => {
+            if (cleanedUp) return
+            cleanedUp = true
+            if (transport) await transport.close()
+            if (server) await server.close()
+        }
+
+        try {
+            const contextValue = await buildAuthenticatedContext({ req, res })
+            const session = req.session || contextValue.session
+            if (!session || !session.user || !session.profile) {
+                jsonRpcError(res, 401, -32001, 'Unauthorized')
+                return
+            }
+
+            server = await createMcpServer(contextValue)
+            const { StreamableHTTPServerTransport } = await getMcpSdk()
+            transport = new StreamableHTTPServerTransport({
+                sessionIdGenerator: undefined
+            })
+
+            await server.connect(transport)
+            res.on('close', () => {
+                if (res.writableEnded) return
+                Promise.resolve(cleanup())
+                    .catch(error => log({ type: 'error', source: 'mcp', message: error.message }))
+            })
+            await transport.handleRequest(req, res, req.body)
+            await cleanup()
+        } catch (error) {
+            log({type: 'error', source: 'mcp', message: error.message})
+            if (!res.headersSent) {
+                jsonRpcError(res, 500, -32603, 'Internal server error')
+            }
+        }
+    }
+
+    app.post(mcpEndpoint, mcpRateLimit, bodyParser.json({ type: ['application/json', 'application/*+json'] }), handleMcpRequest)
+
+    app.get(mcpEndpoint, mcpRateLimit, handleMcpRequest)
+
+    app.delete(mcpEndpoint, mcpRateLimit, handleMcpRequest)
+
+    mcpConfigured = true
+    log({type: 'info', message: `MCP server enabled on ${mcpEndpoint}`})
+    return app
+}
