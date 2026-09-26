@@ -8,6 +8,8 @@ describe('configureMcpServer', () => {
     let transportCloseMock
     let serverCloseMock
     let lastServer
+    let mcpModuleLoadCount
+    let transportModuleLoadCount
 
     function createResponse() {
         const listeners = {}
@@ -40,6 +42,8 @@ describe('configureMcpServer', () => {
         connectMock = jest.fn().mockResolvedValue(undefined)
         transportCloseMock = jest.fn().mockResolvedValue(undefined)
         serverCloseMock = jest.fn().mockResolvedValue(undefined)
+        mcpModuleLoadCount = 0
+        transportModuleLoadCount = 0
 
         app = {
             post: jest.fn((path, ...handlers) => {
@@ -83,6 +87,11 @@ describe('configureMcpServer', () => {
         }))
 
         jest.doMock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
+            __esModule: true,
+            ...(() => {
+                mcpModuleLoadCount += 1
+                return {}
+            })(),
             McpServer: class MockMcpServer {
                 constructor() {
                     this.tools = {}
@@ -104,6 +113,11 @@ describe('configureMcpServer', () => {
         }))
 
         jest.doMock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => ({
+            __esModule: true,
+            ...(() => {
+                transportModuleLoadCount += 1
+                return {}
+            })(),
             StreamableHTTPServerTransport: class MockTransport {
                 handleRequest(req, res, body) {
                     if (body && body.params && body.params.name) {
@@ -142,6 +156,9 @@ describe('configureMcpServer', () => {
 
         configureMcpServer()
 
+        expect(mcpModuleLoadCount).toBe(0)
+        expect(transportModuleLoadCount).toBe(0)
+
         const handler = routes.post.handlers[routes.post.handlers.length - 1]
         const req = { session: {}, body: {} }
         const res = createResponse()
@@ -158,6 +175,8 @@ describe('configureMcpServer', () => {
             id: null
         })
         expect(connectMock).not.toHaveBeenCalled()
+        expect(mcpModuleLoadCount).toBe(0)
+        expect(transportModuleLoadCount).toBe(0)
     })
 
     it('handles an authenticated MCP tool request with the schema-safe people fields', async() => {
@@ -182,6 +201,9 @@ describe('configureMcpServer', () => {
         })
 
         configureMcpServer()
+
+        expect(mcpModuleLoadCount).toBe(0)
+        expect(transportModuleLoadCount).toBe(0)
 
         const handler = routes.post.handlers[routes.post.handlers.length - 1]
         const req = {
@@ -214,5 +236,7 @@ describe('configureMcpServer', () => {
         expect(connectMock).toHaveBeenCalled()
         expect(transportCloseMock).toHaveBeenCalled()
         expect(serverCloseMock).toHaveBeenCalled()
+        expect(mcpModuleLoadCount).toBe(1)
+        expect(transportModuleLoadCount).toBe(1)
     })
 })

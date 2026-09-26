@@ -8,11 +8,26 @@ import { log } from './logging'
 
 let pjson = require('../package.json')
 
+const importModule = new Function('modulePath', 'return import(modulePath)')
+let mcpSdkPromise
+
+function loadMcpModule(modulePath) {
+    if (process.env.NODE_ENV === 'test') return Promise.resolve(require(modulePath))
+    return importModule(modulePath)
+}
+
 function getMcpSdk() {
-    return {
-        McpServer: require('@modelcontextprotocol/sdk/server/mcp.js').McpServer,
-        StreamableHTTPServerTransport: require('@modelcontextprotocol/sdk/server/streamableHttp.js').StreamableHTTPServerTransport
+    if (!mcpSdkPromise) {
+        mcpSdkPromise = Promise.all([
+            loadMcpModule('@modelcontextprotocol/sdk/server/mcp.js'),
+            loadMcpModule('@modelcontextprotocol/sdk/server/streamableHttp.js')
+        ]).then(([mcpModule, transportModule]) => ({
+            McpServer: mcpModule.McpServer,
+            StreamableHTTPServerTransport: transportModule.StreamableHTTPServerTransport
+        }))
     }
+
+    return mcpSdkPromise
 }
 
 const mcpEndpoint = process.env.MCP_ENDPOINT || '/mcp'
@@ -64,8 +79,8 @@ async function runGraphqlTool({ query, variables, dataPath, contextValue }) {
     return result.data ? result.data[dataPath] : null
 }
 
-function createMcpServer(contextValue) {
-    const { McpServer } = getMcpSdk()
+async function createMcpServer(contextValue) {
+    const { McpServer } = await getMcpSdk()
     const server = new McpServer({
         name: 'slicegoal-server',
         version: pjson.version
@@ -279,8 +294,8 @@ export function configureMcpServer() {
                 return
             }
 
-            server = createMcpServer(contextValue)
-            const { StreamableHTTPServerTransport } = getMcpSdk()
+            server = await createMcpServer(contextValue)
+            const { StreamableHTTPServerTransport } = await getMcpSdk()
             transport = new StreamableHTTPServerTransport({
                 sessionIdGenerator: undefined
             })
