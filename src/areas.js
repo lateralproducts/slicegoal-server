@@ -339,7 +339,7 @@ export const resolvers = {
                 if (seen.has(key)) continue
                 seen.add(key)
                 limitedNames.push(t)
-                if (limitedNames.length >= 10) break
+                if (limitedNames.length >= 50) break
             }
             if (!limitedNames.length) return []
 
@@ -347,6 +347,21 @@ export const resolvers = {
 
             query.name = { $in: optRegexp }
             let tags = await Areas.find(query).toArray()
+
+            // Sort DB results by the model's order (case-insensitive match to candidate list), then cap at 10
+            const orderIndex = new Map()
+            limitedNames.forEach((n, i) => {
+                const key = n.toLowerCase()
+                if (!orderIndex.has(key)) orderIndex.set(key, i)
+            })
+            tags.sort((a, b) => {
+                const ia = orderIndex.get((a.name || '').toLowerCase())
+                const ib = orderIndex.get((b.name || '').toLowerCase())
+                const va = ia === undefined ? Number.MAX_SAFE_INTEGER : ia
+                const vb = ib === undefined ? Number.MAX_SAFE_INTEGER : ib
+                return va - vb
+            })
+            tags = tags.slice(0, 10)
 
             //where one of the area names is not in the areas array. Add it to the tags array as {name: 'name'}.
             /* searchareanames.map(name => {

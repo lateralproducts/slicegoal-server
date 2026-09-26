@@ -211,6 +211,8 @@ export function parseAndCombine(text) {
                 arr = JSON.parse(block)
             } catch {
                 // Tolerant extraction: pull out quoted strings ('...' or "...")
+                // Limitation: this fallback treats apostrophes inside single-quoted strings literally;
+                // it does not support nested/unbalanced quotes or full JSON escaping.
                 const extracted = []
                 let i = 0
                 while (i < block.length) {

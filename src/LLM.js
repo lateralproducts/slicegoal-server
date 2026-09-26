@@ -62,17 +62,15 @@ Return ONLY a strict JSON array. No prose, no code fences, no extra keys.`
         const content2 = response?.data?.choices?.[0]?.message?.content ?? ''
 
         // Prefer strict JSON if provided
-        let list1 = []
-        let list2 = []
-        try { list1 = JSON.parse(content1) } catch {}
-        try { list2 = JSON.parse(content2) } catch {}
-        if (!Array.isArray(list1) || !Array.isArray(list2)) {
-            // Fallback to tolerant parser on any failure
-            if (!Array.isArray(list1)) list1 = parseAndCombine(content1)
-            if (!Array.isArray(list2)) list2 = parseAndCombine(content2)
-        }
+        let list1 = null
+        let list2 = null
+        try { const p = JSON.parse(content1); if (Array.isArray(p)) list1 = p } catch {}
+        try { const p = JSON.parse(content2); if (Array.isArray(p)) list2 = p } catch {}
+        // Fallback to tolerant parser on any failure
+        if (!Array.isArray(list1)) list1 = parseAndCombine(content1)
+        if (!Array.isArray(list2)) list2 = parseAndCombine(content2)
 
-        // Merge, de-dupe case-insensitively, preserve order, cap at 10
+        // Merge, de-dupe case-insensitively, preserve order, cap at 50 (candidates)
         const seen = new Set()
         const merged = []
         for (const src of [list1, list2]) {
@@ -84,9 +82,9 @@ Return ONLY a strict JSON array. No prose, no code fences, no extra keys.`
                 if (seen.has(key)) continue
                 seen.add(key)
                 merged.push(t)
-                if (merged.length >= 10) break
+                if (merged.length >= 50) break
             }
-            if (merged.length >= 10) break
+            if (merged.length >= 50) break
         }
 
         return JSON.stringify(merged)

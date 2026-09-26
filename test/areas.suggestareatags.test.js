@@ -8,6 +8,11 @@ jest.mock('../src/LLM', () => ({
   queryLLMtags: jest.fn(),
 }))
 
+// Avoid pulling in the full server (which imports schedules/push/firebase)
+jest.mock('../src/graphqlserver', () => ({
+  triggererror: (message) => Promise.reject(new Error(message)),
+}))
+
 // Minimal stubs for users module functions imported by areas.js
 jest.mock('../src/users', () => ({
   getuserid: jest.fn(() => 'user1'),
@@ -106,12 +111,14 @@ describe('Query.suggestareatags', () => {
     ).rejects.toThrow(/Tag suggestions are unavailable right now/)
   })
 
-  test('caps output at 10 items', async () => {
-    // 12 names that all exist
-    const out = ['Alpha','Beta','Gamma','Delta','Epsilon','Zeta','Eta','Theta','Iota','c++','?','C#']
+  test('returns areas in model order and caps final results at exactly 10', async () => {
+    // 12 names that all exist in mockAreas
+    const out = ['Alpha','Beta','Gamma','Delta','Epsilon','Zeta','Eta','Theta','Iota','C#','c++','?']
     queryLLMtags.mockResolvedValueOnce(JSON.stringify(out))
     const res = await resolvers.Query.suggestareatags(null, { search: 'many' }, ctx)
-    expect(res.length).toBeLessThanOrEqual(10)
+    expect(res.length).toBe(10)
+    const expectedOrder = out.slice(0, 10)
+    expect(res.map(r => r.name)).toEqual(expectedOrder)
   })
 })
 
